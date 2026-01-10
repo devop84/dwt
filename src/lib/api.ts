@@ -1,20 +1,11 @@
 import axios from 'axios'
 import type { AuthResponse, User } from '../types'
 
-// Determine API base URL
-// In production: use /api (served by Vercel)
-// In development with Vite only: will fail (need vercel dev)
-// In development with vercel dev: use /api (proxied correctly)
-const getApiBaseURL = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL
-  }
-  // For Vercel dev or production, use relative path
-  return '/api'
-}
-
 const api = axios.create({
-  baseURL: getApiBaseURL(),
+  // Use environment variable if set, otherwise use /api
+  // When running with 'vercel dev', API routes are automatically available at /api
+  // When running with 'npm run dev' (Vite only), API routes won't work - use 'vercel dev' instead
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
