@@ -1,12 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { authenticate, requireRole, type AuthRequest } from '../lib/middleware'
+import { authenticate, type AuthRequest } from '../lib/middleware'
 import { prisma } from '../lib/db'
 import { UserRole } from '@prisma/client'
 
-export default async function handler(req: AuthRequest, res: VercelResponse) {
-  return authenticate(req, res, async (req: AuthRequest, res: VercelResponse) => {
+export default async function handler(req: AuthRequest, res: VercelResponse): Promise<void> {
+  await authenticate(req, res, async (req: AuthRequest, res: VercelResponse) => {
     if (!req.user || ![UserRole.ADMIN, UserRole.GUIDE].includes(req.user.role)) {
-      return res.status(403).json({ message: 'Forbidden' })
+      res.status(403).json({ message: 'Forbidden' })
+      return
     }
 
     try {
@@ -18,10 +19,12 @@ export default async function handler(req: AuthRequest, res: VercelResponse) {
         })
 
         if (!spot) {
-          return res.status(404).json({ message: 'Spot not found' })
+          res.status(404).json({ message: 'Spot not found' })
+          return
         }
 
-        return res.status(200).json(spot)
+        res.status(200).json(spot)
+        return
       }
 
       if (req.method === 'PUT') {
@@ -41,7 +44,8 @@ export default async function handler(req: AuthRequest, res: VercelResponse) {
           },
         })
 
-        return res.status(200).json(spot)
+        res.status(200).json(spot)
+        return
       }
 
       if (req.method === 'DELETE') {
@@ -49,15 +53,17 @@ export default async function handler(req: AuthRequest, res: VercelResponse) {
           where: { id: id as string },
         })
 
-        return res.status(204).send(null)
+        res.status(204).send(null)
+        return
       }
 
-      return res.status(405).json({ message: 'Method not allowed' })
+      res.status(405).json({ message: 'Method not allowed' })
     } catch (error: any) {
       if (error.code === 'P2025') {
-        return res.status(404).json({ message: 'Spot not found' })
+        res.status(404).json({ message: 'Spot not found' })
+        return
       }
-      return res.status(500).json({ message: error.message || 'Failed to process request' })
+      res.status(500).json({ message: error.message || 'Failed to process request' })
     }
   })
 }

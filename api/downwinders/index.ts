@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { authenticate, type AuthRequest } from '../lib/middleware'
 import { prisma } from '../lib/db'
 
-export default async function handler(req: AuthRequest, res: VercelResponse) {
-  return authenticate(req, res, async () => {
+export default async function handler(req: AuthRequest, res: VercelResponse): Promise<void> {
+  await authenticate(req, res, async (req: AuthRequest, res: VercelResponse) => {
     try {
       if (req.method === 'GET') {
         const downwinders = await prisma.downwinder.findMany({
@@ -26,12 +26,14 @@ export default async function handler(req: AuthRequest, res: VercelResponse) {
           orderBy: { createdAt: 'desc' },
         })
 
-        return res.status(200).json(downwinders)
+        res.status(200).json(downwinders)
+        return
       }
 
       if (req.method === 'POST') {
         if (!req.user) {
-          return res.status(401).json({ message: 'Unauthorized' })
+          res.status(401).json({ message: 'Unauthorized' })
+          return
         }
 
         const { title, description, startDate, endDate, maxClients, status, hotelId } = req.body
@@ -55,12 +57,13 @@ export default async function handler(req: AuthRequest, res: VercelResponse) {
           },
         })
 
-        return res.status(201).json(downwinder)
+        res.status(201).json(downwinder)
+        return
       }
 
-      return res.status(405).json({ message: 'Method not allowed' })
+      res.status(405).json({ message: 'Method not allowed' })
     } catch (error: any) {
-      return res.status(500).json({ message: error.message || 'Failed to process request' })
+      res.status(500).json({ message: error.message || 'Failed to process request' })
     }
   })
 }

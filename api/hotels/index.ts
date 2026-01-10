@@ -3,10 +3,11 @@ import { authenticate, requireRole, type AuthRequest } from '../lib/middleware'
 import { prisma } from '../lib/db'
 import { UserRole } from '@prisma/client'
 
-export default async function handler(req: AuthRequest, res: VercelResponse) {
-  return authenticate(req, res, async (req: AuthRequest, res: VercelResponse) => {
+export default async function handler(req: AuthRequest, res: VercelResponse): Promise<void> {
+  await authenticate(req, res, async (req: AuthRequest, res: VercelResponse) => {
     if (!req.user || ![UserRole.ADMIN, UserRole.GUIDE].includes(req.user.role)) {
-      return res.status(403).json({ message: 'Forbidden' })
+      res.status(403).json({ message: 'Forbidden' })
+      return
     }
 
     try {
@@ -15,7 +16,8 @@ export default async function handler(req: AuthRequest, res: VercelResponse) {
           orderBy: { name: 'asc' },
         })
 
-        return res.status(200).json(hotels)
+        res.status(200).json(hotels)
+        return
       }
 
       if (req.method === 'POST') {
@@ -32,12 +34,13 @@ export default async function handler(req: AuthRequest, res: VercelResponse) {
           },
         })
 
-        return res.status(201).json(hotel)
+        res.status(201).json(hotel)
+        return
       }
 
-      return res.status(405).json({ message: 'Method not allowed' })
+      res.status(405).json({ message: 'Method not allowed' })
     } catch (error: any) {
-      return res.status(500).json({ message: error.message || 'Failed to process request' })
+      res.status(500).json({ message: error.message || 'Failed to process request' })
     }
   })
 }
