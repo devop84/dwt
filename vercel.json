@@ -1,7 +1,7 @@
 {
   "buildCommand": "npm run db:generate && npm run build",
   "outputDirectory": "dist",
-  "devCommand": "npm run dev:full",
+  "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "vite",
   "rewrites": [
