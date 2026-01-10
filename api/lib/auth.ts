@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { prisma } from './db'
+import { queryOne, query } from './db'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
 
@@ -25,9 +25,7 @@ export function verifyToken(token: string): { userId: string; email: string } | 
 }
 
 export async function authenticateUser(email: string, password: string) {
-  const user = await prisma.user.findUnique({
-    where: { email }
-  })
+  const user = await queryOne('SELECT * FROM users WHERE email = $1', [email])
 
   if (!user) {
     throw new Error('Invalid credentials')
@@ -38,6 +36,5 @@ export async function authenticateUser(email: string, password: string) {
     throw new Error('Invalid credentials')
   }
 
-  const { password: _, ...userWithoutPassword } = user
-  return userWithoutPassword
+  return user
 }

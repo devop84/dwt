@@ -1,8 +1,10 @@
 import type { VercelResponse } from '@vercel/node'
 import { verifyToken } from '../lib/auth'
-import { prisma } from '../lib/db'
+import { queryOne, initDb } from '../lib/db'
 
 export default async function handler(req: any, res: VercelResponse): Promise<void> {
+  // Initialize database on first request
+  await initDb()
   if (req.method !== 'GET') {
     res.status(405).json({ message: 'Method not allowed' })
     return
@@ -23,16 +25,10 @@ export default async function handler(req: any, res: VercelResponse): Promise<vo
       return
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    })
+    const user = await queryOne(
+      'SELECT id, email, name, "createdAt", "updatedAt" FROM users WHERE id = $1',
+      [decoded.userId]
+    )
 
     if (!user) {
       res.status(404).json({ message: 'User not found' })

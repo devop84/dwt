@@ -1,8 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { hashPassword, generateToken } from '../lib/auth'
-import { prisma } from '../lib/db'
+import { queryOne, query, initDb } from '../lib/db'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  // Initialize database on first request
+  await initDb()
   if (req.method !== 'POST') {
     res.status(405).json({ message: 'Method not allowed' })
     return
@@ -17,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } })
+    const existingUser = await queryOne('SELECT * FROM users WHERE email = $1', [email])
     if (existingUser) {
       res.status(400).json({ message: 'User with this email already exists' })
       return
@@ -27,20 +29,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const hashedPassword = await hashPassword(password)
 
     // Create user
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-      },
-    })
+    const result = await query(
+      'INSERT INTO users (email, password, name) VALUES ($1, $2, $3) RETURNING id, email, name, "createdAt", "updatedAt"',
+      [email, hashedPassword, name]
+    )
+    const user = result[0]
 
     const token = generateToken(user.id, user.email)
-    const { password: _, ...userWithoutPassword } = user
 
     res.status(201).json({
       token,
-      user: userWithoutPassword,
+      user,
     })
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Registration failed' })

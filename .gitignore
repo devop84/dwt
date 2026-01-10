@@ -29,7 +29,6 @@ dist-ssr
 .env.production.local
 .env.development.local
 
-# Prisma
-.env
+# Vercel
 .vercel
 .env*.local

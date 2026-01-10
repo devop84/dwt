@@ -1,16 +1,6 @@
-# Downwinder Tour App
+# Simple Vite + React Authentication App
 
-Simple authentication app with login and signup pages.
-
-## Local Development
-
-### Prerequisites
-
-- Node.js 18+ and npm
-- PostgreSQL database (Neon or local)
-- Vercel CLI installed globally (optional): `npm install -g vercel`
-
-### Setup
+## Quick Start
 
 1. **Install dependencies:**
    ```bash
@@ -20,79 +10,37 @@ Simple authentication app with login and signup pages.
 2. **Set up environment variables:**
    Create a `.env` file in the root directory:
    ```env
-   DATABASE_URL="your-postgresql-connection-string"
-   JWT_SECRET="your-secret-key-here"
+   DATABASE_URL=your_postgresql_connection_string
+   JWT_SECRET=your-secret-key-change-in-production
    ```
 
-3. **Set up the database:**
+3. **Test database connection:**
    ```bash
-   npm run db:push
+   npm run test:db
    ```
-   This will create the `users` table in your database.
 
-4. **Generate Prisma Client:**
+4. **Run locally:**
    ```bash
-   npm run db:generate
+   npm run dev
    ```
-
-### Running the Development Server
-
-**IMPORTANT:** For local development with API routes, you MUST use `vercel dev`:
-
-```bash
-npm run dev:full
-```
-
-Or:
-
-```bash
-npx vercel dev
-```
-
-This will:
-- Start the Vite frontend dev server
-- Serve the API routes at `/api/*`
-- Make everything available at `http://localhost:3000` (or the port Vercel assigns)
-
-**DO NOT use `npm run dev` alone** - it only runs Vite and won't serve API routes, causing 404 errors.
-
-### Available Scripts
-
-- `npm run dev` - Run Vite dev server only (frontend only, no API routes)
-- `npm run dev:full` - Run full-stack dev server with Vite + API routes (recommended)
-- `npm run build` - Build for production
-- `npm run db:generate` - Generate Prisma Client
-- `npm run db:push` - Push schema changes to database
+   This starts both:
+   - Frontend (Vite) at http://localhost:3000
+   - API server (Express) at http://localhost:5000
 
 ## Project Structure
 
-```
-.
-├── api/              # Vercel serverless functions
-│   ├── auth/         # Authentication endpoints
-│   └── lib/          # Shared utilities
-├── src/
-│   ├── components/   # React components
-│   ├── contexts/     # React contexts (AuthContext)
-│   ├── lib/          # Client-side utilities
-│   ├── pages/        # Page components
-│   └── types/        # TypeScript types
-└── prisma/           # Database schema
-```
+- `src/` - React frontend (Vite)
+- `api/` - Vercel serverless functions (raw SQL with pg)
 
 ## Environment Variables
 
-Set these in your `.env` file for local development, or in Vercel dashboard for production:
+Set `DATABASE_URL` in Vercel dashboard or `.env` for local development.
 
-- `DATABASE_URL` - PostgreSQL connection string (required)
-- `JWT_SECRET` - Secret key for JWT tokens (required)
-- `VITE_API_URL` - Optional, override API base URL
+## Deploy to Vercel
 
-## Deployment
+1. Push to GitHub
+2. Connect repo to Vercel
+3. Set `DATABASE_URL` in Vercel environment variables
+4. Deploy
 
-The app is configured for Vercel deployment. Just push to your GitHub repository and Vercel will automatically deploy.
-
-Make sure to set the environment variables in the Vercel dashboard:
-1. Go to your project settings
-2. Navigate to Environment Variables
-3. Add `DATABASE_URL` and `JWT_SECRET`
+That's it!
