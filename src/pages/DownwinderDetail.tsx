@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { downwindersApi, spotsApi, hotelsApi, logisticsApi } from '../lib/api'
+import { downwindersApi, hotelsApi, logisticsApi } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { format } from 'date-fns'
-import type { LogisticsType } from '../types'
 
 const downwinderSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -34,11 +33,6 @@ export const DownwinderDetail: React.FC = () => {
     enabled: !isNew && !!id,
   })
 
-  const { data: spots } = useQuery({
-    queryKey: ['spots'],
-    queryFn: spotsApi.getAll,
-  })
-
   const { data: hotels } = useQuery({
     queryKey: ['hotels'],
     queryFn: hotelsApi.getAll,
@@ -55,7 +49,6 @@ export const DownwinderDetail: React.FC = () => {
     handleSubmit,
     formState: { errors },
     setValue,
-    watch,
   } = useForm<DownwinderFormData>({
     resolver: zodResolver(downwinderSchema),
     defaultValues: {

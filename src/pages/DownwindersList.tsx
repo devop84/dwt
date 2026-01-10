@@ -1,12 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { downwindersApi } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { format } from 'date-fns'
-import type { UserRole } from '../types'
+import { UserRole } from '../types'
 
 export const DownwindersList: React.FC = () => {
-  const navigate = useNavigate()
   const { hasRole } = useAuth()
   const queryClient = useQueryClient()
 

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { bookingsApi } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { format } from 'date-fns'
-import type { UserRole } from '../types'
+import { UserRole } from '../types'
 
 export const BookingsList: React.FC = () => {
   const { user, hasRole } = useAuth()

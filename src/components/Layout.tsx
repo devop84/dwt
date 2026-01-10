@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import type { UserRole } from '../types'
+import { UserRole } from '../types'
 
 interface LayoutProps {
   children: React.ReactNode

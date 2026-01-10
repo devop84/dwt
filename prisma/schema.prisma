@@ -85,7 +85,7 @@ model Downwinder {
   
   spots       DownwinderSpot[]
   bookings    Booking[]
-  guides      DownwinderGuide[]
+  guides      DownwinderGuide[] @relation("GuideAssignments")
   logistics   Logistics[]
 
   createdAt   DateTime @default(now())
@@ -112,7 +112,7 @@ model DownwinderGuide {
   downwinderId String
   downwinder   Downwinder @relation("GuideAssignments", fields: [downwinderId], references: [id], onDelete: Cascade)
   guideId      String
-  guide        User      @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  guide        User      @relation("GuideAssignments", fields: [guideId], references: [id], onDelete: Cascade)
   role         String?   // e.g., "lead", "tail", "support"
   notes        String?
 

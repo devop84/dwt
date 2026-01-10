@@ -12,7 +12,7 @@ import { SpotsList } from './pages/SpotsList'
 import { HotelsList } from './pages/HotelsList'
 import { ClientsList } from './pages/ClientsList'
 import { BookingsList } from './pages/BookingsList'
-import type { UserRole } from './types'
+import { UserRole } from './types'
 
 const queryClient = new QueryClient({
   defaultOptions: {

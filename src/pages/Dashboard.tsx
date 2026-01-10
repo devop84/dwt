@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { downwindersApi, bookingsApi } from '../lib/api'
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
-import type { UserRole } from '../types'
+import { UserRole } from '../types'
 
 export const Dashboard: React.FC = () => {
   const { user, hasRole } = useAuth()
