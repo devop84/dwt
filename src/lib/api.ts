@@ -17,8 +17,9 @@ api.interceptors.request.use((config) => {
 })
 
 export const authApi = {
-  login: async (email: string, password: string): Promise<AuthResponse> => {
-    const { data } = await api.post<AuthResponse>('/auth/login', { email, password })
+  login: async (identifier: string, password: string): Promise<AuthResponse> => {
+    // Backend accepts either email or username, sent as 'email' field for backward compatibility
+    const { data } = await api.post<AuthResponse>('/auth/login', { email: identifier, password })
     return data
   },
   register: async (email: string, password: string, name: string): Promise<AuthResponse> => {

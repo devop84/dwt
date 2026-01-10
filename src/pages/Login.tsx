@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export function Login() {
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,7 +16,7 @@ export function Login() {
     setLoading(true)
 
     try {
-      await login(email, password)
+      await login(identifier, password)
       navigate('/')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please try again.')
@@ -66,19 +66,20 @@ export function Login() {
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="email" style={{
+            <label htmlFor="identifier" style={{
               display: 'block',
               marginBottom: '0.5rem',
               fontWeight: '500'
             }}>
-              Email
+              Email or Username
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="identifier"
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               required
+              placeholder="Enter your email or username"
               style={{
                 width: '100%',
                 padding: '0.5rem',

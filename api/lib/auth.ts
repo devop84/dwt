@@ -24,8 +24,9 @@ export function verifyToken(token: string): { userId: string; email: string } | 
   }
 }
 
-export async function authenticateUser(email: string, password: string) {
-  const user = await queryOne('SELECT * FROM users WHERE email = $1', [email])
+export async function authenticateUser(identifier: string, password: string) {
+  // Find user by email or username (name field)
+  const user = await queryOne('SELECT * FROM users WHERE email = $1 OR name = $1', [identifier])
 
   if (!user) {
     throw new Error('Invalid credentials')

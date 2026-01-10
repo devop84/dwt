@@ -141,18 +141,25 @@ app.post('/api/auth/register', async (req, res) => {
   }
 })
 
-// Login
+// Login - accepts either email or username (name)
 app.post('/api/auth/login', async (req, res) => {
   await initDb()
   
   try {
-    const { email, password } = req.body
+    const { email, username, password } = req.body
+    
+    // Support both 'email' and 'username' field names
+    const identifier = email || username
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' })
+    if (!identifier || !password) {
+      return res.status(400).json({ message: 'Email/Username and password are required' })
     }
 
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email])
+    // Try to find user by email or name (username)
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1 OR name = $1',
+      [identifier]
+    )
     const user = result.rows[0]
 
     if (!user) {

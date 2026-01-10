@@ -11,14 +11,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   try {
-    const { email, password } = req.body
+    const { email, username, password } = req.body
+    
+    // Support both 'email' and 'username' field names
+    const identifier = email || username
 
-    if (!email || !password) {
-      res.status(400).json({ message: 'Email and password are required' })
+    if (!identifier || !password) {
+      res.status(400).json({ message: 'Email/Username and password are required' })
       return
     }
 
-    const user = await authenticateUser(email, password)
+    // authenticateUser now accepts identifier (email or username)
+    const user = await authenticateUser(identifier, password)
     const token = generateToken(user.id, user.email)
     
     const { password: _, ...userWithoutPassword } = user
