@@ -1,39 +1,19 @@
 {
   "name": "downwinder-tour-app",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:full": "vercel dev",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
-    "create-admin": "tsx scripts/create-admin.ts"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.9.0",
-    "@prisma/client": "^5.20.0",
-    "@tanstack/react-query": "^5.56.2",
-    "@vercel/node": "^3.0.7",
-    "axios": "^1.7.7",
-    "bcryptjs": "^2.4.3",
-    "date-fns": "^4.1.0",
-    "jsonwebtoken": "^9.0.2",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-hook-form": "^7.53.0",
-    "react-router-dom": "^6.26.1",
-    "zod": "^3.23.8"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.6",
-    "@types/node": "^22.7.9",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
@@ -44,9 +24,7 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.11",
     "postcss": "^8.4.47",
-    "prisma": "^5.20.0",
     "tailwindcss": "^3.4.12",
-    "tsx": "^4.21.0",
     "typescript": "^5.6.2",
     "vite": "^5.4.6"
   }
