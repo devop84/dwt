@@ -26,15 +26,22 @@ export function verifyToken(token: string): { userId: string; email: string; rol
 }
 
 export async function authenticateUser(emailOrUsername: string, password: string) {
-  // Try to find user by email or username
-  const user = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { email: emailOrUsername },
-        { username: emailOrUsername }
-      ]
-    }
+  // Try to find user by email first
+  let user = await prisma.user.findUnique({ 
+    where: { email: emailOrUsername }
   })
+
+  // If not found by email, try username (only if provided value might be a username)
+  if (!user && emailOrUsername) {
+    try {
+      user = await prisma.user.findUnique({ 
+        where: { username: emailOrUsername }
+      })
+    } catch (error) {
+      // If username field doesn't exist or query fails, continue
+      console.error('Error searching by username:', error)
+    }
+  }
 
   if (!user) {
     throw new Error('Invalid credentials')

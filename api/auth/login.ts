@@ -24,6 +24,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       user: userWithoutPassword,
     })
   } catch (error: any) {
-    return res.status(401).json({ message: error.message || 'Authentication failed' })
+    console.error('Login error:', error)
+    const statusCode = error.message === 'Invalid credentials' ? 401 : 500
+    return res.status(statusCode).json({ 
+      message: error.message || 'Authentication failed',
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    })
   }
 }
