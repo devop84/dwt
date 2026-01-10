@@ -6,6 +6,7 @@ const prisma = new PrismaClient()
 async function createAdmin() {
   try {
     const email = 'admin'
+    const username = 'admin'
     const password = '123456'
     const name = 'Admin'
     
@@ -20,21 +21,28 @@ async function createAdmin() {
       console.log('Name:', existingUser.name)
       console.log('Role:', existingUser.role)
       
-      // Update to admin role if not already
-      if (existingUser.role !== UserRole.ADMIN) {
-        await prisma.user.update({
-          where: { id: existingUser.id },
-          data: { role: UserRole.ADMIN }
-        })
-        console.log('Updated user role to ADMIN')
+      // Update to admin role and username
+      const hashedPassword = await bcrypt.hash(password, 10)
+      const updateData: any = {
+        role: UserRole.ADMIN,
+        password: hashedPassword
       }
       
-      // Update password
-      const hashedPassword = await bcrypt.hash(password, 10)
+      if (!existingUser.username) {
+        updateData.username = username
+      }
+      
       await prisma.user.update({
         where: { id: existingUser.id },
-        data: { password: hashedPassword }
+        data: updateData
       })
+      
+      if (!existingUser.username) {
+        console.log('Updated username to: admin')
+      }
+      if (existingUser.role !== UserRole.ADMIN) {
+        console.log('Updated user role to ADMIN')
+      }
       console.log('Password updated to: 123456')
       return
     }
@@ -46,6 +54,7 @@ async function createAdmin() {
     const admin = await prisma.user.create({
       data: {
         email,
+        username,
         password: hashedPassword,
         name,
         role: UserRole.ADMIN,
@@ -54,6 +63,7 @@ async function createAdmin() {
 
     console.log('Admin user created successfully!')
     console.log('Email:', admin.email)
+    console.log('Username:', admin.username)
     console.log('Name:', admin.name)
     console.log('Role:', admin.role)
     console.log('Password: 123456')

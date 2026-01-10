@@ -25,8 +25,17 @@ export function verifyToken(token: string): { userId: string; email: string; rol
   }
 }
 
-export async function authenticateUser(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } })
+export async function authenticateUser(emailOrUsername: string, password: string) {
+  // Try to find user by email or username
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: emailOrUsername },
+        { username: emailOrUsername }
+      ]
+    }
+  })
+
   if (!user) {
     throw new Error('Invalid credentials')
   }

@@ -9,16 +9,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { email, password, name, role = 'CLIENT' } = req.body
+    const { email, username, password, name, role = 'CLIENT' } = req.body
 
     if (!email || !password || !name) {
       return res.status(400).json({ message: 'Email, password, and name are required' })
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } })
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' })
+    // Check if user already exists by email
+    const existingUserByEmail = await prisma.user.findUnique({ where: { email } })
+    if (existingUserByEmail) {
+      return res.status(400).json({ message: 'User with this email already exists' })
+    }
+
+    // Check if username is taken (if provided)
+    if (username) {
+      const existingUserByUsername = await prisma.user.findUnique({ where: { username } })
+      if (existingUserByUsername) {
+        return res.status(400).json({ message: 'Username is already taken' })
+      }
     }
 
     // Hash password
@@ -28,6 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const user = await prisma.user.create({
       data: {
         email,
+        username: username || null,
         password: hashedPassword,
         name,
         role: role as UserRole,

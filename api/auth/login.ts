@@ -7,13 +7,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { email, password } = req.body
+    const { email, username, password } = req.body
+    const emailOrUsername = email || username
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' })
+    if (!emailOrUsername || !password) {
+      return res.status(400).json({ message: 'Email/Username and password are required' })
     }
 
-    const user = await authenticateUser(email, password)
+    const user = await authenticateUser(emailOrUsername, password)
     const token = generateToken(user.id, user.email, user.role)
 
     const { password: _, ...userWithoutPassword } = user

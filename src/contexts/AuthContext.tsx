@@ -5,7 +5,7 @@ import type { User, UserRole } from '../types'
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (emailOrUsername: string, password: string) => Promise<void>
   register: (email: string, password: string, name: string, role?: UserRole) => Promise<void>
   logout: () => void
   isAuthenticated: boolean
@@ -52,8 +52,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(false)
   }, [])
 
-  const login = async (email: string, password: string) => {
-    const response = await authApi.login(email, password)
+  const login = async (emailOrUsername: string, password: string) => {
+    const response = await authApi.login(emailOrUsername, password)
     localStorage.setItem('token', response.token)
     localStorage.setItem('user', JSON.stringify(response.user))
     setUser(response.user)
