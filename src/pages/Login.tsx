@@ -20,7 +20,14 @@ export function Login() {
       await login(identifier.trim(), password)
       navigate('/')
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.')
+      const errorMessage = err.response?.data?.message || err.message || 'Login failed. Please try again.'
+      console.error('Login error:', {
+        message: errorMessage,
+        code: err.response?.data?.code,
+        status: err.response?.status,
+        data: err.response?.data
+      })
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }

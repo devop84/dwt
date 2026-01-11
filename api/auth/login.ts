@@ -13,9 +13,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     await initDb()
   } catch (dbError: any) {
     console.error('❌ Database initialization failed in login:', dbError)
+    const errorMessage = dbError?.message || String(dbError)
+    const isDbUrlMissing = errorMessage.includes('DATABASE_URL') || errorMessage.includes('not set')
+    
     res.status(500).json({ 
-      message: 'Database connection failed',
-      error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+      message: isDbUrlMissing 
+        ? 'Database configuration error. Please check environment variables.'
+        : 'Database connection failed',
+      error: errorMessage.includes('DATABASE_URL') ? 'DATABASE_URL not configured' : undefined
     })
     return
   }
@@ -50,9 +55,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     })
   } catch (error: any) {
     console.error('Login error:', error)
-    const statusCode = error.message === 'Invalid credentials' ? 401 : 500
+    const errorMessage = error?.message || String(error)
+    const statusCode = errorMessage === 'Invalid credentials' ? 401 : 500
+    
+    // Provide more helpful error messages without exposing sensitive details
+    let userMessage = errorMessage
+    if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ENOTFOUND')) {
+      userMessage = 'Database connection error. Please check server configuration.'
+    } else if (errorMessage.includes('timeout')) {
+      userMessage = 'Database connection timeout. Please try again.'
+    } else if (errorMessage === 'Invalid credentials') {
+      userMessage = 'Invalid email/username or password'
+    }
+    
     res.status(statusCode).json({
-      message: error.message || 'Authentication failed',
+      message: userMessage || 'Authentication failed',
+      code: error?.code || undefined // Include error code for debugging
     })
   }
 }
