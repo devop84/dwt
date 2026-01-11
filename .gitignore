@@ -32,3 +32,6 @@ dist-ssr
 # Vercel
 .vercel
 .env*.local
+
+# Local development server
+# server.js is kept in repo for local dev, but Vercel uses /api serverless functions

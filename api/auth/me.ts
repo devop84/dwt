@@ -26,7 +26,7 @@ export default async function handler(req: any, res: VercelResponse): Promise<vo
     }
 
     const user = await queryOne(
-      'SELECT id, email, name, "createdAt", "updatedAt" FROM users WHERE id = $1',
+      'SELECT id, email, username, name, "createdAt", "updatedAt" FROM users WHERE id = $1',
       [decoded.userId]
     )
 

@@ -25,17 +25,26 @@ export function verifyToken(token: string): { userId: string; email: string } | 
 }
 
 export async function authenticateUser(identifier: string, password: string) {
-  // Find user by email or username (name field)
-  const user = await queryOne('SELECT * FROM users WHERE email = $1 OR name = $1', [identifier])
+  // Find user by email or username - case-insensitive
+  const trimmedIdentifier = identifier.trim()
+  const user = await queryOne(
+    'SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1)', 
+    [trimmedIdentifier]
+  )
 
   if (!user) {
+    console.log(`❌ Authenticate failed - user not found: "${trimmedIdentifier}"`)
     throw new Error('Invalid credentials')
   }
+
+  console.log(`✅ User found: ${user.email} (username: ${user.username})`)
 
   const isValid = await verifyPassword(password, user.password)
   if (!isValid) {
+    console.log(`❌ Authenticate failed - wrong password for: "${trimmedIdentifier}"`)
     throw new Error('Invalid credentials')
   }
 
+  console.log(`✅ Password verified for: ${user.username}`)
   return user
 }

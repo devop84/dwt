@@ -16,7 +16,8 @@ export function Login() {
     setLoading(true)
 
     try {
-      await login(identifier, password)
+      // Trim whitespace from identifier
+      await login(identifier.trim(), password)
       navigate('/')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please try again.')

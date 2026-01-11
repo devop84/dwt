@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 export function Signup() {
   const [name, setName] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -26,10 +27,15 @@ export function Signup() {
       return
     }
 
+    if (username.length < 3) {
+      setError('Username must be at least 3 characters')
+      return
+    }
+
     setLoading(true)
 
     try {
-      await register(email, password, name)
+      await register(email, username, password, name)
       navigate('/')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.')
@@ -84,7 +90,7 @@ export function Signup() {
               marginBottom: '0.5rem',
               fontWeight: '500'
             }}>
-              Name
+              Full Name
             </label>
             <input
               id="name"
@@ -92,6 +98,33 @@ export function Signup() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              placeholder="John Doe"
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.25rem',
+                fontSize: '1rem'
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="username" style={{
+              display: 'block',
+              marginBottom: '0.5rem',
+              fontWeight: '500'
+            }}>
+              Username
+            </label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+              required
+              minLength={3}
+              placeholder="johndoe"
               style={{
                 width: '100%',
                 padding: '0.5rem',
@@ -116,6 +149,7 @@ export function Signup() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              placeholder="john@example.com"
               style={{
                 width: '100%',
                 padding: '0.5rem',

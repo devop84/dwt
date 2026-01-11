@@ -26,16 +26,39 @@ let dbInitialized = false
 export const initDb = async () => {
   if (dbInitialized) return
   try {
+    // Create table if not exists
     await query(`
       CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
+        username VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
     `)
+    
+    // Add username column if it doesn't exist (migration for existing tables)
+    try {
+      await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(255) UNIQUE`)
+      // Update existing users to set username = name if username is null
+      await query(`UPDATE users SET username = name WHERE username IS NULL`)
+      // Make username NOT NULL if it's still nullable
+      await query(`
+        DO $$ 
+        BEGIN 
+          IF EXISTS (SELECT 1 FROM information_schema.columns 
+                     WHERE table_name = 'users' AND column_name = 'username' AND is_nullable = 'YES') THEN
+            ALTER TABLE users ALTER COLUMN username SET NOT NULL;
+          END IF;
+        END $$;
+      `)
+    } catch (migrationError) {
+      // Migration might fail if column already exists, that's fine
+      console.log('Migration note:', migrationError)
+    }
+    
     dbInitialized = true
   } catch (error) {
     // Table might already exist, that's fine

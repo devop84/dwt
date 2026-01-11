@@ -24,16 +24,42 @@ async function initDb() {
     // Enable UUID extension if not exists (for older PostgreSQL versions)
     await pool.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
     
+    // Create table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
+        username VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
     `)
+    
+    // Add username column if it doesn't exist (migration for existing tables)
+    try {
+      await pool.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(255) UNIQUE
+      `)
+      // Update existing users to set username = name if username is null
+      await pool.query(`
+        UPDATE users SET username = name WHERE username IS NULL
+      `)
+      // Make username NOT NULL if it's still nullable
+      await pool.query(`
+        DO $$ 
+        BEGIN 
+          IF EXISTS (SELECT 1 FROM information_schema.columns 
+                     WHERE table_name = 'users' AND column_name = 'username' AND is_nullable = 'YES') THEN
+            ALTER TABLE users ALTER COLUMN username SET NOT NULL;
+          END IF;
+        END $$;
+      `)
+    } catch (migrationError) {
+      console.log('Migration note:', migrationError.message)
+    }
+    
     dbInitialized = true
     console.log('✅ Database initialized')
   } catch (error) {
@@ -104,16 +130,22 @@ app.post('/api/auth/register', async (req, res) => {
   await initDb()
   
   try {
-    const { email, password, name } = req.body
+    const { email, username, password, name } = req.body
 
-    if (!email || !password || !name) {
-      return res.status(400).json({ message: 'Email, password, and name are required' })
+    if (!email || !username || !password || !name) {
+      return res.status(400).json({ message: 'Email, username, password, and name are required' })
     }
 
-    // Check if user already exists
-    const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email])
-    if (existingUser.rows.length > 0) {
+    // Check if email already exists
+    const existingEmail = await pool.query('SELECT * FROM users WHERE email = $1', [email])
+    if (existingEmail.rows.length > 0) {
       return res.status(400).json({ message: 'User with this email already exists' })
+    }
+
+    // Check if username already exists
+    const existingUsername = await pool.query('SELECT * FROM users WHERE username = $1', [username])
+    if (existingUsername.rows.length > 0) {
+      return res.status(400).json({ message: 'Username is already taken' })
     }
 
     // Hash password
@@ -124,8 +156,8 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Create user
     const result = await pool.query(
-      'INSERT INTO users (id, email, password, name) VALUES ($1, $2, $3, $4) RETURNING id, email, name, "createdAt", "updatedAt"',
-      [userId, email, hashedPassword, name]
+      'INSERT INTO users (id, email, username, password, name) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, username, name, "createdAt", "updatedAt"',
+      [userId, email, username, hashedPassword, name]
     )
     const user = result.rows[0]
 
@@ -141,35 +173,44 @@ app.post('/api/auth/register', async (req, res) => {
   }
 })
 
-// Login - accepts either email or username (name)
+// Login - accepts either email or username
 app.post('/api/auth/login', async (req, res) => {
   await initDb()
   
   try {
     const { email, username, password } = req.body
     
-    // Support both 'email' and 'username' field names
+    // Support both 'email' and 'username' field names from frontend
     const identifier = email || username
+
+    console.log('Login attempt:', { email, username, identifier: identifier?.substring(0, 10), hasPassword: !!password })
 
     if (!identifier || !password) {
       return res.status(400).json({ message: 'Email/Username and password are required' })
     }
 
-    // Try to find user by email or name (username)
+    // Try to find user by email or username - case-insensitive
+    const trimmedIdentifier = identifier.trim()
     const result = await pool.query(
-      'SELECT * FROM users WHERE email = $1 OR name = $1',
-      [identifier]
+      'SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1)',
+      [trimmedIdentifier]
     )
     const user = result.rows[0]
 
     if (!user) {
+      console.log(`❌ Login failed - identifier not found: "${trimmedIdentifier}"`)
       return res.status(401).json({ message: 'Invalid credentials' })
     }
+    
+    console.log(`✅ User found: ${user.email} (username: ${user.username})`)
 
     const isValid = await verifyPassword(password, user.password)
     if (!isValid) {
+      console.log(`❌ Login failed - password incorrect for: ${trimmedIdentifier}`)
       return res.status(401).json({ message: 'Invalid credentials' })
     }
+    
+    console.log(`✅ Password verified for: ${user.username}`)
 
     const token = generateToken(user.id, user.email)
     const { password: _, ...userWithoutPassword } = user
@@ -202,7 +243,7 @@ app.get('/api/auth/me', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, email, name, "createdAt", "updatedAt" FROM users WHERE id = $1',
+      'SELECT id, email, username, name, "createdAt", "updatedAt" FROM users WHERE id = $1',
       [decoded.userId]
     )
 

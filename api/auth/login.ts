@@ -13,8 +13,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   try {
     const { email, username, password } = req.body
     
-    // Support both 'email' and 'username' field names
+    // Support both 'email' and 'username' field names from frontend
     const identifier = email || username
+
+    console.log('Login attempt (Vercel):', { 
+      email: email?.substring(0, 10), 
+      username: username?.substring(0, 10), 
+      identifier: identifier?.substring(0, 10), 
+      hasPassword: !!password 
+    })
 
     if (!identifier || !password) {
       res.status(400).json({ message: 'Email/Username and password are required' })
