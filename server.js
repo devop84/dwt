@@ -118,6 +118,21 @@ async function initDb() {
       )
     `)
     
+    // Create guides table if not exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS guides (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        "contactNumber" VARCHAR(50),
+        email VARCHAR(255),
+        "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+        languages VARCHAR(255),
+        note TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    
     dbInitialized = true
     console.log('✅ Database initialized')
   } catch (error) {
@@ -939,6 +954,219 @@ app.delete('/api/hotels/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete hotel error:', error)
     res.status(500).json({ message: error.message || 'Failed to delete hotel' })
+  }
+})
+
+// Get all guides
+app.get('/api/guides', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        g.id,
+        g.name,
+        g."contactNumber",
+        g.email,
+        g."destinationId",
+        g.languages,
+        g.note,
+        g."createdAt",
+        g."updatedAt",
+        d.name as "destinationName"
+      FROM guides g
+      LEFT JOIN destinations d ON g."destinationId" = d.id
+      ORDER BY g.name ASC
+    `)
+
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Guides error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch guides' })
+  }
+})
+
+// Create a new guide
+app.post('/api/guides', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { name, contactNumber, email, destinationId, languages, note } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    if (!destinationId) {
+      return res.status(400).json({ message: 'Destination is required' })
+    }
+
+    const guideId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO guides (id, name, "contactNumber", email, "destinationId", languages, note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, name, "contactNumber", email, "destinationId", languages, note, "createdAt", "updatedAt"`,
+      [guideId, name, contactNumber || null, email || null, destinationId, languages || null, note || null]
+    )
+
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create guide error:', error)
+    res.status(500).json({ message: error.message || 'Failed to create guide' })
+  }
+})
+
+// Get a single guide
+app.get('/api/guides/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const result = await pool.query(
+      `SELECT 
+        g.id,
+        g.name,
+        g."contactNumber",
+        g.email,
+        g."destinationId",
+        g.languages,
+        g.note,
+        g."createdAt",
+        g."updatedAt",
+        d.name as "destinationName"
+      FROM guides g
+      LEFT JOIN destinations d ON g."destinationId" = d.id
+      WHERE g.id = $1`,
+      [id]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Guide not found' })
+    }
+
+    res.json(result.rows[0])
+  } catch (error) {
+    console.error('Guide error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch guide' })
+  }
+})
+
+// Update a guide
+app.put('/api/guides/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const { name, contactNumber, email, destinationId, languages, note } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    if (!destinationId) {
+      return res.status(400).json({ message: 'Destination is required' })
+    }
+
+    // Check if guide exists
+    const existing = await pool.query('SELECT id FROM guides WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Guide not found' })
+    }
+
+    const result = await pool.query(
+      `UPDATE guides 
+       SET name = $1, "contactNumber" = $2, email = $3, "destinationId" = $4, languages = $5, note = $6, "updatedAt" = NOW()
+       WHERE id = $7
+       RETURNING id, name, "contactNumber", email, "destinationId", languages, note, "createdAt", "updatedAt"`,
+      [name, contactNumber || null, email || null, destinationId, languages || null, note || null, id]
+    )
+
+    res.status(200).json(result.rows[0])
+  } catch (error) {
+    console.error('Update guide error:', error)
+    res.status(500).json({ message: error.message || 'Failed to update guide' })
+  }
+})
+
+// Delete a guide
+app.delete('/api/guides/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+
+    // Check if guide exists
+    const existing = await pool.query('SELECT id FROM guides WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Guide not found' })
+    }
+
+    await pool.query('DELETE FROM guides WHERE id = $1', [id])
+
+    res.status(200).json({ message: 'Guide deleted successfully' })
+  } catch (error) {
+    console.error('Delete guide error:', error)
+    res.status(500).json({ message: error.message || 'Failed to delete guide' })
   }
 })
 
