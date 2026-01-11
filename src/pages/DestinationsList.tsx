@@ -1,16 +1,16 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { clientsApi } from '../lib/api'
-import type { Client } from '../types'
-import { ClientForm } from '../components/ClientForm'
+import { destinationsApi } from '../lib/api'
+import type { Destination } from '../types'
+import { DestinationForm } from '../components/DestinationForm'
 
-type FilterColumn = 'all' | 'name' | 'contactNumber' | 'email' | 'dateOfBirth' | 'nationality' | 'IDNumber' | 'note'
-type SortColumn = 'name' | 'contactNumber' | 'email' | 'dateOfBirth' | 'nationality' | 'IDNumber' | 'note'
+type FilterColumn = 'all' | 'name' | 'prefeitura' | 'state' | 'cep' | 'note'
+type SortColumn = 'name' | 'prefeitura' | 'state' | 'cep' | 'note'
 type SortDirection = 'asc' | 'desc' | null
 
-export function ClientsList() {
+export function DestinationsList() {
   const navigate = useNavigate()
-  const [clients, setClients] = useState<Client[]>([])
+  const [destinations, setDestinations] = useState<Destination[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -18,72 +18,55 @@ export function ClientsList() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingClient, setEditingClient] = useState<Client | null>(null)
+  const [editingDestination, setEditingDestination] = useState<Destination | null>(null)
 
   useEffect(() => {
-    loadClients()
+    loadDestinations()
   }, [])
 
-  const loadClients = async () => {
+  const loadDestinations = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await clientsApi.getAll()
-      setClients(data)
+      const data = await destinationsApi.getAll()
+      setDestinations(data)
     } catch (err: any) {
-      setError(err.message || 'Failed to load clients')
-      console.error('Error loading clients:', err)
+      setError(err.message || 'Failed to load destinations')
+      console.error('Error loading destinations:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return '-'
-    try {
-      return new Date(dateString).toLocaleDateString()
-    } catch {
-      return dateString
-    }
-  }
-
-  // Filter and sort clients
-  const filteredClients = useMemo(() => {
-    let result = [...clients]
+  // Filter and sort destinations
+  const filteredDestinations = useMemo(() => {
+    let result = [...destinations]
 
     // Apply search filter
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase().trim()
 
-      result = result.filter((client) => {
+      result = result.filter((destination) => {
         if (filterColumn === 'all') {
-          // Search across all columns
           return (
-            client.name.toLowerCase().includes(search) ||
-            (client.contactNumber && client.contactNumber.toLowerCase().includes(search)) ||
-            (client.email && client.email.toLowerCase().includes(search)) ||
-            (client.dateOfBirth && formatDate(client.dateOfBirth).toLowerCase().includes(search)) ||
-            (client.nationality && client.nationality.toLowerCase().includes(search)) ||
-            (client.IDNumber && client.IDNumber.toLowerCase().includes(search)) ||
-            (client.note && client.note.toLowerCase().includes(search))
+            destination.name.toLowerCase().includes(search) ||
+            (destination.prefeitura && destination.prefeitura.toLowerCase().includes(search)) ||
+            (destination.state && destination.state.toLowerCase().includes(search)) ||
+            (destination.cep && destination.cep.toLowerCase().includes(search)) ||
+            (destination.note && destination.note.toLowerCase().includes(search))
           )
         } else {
-          // Search in specific column
           switch (filterColumn) {
             case 'name':
-              return client.name.toLowerCase().includes(search)
-            case 'contactNumber':
-              return client.contactNumber?.toLowerCase().includes(search) ?? false
-            case 'email':
-              return client.email?.toLowerCase().includes(search) ?? false
-            case 'dateOfBirth':
-              return client.dateOfBirth && formatDate(client.dateOfBirth).toLowerCase().includes(search)
-            case 'nationality':
-              return client.nationality?.toLowerCase().includes(search) ?? false
-            case 'IDNumber':
-              return client.IDNumber?.toLowerCase().includes(search) ?? false
+              return destination.name.toLowerCase().includes(search)
+            case 'prefeitura':
+              return destination.prefeitura?.toLowerCase().includes(search) ?? false
+            case 'state':
+              return destination.state?.toLowerCase().includes(search) ?? false
+            case 'cep':
+              return destination.cep?.toLowerCase().includes(search) ?? false
             case 'note':
-              return client.note?.toLowerCase().includes(search) ?? false
+              return destination.note?.toLowerCase().includes(search) ?? false
             default:
               return true
           }
@@ -94,42 +77,31 @@ export function ClientsList() {
     // Apply sorting
     if (sortColumn && sortDirection) {
       result.sort((a, b) => {
-        let aValue: string | number | null = null
-        let bValue: string | number | null = null
+        let aValue: string = ''
+        let bValue: string = ''
 
         switch (sortColumn) {
           case 'name':
             aValue = a.name.toLowerCase()
             bValue = b.name.toLowerCase()
             break
-          case 'contactNumber':
-            aValue = a.contactNumber?.toLowerCase() || ''
-            bValue = b.contactNumber?.toLowerCase() || ''
+          case 'prefeitura':
+            aValue = a.prefeitura?.toLowerCase() || ''
+            bValue = b.prefeitura?.toLowerCase() || ''
             break
-          case 'email':
-            aValue = a.email?.toLowerCase() || ''
-            bValue = b.email?.toLowerCase() || ''
+          case 'state':
+            aValue = a.state?.toLowerCase() || ''
+            bValue = b.state?.toLowerCase() || ''
             break
-          case 'dateOfBirth':
-            aValue = a.dateOfBirth ? new Date(a.dateOfBirth).getTime() : 0
-            bValue = b.dateOfBirth ? new Date(b.dateOfBirth).getTime() : 0
-            break
-          case 'nationality':
-            aValue = a.nationality?.toLowerCase() || ''
-            bValue = b.nationality?.toLowerCase() || ''
-            break
-          case 'IDNumber':
-            aValue = a.IDNumber?.toLowerCase() || ''
-            bValue = b.IDNumber?.toLowerCase() || ''
+          case 'cep':
+            aValue = a.cep?.toLowerCase() || ''
+            bValue = b.cep?.toLowerCase() || ''
             break
           case 'note':
             aValue = a.note?.toLowerCase() || ''
             bValue = b.note?.toLowerCase() || ''
             break
         }
-
-        if (aValue === null || aValue === '') return 1
-        if (bValue === null || bValue === '') return -1
 
         if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
         if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
@@ -138,11 +110,10 @@ export function ClientsList() {
     }
 
     return result
-  }, [clients, searchTerm, filterColumn, sortColumn, sortDirection])
+  }, [destinations, searchTerm, filterColumn, sortColumn, sortDirection])
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
-      // Toggle sort direction: asc -> desc -> null
       if (sortDirection === 'asc') {
         setSortDirection('desc')
       } else if (sortDirection === 'desc') {
@@ -150,7 +121,6 @@ export function ClientsList() {
         setSortDirection(null)
       }
     } else {
-      // New column, start with ascending
       setSortColumn(column)
       setSortDirection('asc')
     }
@@ -163,32 +133,32 @@ export function ClientsList() {
     return null
   }
 
-  const handleAddClient = () => {
-    setEditingClient(null)
+  const handleAddDestination = () => {
+    setEditingDestination(null)
     setShowForm(true)
   }
 
-  const handleEditClient = (client: Client) => {
-    setEditingClient(client)
+  const handleEditDestination = (destination: Destination) => {
+    setEditingDestination(destination)
     setShowForm(true)
   }
 
-  const handleRowClick = (clientId: string) => {
-    navigate(`/clients/${clientId}`)
+  const handleRowClick = (destinationId: string) => {
+    navigate(`/destinations/${destinationId}`)
   }
 
-  const handleSaveClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (editingClient) {
-      await clientsApi.update(editingClient.id, clientData)
+  const handleSaveDestination = async (destinationData: Omit<Destination, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (editingDestination) {
+      await destinationsApi.update(editingDestination.id, destinationData)
     } else {
-      await clientsApi.create(clientData)
+      await destinationsApi.create(destinationData)
     }
-    await loadClients()
+    await loadDestinations()
   }
 
   const handleCloseForm = () => {
     setShowForm(false)
-    setEditingClient(null)
+    setEditingDestination(null)
   }
 
   if (loading) {
@@ -209,7 +179,7 @@ export function ClientsList() {
             color: '#111827',
             margin: 0
           }}>
-            Clients
+            Kitesurf Destinations
           </h1>
         </div>
         <div style={{
@@ -219,7 +189,7 @@ export function ClientsList() {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#6b7280', margin: 0 }}>Loading clients...</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading destinations...</p>
         </div>
       </div>
     )
@@ -243,7 +213,7 @@ export function ClientsList() {
             color: '#111827',
             margin: 0
           }}>
-            Clients
+            Kitesurf Destinations
           </h1>
         </div>
         <div style={{
@@ -262,7 +232,7 @@ export function ClientsList() {
             <p style={{ margin: 0 }}>Error: {error}</p>
           </div>
           <button
-            onClick={loadClients}
+            onClick={loadDestinations}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: '#3b82f6',
@@ -300,7 +270,7 @@ export function ClientsList() {
           color: '#111827',
           margin: 0
         }}>
-          Clients
+          Kitesurf Destinations
         </h1>
         <div style={{
           display: 'flex',
@@ -311,13 +281,13 @@ export function ClientsList() {
             color: '#6b7280',
             fontSize: '0.875rem'
           }}>
-            {searchTerm ? filteredClients.length : clients.length} {filteredClients.length === 1 ? 'client' : 'clients'}
-            {searchTerm && filteredClients.length !== clients.length && (
-              <span style={{ color: '#9ca3af' }}> of {clients.length}</span>
+            {searchTerm ? filteredDestinations.length : destinations.length} {filteredDestinations.length === 1 ? 'destination' : 'destinations'}
+            {searchTerm && filteredDestinations.length !== destinations.length && (
+              <span style={{ color: '#9ca3af' }}> of {destinations.length}</span>
             )}
           </div>
           <button
-            onClick={handleAddClient}
+            onClick={handleAddDestination}
             style={{
               padding: '0.625rem 1.25rem',
               backgroundColor: '#3b82f6',
@@ -335,7 +305,7 @@ export function ClientsList() {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
           >
-            <span>+</span> Add Client
+            <span>+</span> Add Destination
           </button>
         </div>
       </div>
@@ -352,71 +322,38 @@ export function ClientsList() {
         alignItems: 'center',
         flexWrap: 'wrap'
       }}>
-        <div style={{
-          flex: '1',
-          minWidth: '200px'
-        }}>
-          <input
-            type="text"
-            placeholder="Search clients..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.625rem 0.875rem',
-              fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem',
-              outline: 'none',
-              transition: 'border-color 0.2s, box-shadow 0.2s'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#3b82f6'
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#d1d5db'
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          />
-        </div>
-        <div style={{
-          minWidth: '180px'
-        }}>
-          <select
-            value={filterColumn}
-            onChange={(e) => setFilterColumn(e.target.value as FilterColumn)}
-            style={{
-              width: '100%',
-              padding: '0.625rem 0.875rem',
-              fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem',
-              backgroundColor: 'white',
-              color: '#111827',
-              outline: 'none',
-              cursor: 'pointer',
-              transition: 'border-color 0.2s, box-shadow 0.2s'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#3b82f6'
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#d1d5db'
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          >
-            <option value="all">All Columns</option>
-            <option value="name">Name</option>
-            <option value="contactNumber">Contact Number</option>
-            <option value="email">Email</option>
-            <option value="dateOfBirth">Date of Birth</option>
-            <option value="nationality">Nationality</option>
-            <option value="IDNumber">ID Number</option>
-            <option value="note">Note</option>
-          </select>
-        </div>
+        <input
+          type="text"
+          placeholder="Search destinations..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            flex: '1 1 200px',
+            padding: '0.5rem 0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem'
+          }}
+        />
+        <select
+          value={filterColumn}
+          onChange={(e) => setFilterColumn(e.target.value as FilterColumn)}
+          style={{
+            flex: '0 0 auto',
+            padding: '0.5rem 0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem',
+            backgroundColor: 'white'
+          }}
+        >
+          <option value="all">All Columns</option>
+          <option value="name">Name</option>
+          <option value="prefeitura">Prefeitura</option>
+          <option value="state">State</option>
+          <option value="cep">CEP</option>
+          <option value="note">Note</option>
+        </select>
         {searchTerm && (
           <button
             onClick={() => {
@@ -424,23 +361,17 @@ export function ClientsList() {
               setFilterColumn('all')
             }}
             style={{
-              padding: '0.625rem 1rem',
-              fontSize: '0.875rem',
-              color: '#6b7280',
-              backgroundColor: 'transparent',
-              border: '1px solid #d1d5db',
+              padding: '0.5rem 1rem',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              border: 'none',
               borderRadius: '0.375rem',
               cursor: 'pointer',
-              transition: 'all 0.2s'
+              fontSize: '0.875rem',
+              transition: 'background-color 0.2s'
             }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb'
-              e.currentTarget.style.borderColor = '#9ca3af'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent'
-              e.currentTarget.style.borderColor = '#d1d5db'
-            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
           >
             Clear
           </button>
@@ -448,7 +379,7 @@ export function ClientsList() {
       </div>
 
       {/* Content Card */}
-      {filteredClients.length === 0 ? (
+      {filteredDestinations.length === 0 && searchTerm ? (
         <div style={{
           backgroundColor: 'white',
           padding: '3rem',
@@ -461,9 +392,23 @@ export function ClientsList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            {searchTerm 
-              ? `No clients found matching "${searchTerm}" in ${filterColumn === 'all' ? 'any column' : filterColumn}.`
-              : 'No clients found. Clients will appear here once added.'}
+            No destinations match your search criteria.
+          </p>
+        </div>
+      ) : filteredDestinations.length === 0 ? (
+        <div style={{
+          backgroundColor: 'white',
+          padding: '3rem',
+          borderRadius: '0.5rem',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <p style={{
+            color: '#6b7280',
+            fontSize: '1rem',
+            margin: 0
+          }}>
+            No destinations found. Destinations will appear here once added.
           </p>
         </div>
       ) : (
@@ -497,8 +442,7 @@ export function ClientsList() {
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
                       userSelect: 'none',
-                      transition: 'color 0.2s, background-color 0.2s',
-                      position: 'relative'
+                      transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
                       if (sortColumn !== 'name') {
@@ -514,13 +458,13 @@ export function ClientsList() {
                     Name{getSortIndicator('name')}
                   </th>
                   <th
-                    onClick={() => handleSort('contactNumber')}
+                    onClick={() => handleSort('prefeitura')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'contactNumber' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'prefeitura' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -528,26 +472,26 @@ export function ClientsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'contactNumber') {
+                      if (sortColumn !== 'prefeitura') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'contactNumber') {
+                      if (sortColumn !== 'prefeitura') {
                         e.currentTarget.style.backgroundColor = 'transparent'
                       }
                     }}
                   >
-                    Contact Number{getSortIndicator('contactNumber')}
+                    Prefeitura{getSortIndicator('prefeitura')}
                   </th>
                   <th
-                    onClick={() => handleSort('email')}
+                    onClick={() => handleSort('state')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'email' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'state' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -555,26 +499,26 @@ export function ClientsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'email') {
+                      if (sortColumn !== 'state') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'email') {
+                      if (sortColumn !== 'state') {
                         e.currentTarget.style.backgroundColor = 'transparent'
                       }
                     }}
                   >
-                    Email{getSortIndicator('email')}
+                    State{getSortIndicator('state')}
                   </th>
                   <th
-                    onClick={() => handleSort('dateOfBirth')}
+                    onClick={() => handleSort('cep')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'dateOfBirth' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'cep' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -582,71 +526,17 @@ export function ClientsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'dateOfBirth') {
+                      if (sortColumn !== 'cep') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'dateOfBirth') {
+                      if (sortColumn !== 'cep') {
                         e.currentTarget.style.backgroundColor = 'transparent'
                       }
                     }}
                   >
-                    Date of Birth{getSortIndicator('dateOfBirth')}
-                  </th>
-                  <th
-                    onClick={() => handleSort('nationality')}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      textAlign: 'left',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      color: sortColumn === 'nationality' ? '#3b82f6' : '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      transition: 'color 0.2s, background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (sortColumn !== 'nationality') {
-                        e.currentTarget.style.backgroundColor = '#f3f4f6'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (sortColumn !== 'nationality') {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                      }
-                    }}
-                  >
-                    Nationality{getSortIndicator('nationality')}
-                  </th>
-                  <th
-                    onClick={() => handleSort('IDNumber')}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      textAlign: 'left',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      color: sortColumn === 'IDNumber' ? '#3b82f6' : '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      transition: 'color 0.2s, background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (sortColumn !== 'IDNumber') {
-                        e.currentTarget.style.backgroundColor = '#f3f4f6'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (sortColumn !== 'IDNumber') {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                      }
-                    }}
-                  >
-                    ID Number{getSortIndicator('IDNumber')}
+                    CEP{getSortIndicator('cep')}
                   </th>
                   <th
                     onClick={() => handleSort('note')}
@@ -678,12 +568,12 @@ export function ClientsList() {
                 </tr>
               </thead>
               <tbody>
-                {filteredClients.map((client, index) => (
+                {filteredDestinations.map((destination, index) => (
                   <tr
-                    key={client.id}
-                    onClick={() => handleRowClick(client.id)}
+                    key={destination.id}
+                    onClick={() => handleRowClick(destination.id)}
                     style={{
-                      borderBottom: index < filteredClients.length - 1 ? '1px solid #e5e7eb' : 'none',
+                      borderBottom: index < filteredDestinations.length - 1 ? '1px solid #e5e7eb' : 'none',
                       transition: 'background-color 0.15s',
                       cursor: 'pointer'
                     }}
@@ -696,53 +586,39 @@ export function ClientsList() {
                       color: '#111827',
                       fontWeight: '500'
                     }}>
-                      {client.name}
+                      {destination.name}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
                       fontSize: '0.875rem',
                       color: '#6b7280'
                     }}>
-                      {client.contactNumber || '-'}
+                      {destination.prefeitura || '-'}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
                       fontSize: '0.875rem',
                       color: '#6b7280'
                     }}>
-                      {client.email || '-'}
+                      {destination.state || '-'}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
                       fontSize: '0.875rem',
                       color: '#6b7280'
                     }}>
-                      {formatDate(client.dateOfBirth)}
-                    </td>
-                    <td style={{
-                      padding: '0.75rem 1rem',
-                      fontSize: '0.875rem',
-                      color: '#6b7280'
-                    }}>
-                      {client.nationality || '-'}
-                    </td>
-                    <td style={{
-                      padding: '0.75rem 1rem',
-                      fontSize: '0.875rem',
-                      color: '#6b7280'
-                    }}>
-                      {client.IDNumber || '-'}
+                      {destination.cep || '-'}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
                       fontSize: '0.875rem',
                       color: '#6b7280',
-                      maxWidth: '200px',
+                      maxWidth: '300px',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
                     }}>
-                      {client.note || '-'}
+                      {destination.note || '-'}
                     </td>
                   </tr>
                 ))}
@@ -752,10 +628,10 @@ export function ClientsList() {
         </div>
       )}
       {showForm && (
-        <ClientForm
-          client={editingClient}
+        <DestinationForm
+          destination={editingDestination}
           onClose={handleCloseForm}
-          onSave={handleSaveClient}
+          onSave={handleSaveDestination}
         />
       )}
     </div>

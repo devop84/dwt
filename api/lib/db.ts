@@ -55,6 +55,48 @@ export const initDb = async () => {
       )
     `)
     
+    // Create destinations table if not exists
+    await query(`
+      CREATE TABLE IF NOT EXISTS destinations (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        coordinates VARCHAR(255),
+        prefeitura VARCHAR(255),
+        state VARCHAR(100),
+        cep VARCHAR(20),
+        note TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    
+    // Add prefeitura, state, and cep columns if they don't exist (migration for existing tables)
+    try {
+      await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS prefeitura VARCHAR(255)`)
+      await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS state VARCHAR(100)`)
+      await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS cep VARCHAR(20)`)
+    } catch (migrationError) {
+      console.log('Migration note:', migrationError)
+    }
+    
+    // Create hotels table if not exists
+    await query(`
+      CREATE TABLE IF NOT EXISTS hotels (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        rating INTEGER,
+        "priceRange" VARCHAR(50),
+        "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+        note TEXT,
+        "contactNumber" VARCHAR(50),
+        email VARCHAR(255),
+        address TEXT,
+        coordinates VARCHAR(255),
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    
     // Add username column if it doesn't exist (migration for existing tables)
     try {
       await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(255) UNIQUE`)

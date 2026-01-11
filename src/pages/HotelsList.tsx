@@ -1,16 +1,21 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { clientsApi } from '../lib/api'
-import type { Client } from '../types'
-import { ClientForm } from '../components/ClientForm'
+import { hotelsApi, destinationsApi } from '../lib/api'
+import type { Hotel, Destination } from '../types'
+import { HotelForm } from '../components/HotelForm'
 
-type FilterColumn = 'all' | 'name' | 'contactNumber' | 'email' | 'dateOfBirth' | 'nationality' | 'IDNumber' | 'note'
-type SortColumn = 'name' | 'contactNumber' | 'email' | 'dateOfBirth' | 'nationality' | 'IDNumber' | 'note'
+type FilterColumn = 'all' | 'name' | 'destinationName' | 'rating' | 'priceRange' | 'note'
+type SortColumn = 'name' | 'destinationName' | 'rating' | 'priceRange' | 'note'
 type SortDirection = 'asc' | 'desc' | null
 
-export function ClientsList() {
+interface HotelWithDestination extends Hotel {
+  destinationName?: string
+}
+
+export function HotelsList() {
   const navigate = useNavigate()
-  const [clients, setClients] = useState<Client[]>([])
+  const [hotels, setHotels] = useState<HotelWithDestination[]>([])
+  const [destinations, setDestinations] = useState<Destination[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -18,72 +23,64 @@ export function ClientsList() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingClient, setEditingClient] = useState<Client | null>(null)
+  const [editingHotel, setEditingHotel] = useState<HotelWithDestination | null>(null)
 
   useEffect(() => {
-    loadClients()
+    loadHotels()
+    loadDestinations()
   }, [])
 
-  const loadClients = async () => {
+  const loadHotels = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await clientsApi.getAll()
-      setClients(data)
+      const data = await hotelsApi.getAll() as HotelWithDestination[]
+      setHotels(data)
     } catch (err: any) {
-      setError(err.message || 'Failed to load clients')
-      console.error('Error loading clients:', err)
+      setError(err.message || 'Failed to load hotels')
+      console.error('Error loading hotels:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return '-'
+  const loadDestinations = async () => {
     try {
-      return new Date(dateString).toLocaleDateString()
-    } catch {
-      return dateString
+      const data = await destinationsApi.getAll()
+      setDestinations(data)
+    } catch (err: any) {
+      console.error('Error loading destinations:', err)
     }
   }
 
-  // Filter and sort clients
-  const filteredClients = useMemo(() => {
-    let result = [...clients]
+  // Filter and sort hotels
+  const filteredHotels = useMemo(() => {
+    let result = [...hotels]
 
     // Apply search filter
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase().trim()
 
-      result = result.filter((client) => {
+      result = result.filter((hotel) => {
         if (filterColumn === 'all') {
-          // Search across all columns
           return (
-            client.name.toLowerCase().includes(search) ||
-            (client.contactNumber && client.contactNumber.toLowerCase().includes(search)) ||
-            (client.email && client.email.toLowerCase().includes(search)) ||
-            (client.dateOfBirth && formatDate(client.dateOfBirth).toLowerCase().includes(search)) ||
-            (client.nationality && client.nationality.toLowerCase().includes(search)) ||
-            (client.IDNumber && client.IDNumber.toLowerCase().includes(search)) ||
-            (client.note && client.note.toLowerCase().includes(search))
+            hotel.name.toLowerCase().includes(search) ||
+            (hotel.destinationName && hotel.destinationName.toLowerCase().includes(search)) ||
+            (hotel.priceRange && hotel.priceRange.toLowerCase().includes(search)) ||
+            (hotel.note && hotel.note.toLowerCase().includes(search))
           )
         } else {
-          // Search in specific column
           switch (filterColumn) {
             case 'name':
-              return client.name.toLowerCase().includes(search)
-            case 'contactNumber':
-              return client.contactNumber?.toLowerCase().includes(search) ?? false
-            case 'email':
-              return client.email?.toLowerCase().includes(search) ?? false
-            case 'dateOfBirth':
-              return client.dateOfBirth && formatDate(client.dateOfBirth).toLowerCase().includes(search)
-            case 'nationality':
-              return client.nationality?.toLowerCase().includes(search) ?? false
-            case 'IDNumber':
-              return client.IDNumber?.toLowerCase().includes(search) ?? false
+              return hotel.name.toLowerCase().includes(search)
+            case 'destinationName':
+              return hotel.destinationName?.toLowerCase().includes(search) ?? false
+            case 'rating':
+              return hotel.rating?.toString().includes(search) ?? false
+            case 'priceRange':
+              return hotel.priceRange?.toLowerCase().includes(search) ?? false
             case 'note':
-              return client.note?.toLowerCase().includes(search) ?? false
+              return hotel.note?.toLowerCase().includes(search) ?? false
             default:
               return true
           }
@@ -94,33 +91,25 @@ export function ClientsList() {
     // Apply sorting
     if (sortColumn && sortDirection) {
       result.sort((a, b) => {
-        let aValue: string | number | null = null
-        let bValue: string | number | null = null
+        let aValue: string | number = ''
+        let bValue: string | number = ''
 
         switch (sortColumn) {
           case 'name':
             aValue = a.name.toLowerCase()
             bValue = b.name.toLowerCase()
             break
-          case 'contactNumber':
-            aValue = a.contactNumber?.toLowerCase() || ''
-            bValue = b.contactNumber?.toLowerCase() || ''
+          case 'destinationName':
+            aValue = a.destinationName?.toLowerCase() || ''
+            bValue = b.destinationName?.toLowerCase() || ''
             break
-          case 'email':
-            aValue = a.email?.toLowerCase() || ''
-            bValue = b.email?.toLowerCase() || ''
+          case 'rating':
+            aValue = a.rating || 0
+            bValue = b.rating || 0
             break
-          case 'dateOfBirth':
-            aValue = a.dateOfBirth ? new Date(a.dateOfBirth).getTime() : 0
-            bValue = b.dateOfBirth ? new Date(b.dateOfBirth).getTime() : 0
-            break
-          case 'nationality':
-            aValue = a.nationality?.toLowerCase() || ''
-            bValue = b.nationality?.toLowerCase() || ''
-            break
-          case 'IDNumber':
-            aValue = a.IDNumber?.toLowerCase() || ''
-            bValue = b.IDNumber?.toLowerCase() || ''
+          case 'priceRange':
+            aValue = a.priceRange?.toLowerCase() || ''
+            bValue = b.priceRange?.toLowerCase() || ''
             break
           case 'note':
             aValue = a.note?.toLowerCase() || ''
@@ -128,9 +117,9 @@ export function ClientsList() {
             break
         }
 
-        if (aValue === null || aValue === '') return 1
-        if (bValue === null || bValue === '') return -1
-
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
+        }
         if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
         if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
         return 0
@@ -138,11 +127,10 @@ export function ClientsList() {
     }
 
     return result
-  }, [clients, searchTerm, filterColumn, sortColumn, sortDirection])
+  }, [hotels, searchTerm, filterColumn, sortColumn, sortDirection])
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
-      // Toggle sort direction: asc -> desc -> null
       if (sortDirection === 'asc') {
         setSortDirection('desc')
       } else if (sortDirection === 'desc') {
@@ -150,7 +138,6 @@ export function ClientsList() {
         setSortDirection(null)
       }
     } else {
-      // New column, start with ascending
       setSortColumn(column)
       setSortDirection('asc')
     }
@@ -163,32 +150,32 @@ export function ClientsList() {
     return null
   }
 
-  const handleAddClient = () => {
-    setEditingClient(null)
+  const handleAddHotel = () => {
+    setEditingHotel(null)
     setShowForm(true)
   }
 
-  const handleEditClient = (client: Client) => {
-    setEditingClient(client)
-    setShowForm(true)
+  const handleRowClick = (hotelId: string) => {
+    navigate(`/hotels/${hotelId}`)
   }
 
-  const handleRowClick = (clientId: string) => {
-    navigate(`/clients/${clientId}`)
-  }
-
-  const handleSaveClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (editingClient) {
-      await clientsApi.update(editingClient.id, clientData)
+  const handleSaveHotel = async (hotelData: Omit<Hotel, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (editingHotel) {
+      await hotelsApi.update(editingHotel.id, hotelData)
     } else {
-      await clientsApi.create(clientData)
+      await hotelsApi.create(hotelData)
     }
-    await loadClients()
+    await loadHotels()
   }
 
   const handleCloseForm = () => {
     setShowForm(false)
-    setEditingClient(null)
+    setEditingHotel(null)
+  }
+
+  const renderStars = (rating: number | null) => {
+    if (!rating) return '-'
+    return '★'.repeat(rating) + '☆'.repeat(5 - rating)
   }
 
   if (loading) {
@@ -209,7 +196,7 @@ export function ClientsList() {
             color: '#111827',
             margin: 0
           }}>
-            Clients
+            Hotels
           </h1>
         </div>
         <div style={{
@@ -219,7 +206,7 @@ export function ClientsList() {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#6b7280', margin: 0 }}>Loading clients...</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading hotels...</p>
         </div>
       </div>
     )
@@ -243,7 +230,7 @@ export function ClientsList() {
             color: '#111827',
             margin: 0
           }}>
-            Clients
+            Hotels
           </h1>
         </div>
         <div style={{
@@ -262,7 +249,7 @@ export function ClientsList() {
             <p style={{ margin: 0 }}>Error: {error}</p>
           </div>
           <button
-            onClick={loadClients}
+            onClick={loadHotels}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: '#3b82f6',
@@ -300,7 +287,7 @@ export function ClientsList() {
           color: '#111827',
           margin: 0
         }}>
-          Clients
+          Hotels
         </h1>
         <div style={{
           display: 'flex',
@@ -311,13 +298,13 @@ export function ClientsList() {
             color: '#6b7280',
             fontSize: '0.875rem'
           }}>
-            {searchTerm ? filteredClients.length : clients.length} {filteredClients.length === 1 ? 'client' : 'clients'}
-            {searchTerm && filteredClients.length !== clients.length && (
-              <span style={{ color: '#9ca3af' }}> of {clients.length}</span>
+            {searchTerm ? filteredHotels.length : hotels.length} {filteredHotels.length === 1 ? 'hotel' : 'hotels'}
+            {searchTerm && filteredHotels.length !== hotels.length && (
+              <span style={{ color: '#9ca3af' }}> of {hotels.length}</span>
             )}
           </div>
           <button
-            onClick={handleAddClient}
+            onClick={handleAddHotel}
             style={{
               padding: '0.625rem 1.25rem',
               backgroundColor: '#3b82f6',
@@ -335,7 +322,7 @@ export function ClientsList() {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
           >
-            <span>+</span> Add Client
+            <span>+</span> Add Hotel
           </button>
         </div>
       </div>
@@ -352,71 +339,38 @@ export function ClientsList() {
         alignItems: 'center',
         flexWrap: 'wrap'
       }}>
-        <div style={{
-          flex: '1',
-          minWidth: '200px'
-        }}>
-          <input
-            type="text"
-            placeholder="Search clients..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.625rem 0.875rem',
-              fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem',
-              outline: 'none',
-              transition: 'border-color 0.2s, box-shadow 0.2s'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#3b82f6'
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#d1d5db'
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          />
-        </div>
-        <div style={{
-          minWidth: '180px'
-        }}>
-          <select
-            value={filterColumn}
-            onChange={(e) => setFilterColumn(e.target.value as FilterColumn)}
-            style={{
-              width: '100%',
-              padding: '0.625rem 0.875rem',
-              fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem',
-              backgroundColor: 'white',
-              color: '#111827',
-              outline: 'none',
-              cursor: 'pointer',
-              transition: 'border-color 0.2s, box-shadow 0.2s'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#3b82f6'
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#d1d5db'
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          >
-            <option value="all">All Columns</option>
-            <option value="name">Name</option>
-            <option value="contactNumber">Contact Number</option>
-            <option value="email">Email</option>
-            <option value="dateOfBirth">Date of Birth</option>
-            <option value="nationality">Nationality</option>
-            <option value="IDNumber">ID Number</option>
-            <option value="note">Note</option>
-          </select>
-        </div>
+        <input
+          type="text"
+          placeholder="Search hotels..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            flex: '1 1 200px',
+            padding: '0.5rem 0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem'
+          }}
+        />
+        <select
+          value={filterColumn}
+          onChange={(e) => setFilterColumn(e.target.value as FilterColumn)}
+          style={{
+            flex: '0 0 auto',
+            padding: '0.5rem 0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem',
+            backgroundColor: 'white'
+          }}
+        >
+          <option value="all">All Columns</option>
+          <option value="name">Name</option>
+          <option value="destinationName">Destination</option>
+          <option value="rating">Rating</option>
+          <option value="priceRange">Price Range</option>
+          <option value="note">Note</option>
+        </select>
         {searchTerm && (
           <button
             onClick={() => {
@@ -424,23 +378,17 @@ export function ClientsList() {
               setFilterColumn('all')
             }}
             style={{
-              padding: '0.625rem 1rem',
-              fontSize: '0.875rem',
-              color: '#6b7280',
-              backgroundColor: 'transparent',
-              border: '1px solid #d1d5db',
+              padding: '0.5rem 1rem',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              border: 'none',
               borderRadius: '0.375rem',
               cursor: 'pointer',
-              transition: 'all 0.2s'
+              fontSize: '0.875rem',
+              transition: 'background-color 0.2s'
             }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb'
-              e.currentTarget.style.borderColor = '#9ca3af'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent'
-              e.currentTarget.style.borderColor = '#d1d5db'
-            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
           >
             Clear
           </button>
@@ -448,7 +396,7 @@ export function ClientsList() {
       </div>
 
       {/* Content Card */}
-      {filteredClients.length === 0 ? (
+      {filteredHotels.length === 0 && searchTerm ? (
         <div style={{
           backgroundColor: 'white',
           padding: '3rem',
@@ -461,9 +409,23 @@ export function ClientsList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            {searchTerm 
-              ? `No clients found matching "${searchTerm}" in ${filterColumn === 'all' ? 'any column' : filterColumn}.`
-              : 'No clients found. Clients will appear here once added.'}
+            No hotels match your search criteria.
+          </p>
+        </div>
+      ) : filteredHotels.length === 0 ? (
+        <div style={{
+          backgroundColor: 'white',
+          padding: '3rem',
+          borderRadius: '0.5rem',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <p style={{
+            color: '#6b7280',
+            fontSize: '1rem',
+            margin: 0
+          }}>
+            No hotels found. Hotels will appear here once added.
           </p>
         </div>
       ) : (
@@ -497,8 +459,7 @@ export function ClientsList() {
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
                       userSelect: 'none',
-                      transition: 'color 0.2s, background-color 0.2s',
-                      position: 'relative'
+                      transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
                       if (sortColumn !== 'name') {
@@ -514,13 +475,13 @@ export function ClientsList() {
                     Name{getSortIndicator('name')}
                   </th>
                   <th
-                    onClick={() => handleSort('contactNumber')}
+                    onClick={() => handleSort('destinationName')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'contactNumber' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'destinationName' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -528,26 +489,26 @@ export function ClientsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'contactNumber') {
+                      if (sortColumn !== 'destinationName') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'contactNumber') {
+                      if (sortColumn !== 'destinationName') {
                         e.currentTarget.style.backgroundColor = 'transparent'
                       }
                     }}
                   >
-                    Contact Number{getSortIndicator('contactNumber')}
+                    Destination{getSortIndicator('destinationName')}
                   </th>
                   <th
-                    onClick={() => handleSort('email')}
+                    onClick={() => handleSort('rating')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'email' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'rating' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -555,26 +516,26 @@ export function ClientsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'email') {
+                      if (sortColumn !== 'rating') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'email') {
+                      if (sortColumn !== 'rating') {
                         e.currentTarget.style.backgroundColor = 'transparent'
                       }
                     }}
                   >
-                    Email{getSortIndicator('email')}
+                    Rating{getSortIndicator('rating')}
                   </th>
                   <th
-                    onClick={() => handleSort('dateOfBirth')}
+                    onClick={() => handleSort('priceRange')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'dateOfBirth' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'priceRange' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -582,71 +543,17 @@ export function ClientsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'dateOfBirth') {
+                      if (sortColumn !== 'priceRange') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'dateOfBirth') {
+                      if (sortColumn !== 'priceRange') {
                         e.currentTarget.style.backgroundColor = 'transparent'
                       }
                     }}
                   >
-                    Date of Birth{getSortIndicator('dateOfBirth')}
-                  </th>
-                  <th
-                    onClick={() => handleSort('nationality')}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      textAlign: 'left',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      color: sortColumn === 'nationality' ? '#3b82f6' : '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      transition: 'color 0.2s, background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (sortColumn !== 'nationality') {
-                        e.currentTarget.style.backgroundColor = '#f3f4f6'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (sortColumn !== 'nationality') {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                      }
-                    }}
-                  >
-                    Nationality{getSortIndicator('nationality')}
-                  </th>
-                  <th
-                    onClick={() => handleSort('IDNumber')}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      textAlign: 'left',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      color: sortColumn === 'IDNumber' ? '#3b82f6' : '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      transition: 'color 0.2s, background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (sortColumn !== 'IDNumber') {
-                        e.currentTarget.style.backgroundColor = '#f3f4f6'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (sortColumn !== 'IDNumber') {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                      }
-                    }}
-                  >
-                    ID Number{getSortIndicator('IDNumber')}
+                    Price Range{getSortIndicator('priceRange')}
                   </th>
                   <th
                     onClick={() => handleSort('note')}
@@ -678,12 +585,12 @@ export function ClientsList() {
                 </tr>
               </thead>
               <tbody>
-                {filteredClients.map((client, index) => (
+                {filteredHotels.map((hotel, index) => (
                   <tr
-                    key={client.id}
-                    onClick={() => handleRowClick(client.id)}
+                    key={hotel.id}
+                    onClick={() => handleRowClick(hotel.id)}
                     style={{
-                      borderBottom: index < filteredClients.length - 1 ? '1px solid #e5e7eb' : 'none',
+                      borderBottom: index < filteredHotels.length - 1 ? '1px solid #e5e7eb' : 'none',
                       transition: 'background-color 0.15s',
                       cursor: 'pointer'
                     }}
@@ -696,53 +603,39 @@ export function ClientsList() {
                       color: '#111827',
                       fontWeight: '500'
                     }}>
-                      {client.name}
+                      {hotel.name}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
                       fontSize: '0.875rem',
                       color: '#6b7280'
                     }}>
-                      {client.contactNumber || '-'}
+                      {hotel.destinationName || '-'}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
                       fontSize: '0.875rem',
                       color: '#6b7280'
                     }}>
-                      {client.email || '-'}
+                      {renderStars(hotel.rating)}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
                       fontSize: '0.875rem',
                       color: '#6b7280'
                     }}>
-                      {formatDate(client.dateOfBirth)}
-                    </td>
-                    <td style={{
-                      padding: '0.75rem 1rem',
-                      fontSize: '0.875rem',
-                      color: '#6b7280'
-                    }}>
-                      {client.nationality || '-'}
-                    </td>
-                    <td style={{
-                      padding: '0.75rem 1rem',
-                      fontSize: '0.875rem',
-                      color: '#6b7280'
-                    }}>
-                      {client.IDNumber || '-'}
+                      {hotel.priceRange || '-'}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
                       fontSize: '0.875rem',
                       color: '#6b7280',
-                      maxWidth: '200px',
+                      maxWidth: '300px',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
                     }}>
-                      {client.note || '-'}
+                      {hotel.note || '-'}
                     </td>
                   </tr>
                 ))}
@@ -752,10 +645,11 @@ export function ClientsList() {
         </div>
       )}
       {showForm && (
-        <ClientForm
-          client={editingClient}
+        <HotelForm
+          hotel={editingHotel}
+          destinations={destinations}
           onClose={handleCloseForm}
-          onSave={handleSaveClient}
+          onSave={handleSaveHotel}
         />
       )}
     </div>

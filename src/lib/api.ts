@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User, Client } from '../types'
+import type { AuthResponse, User, Client, Destination, Hotel } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -36,5 +36,64 @@ export const clientsApi = {
   getAll: async (): Promise<Client[]> => {
     const { data } = await api.get<Client[]>('/clients')
     return data
+  },
+  getById: async (id: string): Promise<Client> => {
+    const { data } = await api.get<Client>(`/clients/${id}`)
+    return data
+  },
+  create: async (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>): Promise<Client> => {
+    const { data } = await api.post<Client>('/clients', client)
+    return data
+  },
+  update: async (id: string, client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>): Promise<Client> => {
+    const { data } = await api.put<Client>(`/clients/${id}`, client)
+    return data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/clients/${id}`)
+  },
+}
+
+export const destinationsApi = {
+  getAll: async (): Promise<Destination[]> => {
+    const { data } = await api.get<Destination[]>('/destinations')
+    return data
+  },
+  getById: async (id: string): Promise<Destination> => {
+    const { data } = await api.get<Destination>(`/destinations/${id}`)
+    return data
+  },
+  create: async (destination: Omit<Destination, 'id' | 'createdAt' | 'updatedAt'>): Promise<Destination> => {
+    const { data } = await api.post<Destination>('/destinations', destination)
+    return data
+  },
+  update: async (id: string, destination: Omit<Destination, 'id' | 'createdAt' | 'updatedAt'>): Promise<Destination> => {
+    const { data } = await api.put<Destination>(`/destinations/${id}`, destination)
+    return data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/destinations/${id}`)
+  },
+}
+
+export const hotelsApi = {
+  getAll: async (): Promise<Hotel[]> => {
+    const { data } = await api.get<Hotel[]>('/hotels')
+    return data
+  },
+  getById: async (id: string): Promise<Hotel> => {
+    const { data } = await api.get<Hotel>(`/hotels/${id}`)
+    return data
+  },
+  create: async (hotel: Omit<Hotel, 'id' | 'createdAt' | 'updatedAt'>): Promise<Hotel> => {
+    const { data } = await api.post<Hotel>('/hotels', hotel)
+    return data
+  },
+  update: async (id: string, hotel: Omit<Hotel, 'id' | 'createdAt' | 'updatedAt'>): Promise<Hotel> => {
+    const { data } = await api.put<Hotel>(`/hotels/${id}`, hotel)
+    return data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/hotels/${id}`)
   },
 }

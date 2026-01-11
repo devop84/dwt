@@ -24,39 +24,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     if (req.method === 'GET') {
-      // Fetch all clients
-      const clients = await query(`
+      // Fetch all destinations
+      const destinations = await query(`
         SELECT 
           id,
           name,
-          "contactNumber",
-          email,
-          "dateOfBirth",
-          nationality,
+          coordinates,
+          prefeitura,
+          state,
+          cep,
           note,
-          "IDNumber",
           "createdAt",
           "updatedAt"
-        FROM clients
-        ORDER BY "createdAt" DESC
+        FROM destinations
+        ORDER BY name ASC
       `)
 
-      res.status(200).json(clients)
+      res.status(200).json(destinations)
     } else if (req.method === 'POST') {
-      // Create a new client
-      const { name, contactNumber, email, dateOfBirth, nationality, note, IDNumber } = req.body
+      // Create a new destination
+      const { name, coordinates, prefeitura, state, cep, note } = req.body
 
       if (!name) {
         res.status(400).json({ message: 'Name is required' })
         return
       }
 
-      const clientId = randomUUID()
+      const destinationId = randomUUID()
       const result = await query(
-        `INSERT INTO clients (id, name, "contactNumber", email, "dateOfBirth", nationality, note, "IDNumber")
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         RETURNING id, name, "contactNumber", email, "dateOfBirth", nationality, note, "IDNumber", "createdAt", "updatedAt"`,
-        [clientId, name, contactNumber || null, email || null, dateOfBirth || null, nationality || null, note || null, IDNumber || null]
+        `INSERT INTO destinations (id, name, coordinates, prefeitura, state, cep, note)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id, name, coordinates, prefeitura, state, cep, note, "createdAt", "updatedAt"`,
+        [destinationId, name, coordinates || null, prefeitura || null, state || null, cep || null, note || null]
       )
 
       res.status(201).json(result[0])
@@ -64,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(405).json({ message: 'Method not allowed' })
     }
   } catch (error: any) {
-    console.error('Clients API error:', error)
+    console.error('Destinations API error:', error)
     res.status(500).json({ message: error.message || 'Failed to process request' })
   }
 }

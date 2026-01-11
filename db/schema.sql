@@ -25,3 +25,32 @@ CREATE TABLE IF NOT EXISTS clients (
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW()
 );
+
+-- Destinations table
+CREATE TABLE IF NOT EXISTS destinations (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  coordinates VARCHAR(255),
+  prefeitura VARCHAR(255),
+  state VARCHAR(100),
+  cep VARCHAR(20),
+  note TEXT,
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW()
+);
+
+-- Hotels table
+CREATE TABLE IF NOT EXISTS hotels (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  rating INTEGER,
+  "priceRange" VARCHAR(50),
+  "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+  note TEXT,
+  "contactNumber" VARCHAR(50),
+  email VARCHAR(255),
+  address TEXT,
+  coordinates VARCHAR(255),
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW()
+);

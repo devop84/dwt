@@ -53,6 +53,30 @@ async function initDb() {
       )
     `)
     
+    // Create destinations table if not exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS destinations (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        coordinates VARCHAR(255),
+        prefeitura VARCHAR(255),
+        state VARCHAR(100),
+        cep VARCHAR(20),
+        note TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    
+    // Add prefeitura, state, and cep columns if they don't exist (migration for existing tables)
+    try {
+      await pool.query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS prefeitura VARCHAR(255)`)
+      await pool.query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS state VARCHAR(100)`)
+      await pool.query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS cep VARCHAR(20)`)
+    } catch (migrationError) {
+      console.log('Migration note:', migrationError.message)
+    }
+    
     // Add username column if it doesn't exist (migration for existing tables)
     try {
       await pool.query(`
@@ -75,6 +99,24 @@ async function initDb() {
     } catch (migrationError) {
       console.log('Migration note:', migrationError.message)
     }
+    
+    // Create hotels table if not exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS hotels (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        rating INTEGER,
+        "priceRange" VARCHAR(50),
+        "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+        note TEXT,
+        "contactNumber" VARCHAR(50),
+        email VARCHAR(255),
+        address TEXT,
+        coordinates VARCHAR(255),
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
     
     dbInitialized = true
     console.log('✅ Database initialized')
@@ -311,6 +353,592 @@ app.get('/api/clients', async (req, res) => {
   } catch (error) {
     console.error('Clients error:', error)
     res.status(500).json({ message: error.message || 'Failed to fetch clients' })
+  }
+})
+
+// Create a new client
+app.post('/api/clients', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { name, contactNumber, email, dateOfBirth, nationality, note, IDNumber } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    const clientId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO clients (id, name, "contactNumber", email, "dateOfBirth", nationality, note, "IDNumber")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, name, "contactNumber", email, "dateOfBirth", nationality, note, "IDNumber", "createdAt", "updatedAt"`,
+      [clientId, name, contactNumber || null, email || null, dateOfBirth || null, nationality || null, note || null, IDNumber || null]
+    )
+
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create client error:', error)
+    res.status(500).json({ message: error.message || 'Failed to create client' })
+  }
+})
+
+// Get a single client
+app.get('/api/clients/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+
+    const result = await pool.query(
+      `SELECT 
+        id,
+        name,
+        "contactNumber",
+        email,
+        "dateOfBirth",
+        nationality,
+        note,
+        "IDNumber",
+        "createdAt",
+        "updatedAt"
+      FROM clients
+      WHERE id = $1`,
+      [id]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Client not found' })
+    }
+
+    res.status(200).json(result.rows[0])
+  } catch (error) {
+    console.error('Get client error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch client' })
+  }
+})
+
+// Update a client
+app.put('/api/clients/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const { name, contactNumber, email, dateOfBirth, nationality, note, IDNumber } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    // Check if client exists
+    const existing = await pool.query('SELECT id FROM clients WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Client not found' })
+    }
+
+    const result = await pool.query(
+      `UPDATE clients 
+       SET name = $1, "contactNumber" = $2, email = $3, "dateOfBirth" = $4, nationality = $5, note = $6, "IDNumber" = $7, "updatedAt" = NOW()
+       WHERE id = $8
+       RETURNING id, name, "contactNumber", email, "dateOfBirth", nationality, note, "IDNumber", "createdAt", "updatedAt"`,
+      [name, contactNumber || null, email || null, dateOfBirth || null, nationality || null, note || null, IDNumber || null, id]
+    )
+
+    res.status(200).json(result.rows[0])
+  } catch (error) {
+    console.error('Update client error:', error)
+    res.status(500).json({ message: error.message || 'Failed to update client' })
+  }
+})
+
+// Delete a client
+app.delete('/api/clients/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+
+    // Check if client exists
+    const existing = await pool.query('SELECT id FROM clients WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Client not found' })
+    }
+
+    await pool.query('DELETE FROM clients WHERE id = $1', [id])
+
+    res.status(200).json({ message: 'Client deleted successfully' })
+  } catch (error) {
+    console.error('Delete client error:', error)
+    res.status(500).json({ message: error.message || 'Failed to delete client' })
+  }
+})
+
+// Get all destinations
+app.get('/api/destinations', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        id,
+        name,
+        coordinates,
+        prefeitura,
+        state,
+        cep,
+        note,
+        "createdAt",
+        "updatedAt"
+      FROM destinations
+      ORDER BY name ASC
+    `)
+
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Destinations error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch destinations' })
+  }
+})
+
+// Create a new destination
+app.post('/api/destinations', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { name, coordinates, prefeitura, state, cep, note } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    const destinationId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO destinations (id, name, coordinates, prefeitura, state, cep, note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, name, coordinates, prefeitura, state, cep, note, "createdAt", "updatedAt"`,
+      [destinationId, name, coordinates || null, prefeitura || null, state || null, cep || null, note || null]
+    )
+
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create destination error:', error)
+    res.status(500).json({ message: error.message || 'Failed to create destination' })
+  }
+})
+
+// Get a single destination
+app.get('/api/destinations/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+
+    const result = await pool.query(
+      `SELECT 
+        id,
+        name,
+        coordinates,
+        prefeitura,
+        state,
+        cep,
+        note,
+        "createdAt",
+        "updatedAt"
+      FROM destinations
+      WHERE id = $1`,
+      [id]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Destination not found' })
+    }
+
+    res.status(200).json(result.rows[0])
+  } catch (error) {
+    console.error('Get destination error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch destination' })
+  }
+})
+
+// Update a destination
+app.put('/api/destinations/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const { name, coordinates, prefeitura, state, cep, note } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    // Check if destination exists
+    const existing = await pool.query('SELECT id FROM destinations WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Destination not found' })
+    }
+
+    const result = await pool.query(
+      `UPDATE destinations 
+       SET name = $1, coordinates = $2, prefeitura = $3, state = $4, cep = $5, note = $6, "updatedAt" = NOW()
+       WHERE id = $7
+       RETURNING id, name, coordinates, prefeitura, state, cep, note, "createdAt", "updatedAt"`,
+      [name, coordinates || null, prefeitura || null, state || null, cep || null, note || null, id]
+    )
+
+    res.status(200).json(result.rows[0])
+  } catch (error) {
+    console.error('Update destination error:', error)
+    res.status(500).json({ message: error.message || 'Failed to update destination' })
+  }
+})
+
+// Delete a destination
+app.delete('/api/destinations/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+
+    // Check if destination exists
+    const existing = await pool.query('SELECT id FROM destinations WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Destination not found' })
+    }
+
+    await pool.query('DELETE FROM destinations WHERE id = $1', [id])
+
+    res.status(200).json({ message: 'Destination deleted successfully' })
+  } catch (error) {
+    console.error('Delete destination error:', error)
+    res.status(500).json({ message: error.message || 'Failed to delete destination' })
+  }
+})
+
+// Get all hotels
+app.get('/api/hotels', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        h.id,
+        h.name,
+        h.rating,
+        h."priceRange",
+        h."destinationId",
+        h.note,
+        h."contactNumber",
+        h.email,
+        h.address,
+        h.coordinates,
+        h."createdAt",
+        h."updatedAt",
+        d.name as "destinationName"
+      FROM hotels h
+      LEFT JOIN destinations d ON h."destinationId" = d.id
+      ORDER BY h.name ASC
+    `)
+
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Hotels error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch hotels' })
+  }
+})
+
+// Create a new hotel
+app.post('/api/hotels', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { name, rating, priceRange, destinationId, note, contactNumber, email, address, coordinates } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    if (!destinationId) {
+      return res.status(400).json({ message: 'Destination is required' })
+    }
+
+    const hotelId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO hotels (id, name, rating, "priceRange", "destinationId", note, "contactNumber", email, address, coordinates)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING id, name, rating, "priceRange", "destinationId", note, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
+      [hotelId, name, rating || null, priceRange || null, destinationId, note || null, contactNumber || null, email || null, address || null, coordinates || null]
+    )
+
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create hotel error:', error)
+    res.status(500).json({ message: error.message || 'Failed to create hotel' })
+  }
+})
+
+// Get a single hotel
+app.get('/api/hotels/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const result = await pool.query(
+      `SELECT 
+        h.id,
+        h.name,
+        h.rating,
+        h."priceRange",
+        h."destinationId",
+        h.note,
+        h."contactNumber",
+        h.email,
+        h.address,
+        h.coordinates,
+        h."createdAt",
+        h."updatedAt",
+        d.name as "destinationName"
+      FROM hotels h
+      LEFT JOIN destinations d ON h."destinationId" = d.id
+      WHERE h.id = $1`,
+      [id]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Hotel not found' })
+    }
+
+    res.json(result.rows[0])
+  } catch (error) {
+    console.error('Hotel error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch hotel' })
+  }
+})
+
+// Update a hotel
+app.put('/api/hotels/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const { name, rating, priceRange, destinationId, note, contactNumber, email, address, coordinates } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    if (!destinationId) {
+      return res.status(400).json({ message: 'Destination is required' })
+    }
+
+    // Check if hotel exists
+    const existing = await pool.query('SELECT id FROM hotels WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Hotel not found' })
+    }
+
+    const result = await pool.query(
+      `UPDATE hotels 
+       SET name = $1, rating = $2, "priceRange" = $3, "destinationId" = $4, note = $5, 
+           "contactNumber" = $6, email = $7, address = $8, coordinates = $9, "updatedAt" = NOW()
+       WHERE id = $10
+       RETURNING id, name, rating, "priceRange", "destinationId", note, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
+      [name, rating || null, priceRange || null, destinationId, note || null, contactNumber || null, email || null, address || null, coordinates || null, id]
+    )
+
+    res.status(200).json(result.rows[0])
+  } catch (error) {
+    console.error('Update hotel error:', error)
+    res.status(500).json({ message: error.message || 'Failed to update hotel' })
+  }
+})
+
+// Delete a hotel
+app.delete('/api/hotels/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+
+    // Check if hotel exists
+    const existing = await pool.query('SELECT id FROM hotels WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Hotel not found' })
+    }
+
+    await pool.query('DELETE FROM hotels WHERE id = $1', [id])
+
+    res.status(200).json({ message: 'Hotel deleted successfully' })
+  } catch (error) {
+    console.error('Delete hotel error:', error)
+    res.status(500).json({ message: error.message || 'Failed to delete hotel' })
   }
 })
 

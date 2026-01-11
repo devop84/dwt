@@ -24,3 +24,30 @@ export interface Client {
   createdAt: string
   updatedAt: string
 }
+
+export interface Destination {
+  id: string
+  name: string
+  coordinates: string | null
+  prefeitura: string | null
+  state: string | null
+  cep: string | null
+  note: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Hotel {
+  id: string
+  name: string
+  rating: number | null
+  priceRange: string | null
+  destinationId: string
+  note: string | null
+  contactNumber: string | null
+  email: string | null
+  address: string | null
+  coordinates: string | null
+  createdAt: string
+  updatedAt: string
+}

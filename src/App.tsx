@@ -6,6 +6,11 @@ import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
 import { Dashboard } from './pages/Dashboard'
 import { ClientsList } from './pages/ClientsList'
+import { ClientDetails } from './pages/ClientDetails'
+import { DestinationsList } from './pages/DestinationsList'
+import { DestinationDetails } from './pages/DestinationDetails'
+import { HotelsList } from './pages/HotelsList'
+import { HotelDetails } from './pages/HotelDetails'
 
 function App() {
   return (
@@ -34,6 +39,46 @@ function App() {
               element={
                 <Layout>
                   <ClientsList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/clients/:id"
+              element={
+                <Layout>
+                  <ClientDetails />
+                </Layout>
+              }
+            />
+            <Route
+              path="/destinations"
+              element={
+                <Layout>
+                  <DestinationsList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/destinations/:id"
+              element={
+                <Layout>
+                  <DestinationDetails />
+                </Layout>
+              }
+            />
+            <Route
+              path="/hotels"
+              element={
+                <Layout>
+                  <HotelsList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/hotels/:id"
+              element={
+                <Layout>
+                  <HotelDetails />
                 </Layout>
               }
             />

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { verifyToken } from '../lib/auth'
-import { query, initDb } from '../lib/db'
+import { query, queryOne, initDb } from '../lib/db'
 import { randomUUID } from 'crypto'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -23,10 +23,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return
     }
 
+    const { id } = req.query
+
     if (req.method === 'GET') {
-      // Fetch all clients
-      const clients = await query(`
-        SELECT 
+      // Get single client
+      const client = await queryOne(
+        `SELECT 
           id,
           name,
           "contactNumber",
@@ -38,12 +40,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           "createdAt",
           "updatedAt"
         FROM clients
-        ORDER BY "createdAt" DESC
-      `)
+        WHERE id = $1`,
+        [id as string]
+      )
 
-      res.status(200).json(clients)
-    } else if (req.method === 'POST') {
-      // Create a new client
+      if (!client) {
+        res.status(404).json({ message: 'Client not found' })
+        return
+      }
+
+      res.status(200).json(client)
+    } else if (req.method === 'PUT') {
+      // Update client
       const { name, contactNumber, email, dateOfBirth, nationality, note, IDNumber } = req.body
 
       if (!name) {
@@ -51,20 +59,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         return
       }
 
-      const clientId = randomUUID()
+      // Check if client exists
+      const existing = await queryOne('SELECT id FROM clients WHERE id = $1', [id as string])
+      if (!existing) {
+        res.status(404).json({ message: 'Client not found' })
+        return
+      }
+
       const result = await query(
-        `INSERT INTO clients (id, name, "contactNumber", email, "dateOfBirth", nationality, note, "IDNumber")
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `UPDATE clients 
+         SET name = $1, "contactNumber" = $2, email = $3, "dateOfBirth" = $4, nationality = $5, note = $6, "IDNumber" = $7, "updatedAt" = NOW()
+         WHERE id = $8
          RETURNING id, name, "contactNumber", email, "dateOfBirth", nationality, note, "IDNumber", "createdAt", "updatedAt"`,
-        [clientId, name, contactNumber || null, email || null, dateOfBirth || null, nationality || null, note || null, IDNumber || null]
+        [name, contactNumber || null, email || null, dateOfBirth || null, nationality || null, note || null, IDNumber || null, id as string]
       )
 
-      res.status(201).json(result[0])
+      res.status(200).json(result[0])
+    } else if (req.method === 'DELETE') {
+      // Delete client
+      const existing = await queryOne('SELECT id FROM clients WHERE id = $1', [id as string])
+      if (!existing) {
+        res.status(404).json({ message: 'Client not found' })
+        return
+      }
+
+      await query('DELETE FROM clients WHERE id = $1', [id as string])
+
+      res.status(200).json({ message: 'Client deleted successfully' })
     } else {
       res.status(405).json({ message: 'Method not allowed' })
     }
   } catch (error: any) {
-    console.error('Clients API error:', error)
+    console.error('Client API error:', error)
     res.status(500).json({ message: error.message || 'Failed to process request' })
   }
 }

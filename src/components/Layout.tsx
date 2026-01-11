@@ -138,6 +138,64 @@ export function Layout({ children }: LayoutProps) {
           >
             Clients
           </Link>
+          <Link
+            to="/destinations"
+            style={{
+              display: 'block',
+              padding: '0.75rem 1.5rem',
+              color: isActive('/destinations') ? '#3b82f6' : '#6b7280',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: isActive('/destinations') ? '600' : '500',
+              backgroundColor: isActive('/destinations') ? '#eff6ff' : 'transparent',
+              borderLeft: isActive('/destinations') ? '3px solid #3b82f6' : '3px solid transparent',
+              transition: 'all 0.2s',
+              marginTop: '0.5rem'
+            }}
+            onMouseOver={(e) => {
+              if (!isActive('/destinations')) {
+                e.currentTarget.style.backgroundColor = '#f9fafb'
+                e.currentTarget.style.color = '#111827'
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!isActive('/destinations')) {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = '#6b7280'
+              }
+            }}
+          >
+            Destinations
+          </Link>
+          <Link
+            to="/hotels"
+            style={{
+              display: 'block',
+              padding: '0.75rem 1.5rem',
+              color: isActive('/hotels') ? '#3b82f6' : '#6b7280',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: isActive('/hotels') ? '600' : '500',
+              backgroundColor: isActive('/hotels') ? '#eff6ff' : 'transparent',
+              borderLeft: isActive('/hotels') ? '3px solid #3b82f6' : '3px solid transparent',
+              transition: 'all 0.2s',
+              marginTop: '0.5rem'
+            }}
+            onMouseOver={(e) => {
+              if (!isActive('/hotels')) {
+                e.currentTarget.style.backgroundColor = '#f9fafb'
+                e.currentTarget.style.color = '#111827'
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!isActive('/hotels')) {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = '#6b7280'
+              }
+            }}
+          >
+            Hotels
+          </Link>
         </nav>
       </aside>
 
