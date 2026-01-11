@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           h.rating,
           h."priceRange",
           h."destinationId",
-          h.note,
+          h.description,
           h."contactNumber",
           h.email,
           h.address,
@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(200).json(hotel)
     } else if (req.method === 'PUT') {
       // Update hotel
-      const { name, rating, priceRange, destinationId, note, contactNumber, email, address, coordinates } = req.body
+      const { name, rating, priceRange, destinationId, description, contactNumber, email, address, coordinates } = req.body
 
       if (!name) {
         res.status(400).json({ message: 'Name is required' })
@@ -74,11 +74,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
       const result = await query(
         `UPDATE hotels 
-         SET name = $1, rating = $2, "priceRange" = $3, "destinationId" = $4, note = $5, 
-             "contactNumber" = $6, email = $7, address = $8, coordinates = $9, "updatedAt" = NOW()
+         SET name = $1, rating = $2, "priceRange" = $3, "destinationId" = $4, description = $5, 
+         "contactNumber" = $6, email = $7, address = $8, coordinates = $9, "updatedAt" = NOW()
          WHERE id = $10
-         RETURNING id, name, rating, "priceRange", "destinationId", note, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
-        [name, rating || null, priceRange || null, destinationId, note || null, contactNumber || null, email || null, address || null, coordinates || null, id as string]
+         RETURNING id, name, rating, "priceRange", "destinationId", description, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
+        [name, rating || null, priceRange || null, destinationId, description || null, contactNumber || null, email || null, address || null, coordinates || null, id as string]
       )
       res.status(200).json(result[0])
     } else if (req.method === 'DELETE') {

@@ -448,7 +448,7 @@ export function HotelDetails() {
           </div>
         </div>
 
-        {hotel.note && (
+        {hotel.description && (
           <div style={{
             padding: '2rem',
             borderBottom: '1px solid #e5e7eb',
@@ -463,7 +463,7 @@ export function HotelDetails() {
               letterSpacing: '0.05em',
               marginBottom: '0.5rem'
             }}>
-              Note
+              Description
             </label>
             <p style={{
               fontSize: '0.875rem',
@@ -471,7 +471,7 @@ export function HotelDetails() {
               margin: 0,
               whiteSpace: 'pre-wrap'
             }}>
-              {hotel.note}
+              {hotel.description}
             </p>
           </div>
         )}

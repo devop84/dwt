@@ -14,7 +14,7 @@ export function DestinationForm({ destination, onClose, onSave }: DestinationFor
     prefeitura: '',
     state: '',
     cep: '',
-    note: '',
+    description: '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -27,7 +27,7 @@ export function DestinationForm({ destination, onClose, onSave }: DestinationFor
         prefeitura: destination.prefeitura || '',
         state: destination.state || '',
         cep: destination.cep || '',
-        note: destination.note || '',
+        description: destination.description || '',
       })
     }
   }, [destination])
@@ -49,7 +49,7 @@ export function DestinationForm({ destination, onClose, onSave }: DestinationFor
         prefeitura: formData.prefeitura.trim() || null,
         state: formData.state.trim() || null,
         cep: formData.cep.trim() || null,
-        note: formData.note.trim() || null,
+        description: formData.description.trim() || null,
       })
       onClose()
     } catch (err: any) {
@@ -397,21 +397,21 @@ export function DestinationForm({ destination, onClose, onSave }: DestinationFor
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label htmlFor="note" style={{
+            <label htmlFor="description" style={{
               display: 'block',
               marginBottom: '0.5rem',
               fontSize: '0.875rem',
               fontWeight: '500',
               color: '#374151'
             }}>
-              Note
+              Description
             </label>
             <textarea
-              id="note"
-              value={formData.note}
-              onChange={(e) => handleChange('note', e.target.value)}
+              id="description"
+              value={formData.description}
+              onChange={(e) => handleChange('description', e.target.value)}
               rows={4}
-              placeholder="Additional information about this destination..."
+              placeholder="Description of this destination..."
               style={{
                 width: '100%',
                 padding: '0.625rem 0.875rem',

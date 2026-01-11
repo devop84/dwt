@@ -34,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           prefeitura,
           state,
           cep,
-          note,
+          description,
           "createdAt",
           "updatedAt"
         FROM destinations
@@ -50,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(200).json(destination)
     } else if (req.method === 'PUT') {
       // Update destination
-      const { name, coordinates, prefeitura, state, cep, note } = req.body
+      const { name, coordinates, prefeitura, state, cep, description } = req.body
 
       if (!name) {
         res.status(400).json({ message: 'Name is required' })
@@ -66,10 +66,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
       const result = await query(
         `UPDATE destinations 
-         SET name = $1, coordinates = $2, prefeitura = $3, state = $4, cep = $5, note = $6, "updatedAt" = NOW()
+         SET name = $1, coordinates = $2, prefeitura = $3, state = $4, cep = $5, description = $6, "updatedAt" = NOW()
          WHERE id = $7
-         RETURNING id, name, coordinates, prefeitura, state, cep, note, "createdAt", "updatedAt"`,
-        [name, coordinates || null, prefeitura || null, state || null, cep || null, note || null, id as string]
+         RETURNING id, name, coordinates, prefeitura, state, cep, description, "createdAt", "updatedAt"`,
+        [name, coordinates || null, prefeitura || null, state || null, cep || null, description || null, id as string]
       )
 
       res.status(200).json(result[0])

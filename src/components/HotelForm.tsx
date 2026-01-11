@@ -14,7 +14,7 @@ export function HotelForm({ hotel, destinations, onClose, onSave }: HotelFormPro
     rating: '',
     priceRange: '',
     destinationId: '',
-    note: '',
+    description: '',
     contactNumber: '',
     email: '',
     address: '',
@@ -30,7 +30,7 @@ export function HotelForm({ hotel, destinations, onClose, onSave }: HotelFormPro
         rating: hotel.rating?.toString() || '',
         priceRange: hotel.priceRange || '',
         destinationId: hotel.destinationId || '',
-        note: hotel.note || '',
+        description: hotel.description || '',
         contactNumber: hotel.contactNumber || '',
         email: hotel.email || '',
         address: hotel.address || '',
@@ -60,7 +60,7 @@ export function HotelForm({ hotel, destinations, onClose, onSave }: HotelFormPro
         rating: formData.rating ? parseInt(formData.rating) : null,
         priceRange: formData.priceRange.trim() || null,
         destinationId: formData.destinationId,
-        note: formData.note.trim() || null,
+        description: formData.description.trim() || null,
         contactNumber: formData.contactNumber.trim() || null,
         email: formData.email.trim() || null,
         address: formData.address.trim() || null,
@@ -433,13 +433,13 @@ export function HotelForm({ hotel, destinations, onClose, onSave }: HotelFormPro
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label htmlFor="note" style={labelStyle}>
-              Note
+            <label htmlFor="description" style={labelStyle}>
+              Description
             </label>
             <textarea
-              id="note"
-              value={formData.note}
-              onChange={(e) => handleChange('note', e.target.value)}
+              id="description"
+              value={formData.description}
+              onChange={(e) => handleChange('description', e.target.value)}
               rows={4}
               placeholder="Additional information about this hotel..."
               style={{

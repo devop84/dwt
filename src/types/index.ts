@@ -32,7 +32,7 @@ export interface Destination {
   prefeitura: string | null
   state: string | null
   cep: string | null
-  note: string | null
+  description: string | null
   createdAt: string
   updatedAt: string
 }
@@ -43,7 +43,7 @@ export interface Hotel {
   rating: number | null
   priceRange: string | null
   destinationId: string
-  note: string | null
+  description: string | null
   contactNumber: string | null
   email: string | null
   address: string | null

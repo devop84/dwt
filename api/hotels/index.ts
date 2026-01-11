@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           h.rating,
           h."priceRange",
           h."destinationId",
-          h.note,
+          h.description,
           h."contactNumber",
           h.email,
           h.address,
@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(200).json(hotels)
     } else if (req.method === 'POST') {
       // Create a new hotel
-      const { name, rating, priceRange, destinationId, note, contactNumber, email, address, coordinates } = req.body
+      const { name, rating, priceRange, destinationId, description, contactNumber, email, address, coordinates } = req.body
 
       if (!name) {
         res.status(400).json({ message: 'Name is required' })
@@ -59,10 +59,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
       const hotelId = randomUUID()
       const result = await query(
-        `INSERT INTO hotels (id, name, rating, "priceRange", "destinationId", note, "contactNumber", email, address, coordinates)
+        `INSERT INTO hotels (id, name, rating, "priceRange", "destinationId", description, "contactNumber", email, address, coordinates)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         RETURNING id, name, rating, "priceRange", "destinationId", note, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
-        [hotelId, name, rating || null, priceRange || null, destinationId, note || null, contactNumber || null, email || null, address || null, coordinates || null]
+         RETURNING id, name, rating, "priceRange", "destinationId", description, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
+        [hotelId, name, rating || null, priceRange || null, destinationId, description || null, contactNumber || null, email || null, address || null, coordinates || null]
       )
       res.status(201).json(result[0])
     } else {

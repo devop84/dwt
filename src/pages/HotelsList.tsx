@@ -4,8 +4,8 @@ import { hotelsApi, destinationsApi } from '../lib/api'
 import type { Hotel, Destination } from '../types'
 import { HotelForm } from '../components/HotelForm'
 
-type FilterColumn = 'all' | 'name' | 'destinationName' | 'rating' | 'priceRange' | 'note'
-type SortColumn = 'name' | 'destinationName' | 'rating' | 'priceRange' | 'note'
+type FilterColumn = 'all' | 'name' | 'destinationName' | 'rating' | 'priceRange' | 'description'
+type SortColumn = 'name' | 'destinationName' | 'rating' | 'priceRange' | 'description'
 type SortDirection = 'asc' | 'desc' | null
 
 interface HotelWithDestination extends Hotel {
@@ -67,7 +67,7 @@ export function HotelsList() {
             hotel.name.toLowerCase().includes(search) ||
             (hotel.destinationName && hotel.destinationName.toLowerCase().includes(search)) ||
             (hotel.priceRange && hotel.priceRange.toLowerCase().includes(search)) ||
-            (hotel.note && hotel.note.toLowerCase().includes(search))
+            (hotel.description && hotel.description.toLowerCase().includes(search))
           )
         } else {
           switch (filterColumn) {
@@ -79,8 +79,8 @@ export function HotelsList() {
               return hotel.rating?.toString().includes(search) ?? false
             case 'priceRange':
               return hotel.priceRange?.toLowerCase().includes(search) ?? false
-            case 'note':
-              return hotel.note?.toLowerCase().includes(search) ?? false
+            case 'description':
+              return hotel.description?.toLowerCase().includes(search) ?? false
             default:
               return true
           }
@@ -111,9 +111,9 @@ export function HotelsList() {
             aValue = a.priceRange?.toLowerCase() || ''
             bValue = b.priceRange?.toLowerCase() || ''
             break
-          case 'note':
-            aValue = a.note?.toLowerCase() || ''
-            bValue = b.note?.toLowerCase() || ''
+          case 'description':
+            aValue = a.description?.toLowerCase() || ''
+            bValue = b.description?.toLowerCase() || ''
             break
         }
 
@@ -369,7 +369,7 @@ export function HotelsList() {
           <option value="destinationName">Destination</option>
           <option value="rating">Rating</option>
           <option value="priceRange">Price Range</option>
-          <option value="note">Note</option>
+          <option value="description">Description</option>
         </select>
         {searchTerm && (
           <button
@@ -556,13 +556,13 @@ export function HotelsList() {
                     Price Range{getSortIndicator('priceRange')}
                   </th>
                   <th
-                    onClick={() => handleSort('note')}
+                    onClick={() => handleSort('description')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'note' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'description' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -570,17 +570,17 @@ export function HotelsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'note') {
+                      if (sortColumn !== 'description') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'note') {
+                      if (sortColumn !== 'description') {
                         e.currentTarget.style.backgroundColor = 'transparent'
                       }
                     }}
                   >
-                    Note{getSortIndicator('note')}
+                    Description{getSortIndicator('description')}
                   </th>
                 </tr>
               </thead>
@@ -635,7 +635,7 @@ export function HotelsList() {
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
                     }}>
-                      {hotel.note || '-'}
+                      {hotel.description || '-'}
                     </td>
                   </tr>
                 ))}

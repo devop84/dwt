@@ -111,7 +111,7 @@ export const initDb = async () => {
         prefeitura VARCHAR(255),
         state VARCHAR(100),
         cep VARCHAR(20),
-        note TEXT,
+        description TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
@@ -123,6 +123,24 @@ export const initDb = async () => {
       await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS prefeitura VARCHAR(255)`)
       await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS state VARCHAR(100)`)
       await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS cep VARCHAR(20)`)
+      // Migrate note to description for destinations
+      await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS description TEXT`)
+      // Copy data from note to description if note exists and description doesn't
+      await query(`
+        UPDATE destinations 
+        SET description = note 
+        WHERE note IS NOT NULL AND (description IS NULL OR description = '')
+      `)
+      // Drop the old note column if it exists (after migration)
+      await query(`
+        DO $$ 
+        BEGIN 
+          IF EXISTS (SELECT 1 FROM information_schema.columns 
+                     WHERE table_name = 'destinations' AND column_name = 'note') THEN
+            ALTER TABLE destinations DROP COLUMN note;
+          END IF;
+        END $$;
+      `)
     } catch (migrationError) {
       console.log('Migration note:', migrationError)
     }
@@ -135,7 +153,7 @@ export const initDb = async () => {
         rating INTEGER,
         "priceRange" VARCHAR(50),
         "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
-        note TEXT,
+        description TEXT,
         "contactNumber" VARCHAR(50),
         email VARCHAR(255),
         address TEXT,
@@ -145,6 +163,29 @@ export const initDb = async () => {
       )
     `)
     console.log('✅ Hotels table ready')
+    
+    // Migrate note to description for hotels
+    try {
+      await query(`ALTER TABLE hotels ADD COLUMN IF NOT EXISTS description TEXT`)
+      // Copy data from note to description if note exists and description doesn't
+      await query(`
+        UPDATE hotels 
+        SET description = note 
+        WHERE note IS NOT NULL AND (description IS NULL OR description = '')
+      `)
+      // Drop the old note column if it exists (after migration)
+      await query(`
+        DO $$ 
+        BEGIN 
+          IF EXISTS (SELECT 1 FROM information_schema.columns 
+                     WHERE table_name = 'hotels' AND column_name = 'note') THEN
+            ALTER TABLE hotels DROP COLUMN note;
+          END IF;
+        END $$;
+      `)
+    } catch (migrationError) {
+      console.log('Migration note:', migrationError)
+    }
     
     // Add username column if it doesn't exist (migration for existing tables)
     try {

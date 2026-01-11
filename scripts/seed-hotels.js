@@ -31,7 +31,7 @@ async function seedHotels() {
         rating INTEGER,
         "priceRange" VARCHAR(50),
         "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
-        note TEXT,
+        description TEXT,
         "contactNumber" VARCHAR(50),
         email VARCHAR(255),
         address TEXT,
@@ -104,7 +104,7 @@ async function seedHotels() {
           rating,
           priceRange,
           destinationId: dest.id,
-          note: `Comfortable accommodation in ${dest.name}. Great location for kitesurfing enthusiasts.`,
+          description: `Comfortable accommodation in ${dest.name}. Great location for kitesurfing enthusiasts.`,
           contactNumber: `+55 85 ${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}`,
           email: `contact@${hotelName.toLowerCase().replace(/\s+/g, '')}.com`,
           address: `Rua Principal, ${Math.floor(Math.random() * 500) + 1}, ${dest.name}`,
@@ -117,7 +117,7 @@ async function seedHotels() {
     for (const hotelData of hotelsToSeed) {
       const hotelId = randomUUID()
       await pool.query(
-        `INSERT INTO hotels (id, name, rating, "priceRange", "destinationId", note, "contactNumber", email, address, coordinates)
+        `INSERT INTO hotels (id, name, rating, "priceRange", "destinationId", description, "contactNumber", email, address, coordinates)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (id) DO NOTHING`,
         [
@@ -126,7 +126,7 @@ async function seedHotels() {
           hotelData.rating,
           hotelData.priceRange,
           hotelData.destinationId,
-          hotelData.note,
+          hotelData.description,
           hotelData.contactNumber,
           hotelData.email,
           hotelData.address,

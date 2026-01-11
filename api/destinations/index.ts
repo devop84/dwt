@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           prefeitura,
           state,
           cep,
-          note,
+          description,
           "createdAt",
           "updatedAt"
         FROM destinations
@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       res.status(200).json(destinations)
     } else if (req.method === 'POST') {
       // Create a new destination
-      const { name, coordinates, prefeitura, state, cep, note } = req.body
+      const { name, coordinates, prefeitura, state, cep, description } = req.body
 
       if (!name) {
         res.status(400).json({ message: 'Name is required' })
@@ -52,10 +52,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
       const destinationId = randomUUID()
       const result = await query(
-        `INSERT INTO destinations (id, name, coordinates, prefeitura, state, cep, note)
+        `INSERT INTO destinations (id, name, coordinates, prefeitura, state, cep, description)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id, name, coordinates, prefeitura, state, cep, note, "createdAt", "updatedAt"`,
-        [destinationId, name, coordinates || null, prefeitura || null, state || null, cep || null, note || null]
+         RETURNING id, name, coordinates, prefeitura, state, cep, description, "createdAt", "updatedAt"`,
+        [destinationId, name, coordinates || null, prefeitura || null, state || null, cep || null, description || null]
       )
 
       res.status(201).json(result[0])

@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS destinations (
   prefeitura VARCHAR(255),
   state VARCHAR(100),
   cep VARCHAR(20),
-  note TEXT,
+  description TEXT,
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW()
 );
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS hotels (
   rating INTEGER,
   "priceRange" VARCHAR(50),
   "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
-  note TEXT,
+  description TEXT,
   "contactNumber" VARCHAR(50),
   email VARCHAR(255),
   address TEXT,

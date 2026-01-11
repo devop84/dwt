@@ -274,149 +274,123 @@ export function DestinationDetails() {
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
         overflow: 'hidden'
       }}>
+        {/* Top section: Details on left, Map on right */}
         <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+          gap: '2rem',
           padding: '2rem',
           borderBottom: '1px solid #e5e7eb'
         }}>
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: '700',
-            color: '#111827',
-            margin: '0 0 1.5rem 0'
-          }}>
-            {destination.name}
-          </h2>
-          
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '1.5rem'
-          }}>
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '0.5rem'
-              }}>
-                Coordinates
-              </label>
-              <p style={{
-                fontSize: '0.875rem',
-                color: '#111827',
-                margin: 0
-              }}>
-                {destination.coordinates || '-'}
-              </p>
-            </div>
-
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '0.5rem'
-              }}>
-                Prefeitura
-              </label>
-              <p style={{
-                fontSize: '0.875rem',
-                color: '#111827',
-                margin: 0
-              }}>
-                {destination.prefeitura || '-'}
-              </p>
-            </div>
-
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '0.5rem'
-              }}>
-                State
-              </label>
-              <p style={{
-                fontSize: '0.875rem',
-                color: '#111827',
-                margin: 0
-              }}>
-                {destination.state || '-'}
-              </p>
-            </div>
-
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '0.5rem'
-              }}>
-                CEP
-              </label>
-              <p style={{
-                fontSize: '0.875rem',
-                color: '#111827',
-                margin: 0
-              }}>
-                {destination.cep || '-'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {destination.note && (
-          <div style={{
-            padding: '2rem',
-            borderBottom: '1px solid #e5e7eb',
-            backgroundColor: '#f9fafb'
-          }}>
-            <label style={{
-              display: 'block',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              color: '#6b7280',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              marginBottom: '0.5rem'
-            }}>
-              Note
-            </label>
-            <p style={{
-              fontSize: '0.875rem',
+          {/* Left column: Destination Details */}
+          <div>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
               color: '#111827',
-              margin: 0,
-              whiteSpace: 'pre-wrap'
+              margin: '0 0 1.5rem 0'
             }}>
-              {destination.note}
-            </p>
-          </div>
-        )}
+              {destination.name}
+            </h2>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '1.5rem'
+            }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.5rem'
+                }}>
+                  Coordinates
+                </label>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#111827',
+                  margin: 0
+                }}>
+                  {destination.coordinates || '-'}
+                </p>
+              </div>
 
-        {destination.coordinates && (() => {
-          // Parse coordinates (format: "lat, lng" or "lat,lng")
-          const coords = destination.coordinates.replace(/\s+/g, '').split(',')
-          const lat = coords[0]
-          const lng = coords[1]
-          
-          if (lat && lng) {
-            return (
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.5rem'
+                }}>
+                  Prefeitura
+                </label>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#111827',
+                  margin: 0
+                }}>
+                  {destination.prefeitura || '-'}
+                </p>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.5rem'
+                }}>
+                  State
+                </label>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#111827',
+                  margin: 0
+                }}>
+                  {destination.state || '-'}
+                </p>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.5rem'
+                }}>
+                  CEP
+                </label>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#111827',
+                  margin: 0
+                }}>
+                  {destination.cep || '-'}
+                </p>
+              </div>
+            </div>
+
+            {/* Description */}
+            {destination.description && (
               <div style={{
-                padding: '2rem',
-                borderBottom: '1px solid #e5e7eb'
+                marginTop: '1.5rem',
+                padding: '1.5rem',
+                backgroundColor: '#f9fafb',
+                borderRadius: '0.5rem',
+                border: '1px solid #e5e7eb'
               }}>
                 <label style={{
                   display: 'block',
@@ -425,59 +399,105 @@ export function DestinationDetails() {
                   color: '#6b7280',
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
-                  marginBottom: '1rem'
+                  marginBottom: '0.75rem'
                 }}>
-                  Location on Map
+                  Description
                 </label>
-                <div style={{
-                  width: '100%',
-                  height: '400px',
-                  borderRadius: '0.5rem',
-                  overflow: 'hidden',
-                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-                  backgroundColor: '#f3f4f6'
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#111827',
+                  margin: 0,
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: '1.6'
                 }}>
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    style={{
-                      border: 0,
-                      borderRadius: '0.5rem'
-                    }}
-                    loading="lazy"
-                    allowFullScreen
-                    referrerPolicy="no-referrer-when-downgrade"
-                    src={`https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=14&output=embed`}
-                    title={`Map showing ${destination.name}`}
-                  />
+                  {destination.description}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Right column: Map */}
+          {destination.coordinates && (() => {
+            // Parse coordinates (format: "lat, lng" or "lat,lng")
+            const coords = destination.coordinates.replace(/\s+/g, '').split(',')
+            const lat = coords[0]
+            const lng = coords[1]
+            
+            if (lat && lng) {
+              return (
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: '1rem'
+                  }}>
+                    Location on Map
+                  </label>
+                  <div style={{
+                    width: '100%',
+                    height: '200px',
+                    borderRadius: '0.5rem',
+                    overflow: 'hidden',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                    backgroundColor: '#f3f4f6'
+                  }}>
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      style={{
+                        border: 0,
+                        borderRadius: '0.5rem'
+                      }}
+                      loading="lazy"
+                      allowFullScreen
+                      referrerPolicy="no-referrer-when-downgrade"
+                      src={`https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=14&output=embed`}
+                      title={`Map showing ${destination.name}`}
+                    />
+                  </div>
+                  <div style={{
+                    marginTop: '0.75rem',
+                    fontSize: '0.75rem',
+                    color: '#6b7280'
+                  }}>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: '#3b82f6',
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                      onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                    >
+                      Open in Google Maps →
+                    </a>
+                  </div>
                 </div>
-                <div style={{
-                  marginTop: '0.75rem',
-                  fontSize: '0.75rem',
-                  color: '#6b7280'
-                }}>
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      color: '#3b82f6',
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.25rem'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                  >
-                    Open in Google Maps →
-                  </a>
-                </div>
+              )
+            }
+            return (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '200px',
+                color: '#6b7280',
+                fontSize: '0.875rem'
+              }}>
+                No coordinates available
               </div>
             )
-          }
-          return null
-        })()}
+          })()}
+        </div>
 
         {/* Hotels Section */}
         <div style={{
@@ -611,7 +631,7 @@ export function DestinationDetails() {
                       📍 {hotel.address}
                     </div>
                   )}
-                  {hotel.note && (
+                  {hotel.description && (
                     <p style={{
                       fontSize: '0.75rem',
                       color: '#6b7280',
@@ -621,7 +641,7 @@ export function DestinationDetails() {
                       WebkitBoxOrient: 'vertical',
                       overflow: 'hidden'
                     }}>
-                      {hotel.note}
+                      {hotel.description}
                     </p>
                   )}
                 </div>
