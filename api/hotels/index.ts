@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node'
-import { initDb, query } from '../lib/db'
+import { initDb, query } from '../lib/db.js'
 import { randomUUID } from 'crypto'
-import { verifyToken } from '../lib/auth'
+import { verifyToken } from '../lib/auth.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   await initDb()

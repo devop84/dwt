@@ -1,6 +1,6 @@
 import type { VercelResponse } from '@vercel/node'
-import { verifyToken } from '../lib/auth'
-import { queryOne, initDb } from '../lib/db'
+import { verifyToken } from '../lib/auth.js'
+import { queryOne, initDb } from '../lib/db.js'
 
 export default async function handler(req: any, res: VercelResponse): Promise<void> {
   if (req.method !== 'GET') {

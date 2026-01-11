@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { hashPassword, generateToken } from '../lib/auth'
-import { queryOne, query, initDb } from '../lib/db'
+import { hashPassword, generateToken } from '../lib/auth.js'
+import { queryOne, query, initDb } from '../lib/db.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'POST') {

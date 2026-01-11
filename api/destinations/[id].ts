@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { verifyToken } from '../lib/auth'
-import { query, queryOne, initDb } from '../lib/db'
+import { verifyToken } from '../lib/auth.js'
+import { query, queryOne, initDb } from '../lib/db.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   // Initialize database on first request
