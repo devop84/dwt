@@ -149,8 +149,7 @@ export function Layout({ children }: LayoutProps) {
               fontWeight: isActive('/destinations') ? '600' : '500',
               backgroundColor: isActive('/destinations') ? '#eff6ff' : 'transparent',
               borderLeft: isActive('/destinations') ? '3px solid #3b82f6' : '3px solid transparent',
-              transition: 'all 0.2s',
-              marginTop: '0.5rem'
+              transition: 'all 0.2s'
             }}
             onMouseOver={(e) => {
               if (!isActive('/destinations')) {
@@ -178,8 +177,7 @@ export function Layout({ children }: LayoutProps) {
               fontWeight: isActive('/hotels') ? '600' : '500',
               backgroundColor: isActive('/hotels') ? '#eff6ff' : 'transparent',
               borderLeft: isActive('/hotels') ? '3px solid #3b82f6' : '3px solid transparent',
-              transition: 'all 0.2s',
-              marginTop: '0.5rem'
+              transition: 'all 0.2s'
             }}
             onMouseOver={(e) => {
               if (!isActive('/hotels')) {
@@ -207,8 +205,7 @@ export function Layout({ children }: LayoutProps) {
               fontWeight: isActive('/guides') ? '600' : '500',
               backgroundColor: isActive('/guides') ? '#eff6ff' : 'transparent',
               borderLeft: isActive('/guides') ? '3px solid #3b82f6' : '3px solid transparent',
-              transition: 'all 0.2s',
-              marginTop: '0.5rem'
+              transition: 'all 0.2s'
             }}
             onMouseOver={(e) => {
               if (!isActive('/guides')) {
@@ -224,6 +221,34 @@ export function Layout({ children }: LayoutProps) {
             }}
           >
             Guides
+          </Link>
+          <Link
+            to="/drivers"
+            style={{
+              display: 'block',
+              padding: '0.75rem 1.5rem',
+              color: isActive('/drivers') ? '#3b82f6' : '#6b7280',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: isActive('/drivers') ? '600' : '500',
+              backgroundColor: isActive('/drivers') ? '#eff6ff' : 'transparent',
+              borderLeft: isActive('/drivers') ? '3px solid #3b82f6' : '3px solid transparent',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              if (!isActive('/drivers')) {
+                e.currentTarget.style.backgroundColor = '#f9fafb'
+                e.currentTarget.style.color = '#111827'
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!isActive('/drivers')) {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = '#6b7280'
+              }
+            }}
+          >
+            Drivers
           </Link>
         </nav>
       </aside>

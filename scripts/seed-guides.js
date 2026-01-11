@@ -14,70 +14,70 @@ const guidesToSeed = [
     name: 'João Silva',
     contactNumber: '+55 85 99999-1001',
     email: 'joao.silva@kiteguide.com',
-    languages: 'Portuguese, English',
+    languages: 'pt, en',
     note: 'Professional kitesurf instructor with 10+ years experience. Specializes in beginner and intermediate lessons.'
   },
   {
     name: 'Maria Santos',
     contactNumber: '+55 85 98888-2002',
     email: 'maria.santos@kiteguide.com',
-    languages: 'Portuguese, English, Spanish',
+    languages: 'pt, en, es',
     note: 'Certified instructor, expert in downwinder tours. Great knowledge of local conditions.'
   },
   {
     name: 'Carlos Oliveira',
     contactNumber: '+55 85 97777-3003',
     email: 'carlos.oliveira@kiteguide.com',
-    languages: 'Portuguese, English',
+    languages: 'pt, en',
     note: 'Advanced instructor, perfect for progression. Safety-first approach.'
   },
   {
     name: 'Ana Costa',
     contactNumber: '+55 85 96666-4004',
     email: 'ana.costa@kiteguide.com',
-    languages: 'Portuguese, English, French',
+    languages: 'pt, en, fr',
     note: 'Freestyle specialist. Experienced with wave riding and tricks.'
   },
   {
     name: 'Pedro Alves',
     contactNumber: '+55 88 95555-5005',
     email: 'pedro.alves@kiteguide.com',
-    languages: 'Portuguese, English, German',
+    languages: 'pt, en, de',
     note: 'Local expert in Jericoacoara and surrounding areas. Knowledge of best spots.'
   },
   {
     name: 'Fernanda Lima',
     contactNumber: '+55 85 94444-6006',
     email: 'fernanda.lima@kiteguide.com',
-    languages: 'Portuguese, English',
+    languages: 'pt, en',
     note: 'Beginner-friendly instructor. Patient and encouraging teaching style.'
   },
   {
     name: 'Ricardo Souza',
     contactNumber: '+55 88 93333-7007',
     email: 'ricardo.souza@kiteguide.com',
-    languages: 'Portuguese, English, Italian',
+    languages: 'pt, en, it',
     note: 'Hydrofoil specialist. Also offers kite repair services.'
   },
   {
     name: 'Juliana Ferreira',
     contactNumber: '+55 85 92222-8008',
     email: 'juliana.ferreira@kiteguide.com',
-    languages: 'Portuguese, English, Spanish',
+    languages: 'pt, en, es',
     note: 'Female instructor, great for women who want to learn. Focus on technique and confidence building.'
   },
   {
     name: 'Roberto Martins',
     contactNumber: '+55 88 91111-9009',
     email: 'roberto.martins@kiteguide.com',
-    languages: 'Portuguese, English',
+    languages: 'pt, en',
     note: 'Veteran instructor with 15+ years. Knows all the secret spots between Cumbuco and Atins.'
   },
   {
     name: 'Patricia Rocha',
     contactNumber: '+55 85 90000-1010',
     email: 'patricia.rocha@kiteguide.com',
-    languages: 'Portuguese, English, Dutch',
+    languages: 'pt, en, nl',
     note: 'IKO certified instructor. Excellent for international tourists. Organizes group lessons and tours.'
   },
 ]

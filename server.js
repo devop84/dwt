@@ -133,6 +133,21 @@ async function initDb() {
       )
     `)
     
+    // Create drivers table if not exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS drivers (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        "contactNumber" VARCHAR(50),
+        email VARCHAR(255),
+        "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+        languages VARCHAR(255),
+        note TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    
     dbInitialized = true
     console.log('✅ Database initialized')
   } catch (error) {
@@ -1167,6 +1182,219 @@ app.delete('/api/guides/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete guide error:', error)
     res.status(500).json({ message: error.message || 'Failed to delete guide' })
+  }
+})
+
+// Get all drivers
+app.get('/api/drivers', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        d.id,
+        d.name,
+        d."contactNumber",
+        d.email,
+        d."destinationId",
+        d.languages,
+        d.note,
+        d."createdAt",
+        d."updatedAt",
+        dest.name as "destinationName"
+      FROM drivers d
+      LEFT JOIN destinations dest ON d."destinationId" = dest.id
+      ORDER BY d.name ASC
+    `)
+
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Drivers error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch drivers' })
+  }
+})
+
+// Create a new driver
+app.post('/api/drivers', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { name, contactNumber, email, destinationId, languages, note } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    if (!destinationId) {
+      return res.status(400).json({ message: 'Destination is required' })
+    }
+
+    const driverId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO drivers (id, name, "contactNumber", email, "destinationId", languages, note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, name, "contactNumber", email, "destinationId", languages, note, "createdAt", "updatedAt"`,
+      [driverId, name, contactNumber || null, email || null, destinationId, languages || null, note || null]
+    )
+
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create driver error:', error)
+    res.status(500).json({ message: error.message || 'Failed to create driver' })
+  }
+})
+
+// Get a single driver
+app.get('/api/drivers/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const result = await pool.query(
+      `SELECT 
+        d.id,
+        d.name,
+        d."contactNumber",
+        d.email,
+        d."destinationId",
+        d.languages,
+        d.note,
+        d."createdAt",
+        d."updatedAt",
+        dest.name as "destinationName"
+      FROM drivers d
+      LEFT JOIN destinations dest ON d."destinationId" = dest.id
+      WHERE d.id = $1`,
+      [id]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Driver not found' })
+    }
+
+    res.json(result.rows[0])
+  } catch (error) {
+    console.error('Driver error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch driver' })
+  }
+})
+
+// Update a driver
+app.put('/api/drivers/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const { name, contactNumber, email, destinationId, languages, note } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    if (!destinationId) {
+      return res.status(400).json({ message: 'Destination is required' })
+    }
+
+    // Check if driver exists
+    const existing = await pool.query('SELECT id FROM drivers WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Driver not found' })
+    }
+
+    const result = await pool.query(
+      `UPDATE drivers 
+       SET name = $1, "contactNumber" = $2, email = $3, "destinationId" = $4, languages = $5, note = $6, "updatedAt" = NOW()
+       WHERE id = $7
+       RETURNING id, name, "contactNumber", email, "destinationId", languages, note, "createdAt", "updatedAt"`,
+      [name, contactNumber || null, email || null, destinationId, languages || null, note || null, id]
+    )
+
+    res.status(200).json(result.rows[0])
+  } catch (error) {
+    console.error('Update driver error:', error)
+    res.status(500).json({ message: error.message || 'Failed to update driver' })
+  }
+})
+
+// Delete a driver
+app.delete('/api/drivers/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+
+    // Check if driver exists
+    const existing = await pool.query('SELECT id FROM drivers WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Driver not found' })
+    }
+
+    await pool.query('DELETE FROM drivers WHERE id = $1', [id])
+
+    res.status(200).json({ message: 'Driver deleted successfully' })
+  } catch (error) {
+    console.error('Delete driver error:', error)
+    res.status(500).json({ message: error.message || 'Failed to delete driver' })
   }
 })
 

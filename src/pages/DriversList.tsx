@@ -1,20 +1,20 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { guidesApi, destinationsApi } from '../lib/api'
-import type { Guide, Destination } from '../types'
-import { GuideForm } from '../components/GuideForm'
+import { driversApi, destinationsApi } from '../lib/api'
+import type { Driver, Destination } from '../types'
+import { DriverForm } from '../components/DriverForm'
 
 type FilterColumn = 'all' | 'name' | 'destinationName' | 'languages' | 'contactNumber' | 'email'
 type SortColumn = 'name' | 'destinationName' | 'languages' | 'contactNumber' | 'email'
 type SortDirection = 'asc' | 'desc' | null
 
-interface GuideWithDestination extends Guide {
+interface DriverWithDestination extends Driver {
   destinationName?: string
 }
 
-export function GuidesList() {
+export function DriversList() {
   const navigate = useNavigate()
-  const [guides, setGuides] = useState<GuideWithDestination[]>([])
+  const [drivers, setDrivers] = useState<DriverWithDestination[]>([])
   const [destinations, setDestinations] = useState<Destination[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -23,22 +23,22 @@ export function GuidesList() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingGuide, setEditingGuide] = useState<GuideWithDestination | null>(null)
+  const [editingDriver, setEditingDriver] = useState<DriverWithDestination | null>(null)
 
   useEffect(() => {
-    loadGuides()
+    loadDrivers()
     loadDestinations()
   }, [])
 
-  const loadGuides = async () => {
+  const loadDrivers = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await guidesApi.getAll() as GuideWithDestination[]
-      setGuides(data)
+      const data = await driversApi.getAll() as DriverWithDestination[]
+      setDrivers(data)
     } catch (err: any) {
-      setError(err.message || 'Failed to load guides')
-      console.error('Error loading guides:', err)
+      setError(err.message || 'Failed to load drivers')
+      console.error('Error loading drivers:', err)
     } finally {
       setLoading(false)
     }
@@ -53,35 +53,35 @@ export function GuidesList() {
     }
   }
 
-  // Filter and sort guides
-  const filteredGuides = useMemo(() => {
-    let result = [...guides]
+  // Filter and sort drivers
+  const filteredDrivers = useMemo(() => {
+    let result = [...drivers]
 
     // Apply search filter
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase().trim()
 
-      result = result.filter((guide) => {
+      result = result.filter((driver) => {
         if (filterColumn === 'all') {
           return (
-            guide.name.toLowerCase().includes(search) ||
-            (guide.destinationName && guide.destinationName.toLowerCase().includes(search)) ||
-            (guide.languages && guide.languages.toLowerCase().includes(search)) ||
-            (guide.contactNumber && guide.contactNumber.toLowerCase().includes(search)) ||
-            (guide.email && guide.email.toLowerCase().includes(search))
+            driver.name.toLowerCase().includes(search) ||
+            (driver.destinationName && driver.destinationName.toLowerCase().includes(search)) ||
+            (driver.languages && driver.languages.toLowerCase().includes(search)) ||
+            (driver.contactNumber && driver.contactNumber.toLowerCase().includes(search)) ||
+            (driver.email && driver.email.toLowerCase().includes(search))
           )
         } else {
           switch (filterColumn) {
             case 'name':
-              return guide.name.toLowerCase().includes(search)
+              return driver.name.toLowerCase().includes(search)
             case 'destinationName':
-              return guide.destinationName?.toLowerCase().includes(search) ?? false
+              return driver.destinationName?.toLowerCase().includes(search) ?? false
             case 'languages':
-              return guide.languages?.toLowerCase().includes(search) ?? false
+              return driver.languages?.toLowerCase().includes(search) ?? false
             case 'contactNumber':
-              return guide.contactNumber?.toLowerCase().includes(search) ?? false
+              return driver.contactNumber?.toLowerCase().includes(search) ?? false
             case 'email':
-              return guide.email?.toLowerCase().includes(search) ?? false
+              return driver.email?.toLowerCase().includes(search) ?? false
             default:
               return true
           }
@@ -125,7 +125,7 @@ export function GuidesList() {
     }
 
     return result
-  }, [guides, searchTerm, filterColumn, sortColumn, sortDirection])
+  }, [drivers, searchTerm, filterColumn, sortColumn, sortDirection])
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -150,25 +150,19 @@ export function GuidesList() {
     return ''
   }
 
-  const handleRowClick = (guideId: string) => {
-    navigate(`/guides/${guideId}`)
-  }
-
-  const handleEdit = (e: React.MouseEvent, guide: GuideWithDestination) => {
-    e.stopPropagation()
-    setEditingGuide(guide)
-    setShowForm(true)
+  const handleRowClick = (driverId: string) => {
+    navigate(`/drivers/${driverId}`)
   }
 
   const handleAdd = () => {
-    setEditingGuide(null)
+    setEditingDriver(null)
     setShowForm(true)
   }
 
   const handleSave = async () => {
-    await loadGuides()
+    await loadDrivers()
     setShowForm(false)
-    setEditingGuide(null)
+    setEditingDriver(null)
   }
 
   if (loading) {
@@ -189,7 +183,7 @@ export function GuidesList() {
             color: '#111827',
             margin: 0
           }}>
-            Guides
+            Drivers
           </h1>
         </div>
         <div style={{
@@ -199,7 +193,7 @@ export function GuidesList() {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#6b7280', margin: 0 }}>Loading guides...</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading drivers...</p>
         </div>
       </div>
     )
@@ -223,7 +217,7 @@ export function GuidesList() {
             color: '#111827',
             margin: 0
           }}>
-            Guides
+            Drivers
           </h1>
         </div>
         <div style={{
@@ -242,7 +236,7 @@ export function GuidesList() {
             <p style={{ margin: 0 }}>Error: {error}</p>
           </div>
           <button
-            onClick={loadGuides}
+            onClick={loadDrivers}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: '#3b82f6',
@@ -280,7 +274,7 @@ export function GuidesList() {
           color: '#111827',
           margin: 0
         }}>
-          Guides
+          Drivers
         </h1>
         <div style={{
           display: 'flex',
@@ -291,9 +285,9 @@ export function GuidesList() {
             color: '#6b7280',
             fontSize: '0.875rem'
           }}>
-            {searchTerm ? filteredGuides.length : guides.length} {filteredGuides.length === 1 ? 'guide' : 'guides'}
-            {searchTerm && filteredGuides.length !== guides.length && (
-              <span style={{ color: '#9ca3af' }}> of {guides.length}</span>
+            {searchTerm ? filteredDrivers.length : drivers.length} {filteredDrivers.length === 1 ? 'driver' : 'drivers'}
+            {searchTerm && filteredDrivers.length !== drivers.length && (
+              <span style={{ color: '#9ca3af' }}> of {drivers.length}</span>
             )}
           </div>
           <button
@@ -315,7 +309,7 @@ export function GuidesList() {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
           >
-            <span>+</span> Add Guide
+            <span>+</span> Add Driver
           </button>
         </div>
       </div>
@@ -334,7 +328,7 @@ export function GuidesList() {
       }}>
         <input
           type="text"
-          placeholder="Search guides..."
+          placeholder="Search drivers..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
@@ -389,7 +383,7 @@ export function GuidesList() {
       </div>
 
       {/* Content Card */}
-      {filteredGuides.length === 0 && searchTerm ? (
+      {filteredDrivers.length === 0 && searchTerm ? (
         <div style={{
           backgroundColor: 'white',
           padding: '3rem',
@@ -402,10 +396,10 @@ export function GuidesList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No guides match your search criteria.
+            No drivers match your search criteria.
           </p>
         </div>
-      ) : filteredGuides.length === 0 ? (
+      ) : filteredDrivers.length === 0 ? (
         <div style={{
           backgroundColor: 'white',
           padding: '3rem',
@@ -418,7 +412,7 @@ export function GuidesList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No guides found. Guides will appear here once added.
+            No drivers found. Drivers will appear here once added.
           </p>
         </div>
       ) : (
@@ -578,10 +572,10 @@ export function GuidesList() {
                 </tr>
               </thead>
               <tbody>
-                {filteredGuides.map((guide) => (
+                {filteredDrivers.map((driver) => (
                   <tr
-                    key={guide.id}
-                    onClick={() => handleRowClick(guide.id)}
+                    key={driver.id}
+                    onClick={() => handleRowClick(driver.id)}
                     style={{
                       borderBottom: '1px solid #e5e7eb',
                       cursor: 'pointer',
@@ -595,19 +589,19 @@ export function GuidesList() {
                     }}
                   >
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {guide.name}
+                      {driver.name}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {guide.contactNumber || '-'}
+                      {driver.contactNumber || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {guide.email || '-'}
+                      {driver.email || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {guide.destinationName || '-'}
+                      {driver.destinationName || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {guide.languages || '-'}
+                      {driver.languages || '-'}
                     </td>
                   </tr>
                 ))}
@@ -618,12 +612,12 @@ export function GuidesList() {
       )}
 
       {showForm && (
-        <GuideForm
-          guide={editingGuide}
+        <DriverForm
+          driver={editingDriver}
           destinations={destinations}
           onClose={() => {
             setShowForm(false)
-            setEditingGuide(null)
+            setEditingDriver(null)
           }}
           onSave={handleSave}
         />

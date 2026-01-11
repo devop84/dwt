@@ -67,3 +67,16 @@ CREATE TABLE IF NOT EXISTS guides (
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW()
 );
+
+-- Drivers table
+CREATE TABLE IF NOT EXISTS drivers (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  "contactNumber" VARCHAR(50),
+  email VARCHAR(255),
+  "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+  languages VARCHAR(255),
+  note TEXT,
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW()
+);

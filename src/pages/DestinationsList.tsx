@@ -179,7 +179,7 @@ export function DestinationsList() {
             color: '#111827',
             margin: 0
           }}>
-            Kitesurf Destinations
+            Destinations
           </h1>
         </div>
         <div style={{
@@ -213,7 +213,7 @@ export function DestinationsList() {
             color: '#111827',
             margin: 0
           }}>
-            Kitesurf Destinations
+            Destinations
           </h1>
         </div>
         <div style={{
@@ -270,7 +270,7 @@ export function DestinationsList() {
           color: '#111827',
           margin: 0
         }}>
-          Kitesurf Destinations
+          Destinations
         </h1>
         <div style={{
           display: 'flex',

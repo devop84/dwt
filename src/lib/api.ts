@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User, Client, Destination, Hotel, Guide } from '../types'
+import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -117,5 +117,27 @@ export const guidesApi = {
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/guides/${id}`)
+  },
+}
+
+export const driversApi = {
+  getAll: async (): Promise<Driver[]> => {
+    const { data } = await api.get<Driver[]>('/drivers')
+    return data
+  },
+  getById: async (id: string): Promise<Driver> => {
+    const { data } = await api.get<Driver>(`/drivers/${id}`)
+    return data
+  },
+  create: async (driver: Omit<Driver, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Driver> => {
+    const { data } = await api.post<Driver>('/drivers', driver)
+    return data
+  },
+  update: async (id: string, driver: Omit<Driver, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Driver> => {
+    const { data } = await api.put<Driver>(`/drivers/${id}`, driver)
+    return data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/drivers/${id}`)
   },
 }

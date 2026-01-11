@@ -13,6 +13,8 @@ import { HotelsList } from './pages/HotelsList'
 import { HotelDetails } from './pages/HotelDetails'
 import { GuidesList } from './pages/GuidesList'
 import { GuideDetails } from './pages/GuideDetails'
+import { DriversList } from './pages/DriversList'
+import { DriverDetails } from './pages/DriverDetails'
 
 function App() {
   return (
@@ -97,6 +99,22 @@ function App() {
               element={
                 <Layout>
                   <GuideDetails />
+                </Layout>
+              }
+            />
+            <Route
+              path="/drivers"
+              element={
+                <Layout>
+                  <DriversList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/drivers/:id"
+              element={
+                <Layout>
+                  <DriverDetails />
                 </Layout>
               }
             />

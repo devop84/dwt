@@ -64,3 +64,16 @@ export interface Guide {
   updatedAt: string
   destinationName?: string
 }
+
+export interface Driver {
+  id: string
+  name: string
+  contactNumber: string | null
+  email: string | null
+  destinationId: string
+  languages: string | null
+  note: string | null
+  createdAt: string
+  updatedAt: string
+  destinationName?: string
+}
