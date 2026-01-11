@@ -15,6 +15,7 @@
     "seed:destinations": "node scripts/seed-destinations.js",
     "seed:hotels": "node scripts/seed-hotels.js",
     "migrate:description": "node scripts/migrate-note-to-description.js",
+    "create:guides-table": "node scripts/create-guides-table.js",
     "build": "vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
