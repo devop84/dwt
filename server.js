@@ -62,7 +62,7 @@ async function initDb() {
         prefeitura VARCHAR(255),
         state VARCHAR(100),
         cep VARCHAR(20),
-        note TEXT,
+        description TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
@@ -108,7 +108,7 @@ async function initDb() {
         rating INTEGER,
         "priceRange" VARCHAR(50),
         "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
-        note TEXT,
+        description TEXT,
         "contactNumber" VARCHAR(50),
         email VARCHAR(255),
         address TEXT,
@@ -545,7 +545,7 @@ app.get('/api/destinations', async (req, res) => {
         prefeitura,
         state,
         cep,
-        note,
+        description,
         "createdAt",
         "updatedAt"
       FROM destinations
@@ -576,7 +576,7 @@ app.post('/api/destinations', async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' })
     }
 
-    const { name, coordinates, prefeitura, state, cep, note } = req.body
+    const { name, coordinates, prefeitura, state, cep, description } = req.body
 
     if (!name) {
       return res.status(400).json({ message: 'Name is required' })
@@ -584,10 +584,10 @@ app.post('/api/destinations', async (req, res) => {
 
     const destinationId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO destinations (id, name, coordinates, prefeitura, state, cep, note)
+      `INSERT INTO destinations (id, name, coordinates, prefeitura, state, cep, description)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, name, coordinates, prefeitura, state, cep, note, "createdAt", "updatedAt"`,
-      [destinationId, name, coordinates || null, prefeitura || null, state || null, cep || null, note || null]
+       RETURNING id, name, coordinates, prefeitura, state, cep, description, "createdAt", "updatedAt"`,
+      [destinationId, name, coordinates || null, prefeitura || null, state || null, cep || null, description || null]
     )
 
     res.status(201).json(result.rows[0])
@@ -624,7 +624,7 @@ app.get('/api/destinations/:id', async (req, res) => {
         prefeitura,
         state,
         cep,
-        note,
+        description,
         "createdAt",
         "updatedAt"
       FROM destinations
@@ -661,7 +661,7 @@ app.put('/api/destinations/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const { name, coordinates, prefeitura, state, cep, note } = req.body
+    const { name, coordinates, prefeitura, state, cep, description } = req.body
 
     if (!name) {
       return res.status(400).json({ message: 'Name is required' })
@@ -675,10 +675,10 @@ app.put('/api/destinations/:id', async (req, res) => {
 
     const result = await pool.query(
       `UPDATE destinations 
-       SET name = $1, coordinates = $2, prefeitura = $3, state = $4, cep = $5, note = $6, "updatedAt" = NOW()
+       SET name = $1, coordinates = $2, prefeitura = $3, state = $4, cep = $5, description = $6, "updatedAt" = NOW()
        WHERE id = $7
-       RETURNING id, name, coordinates, prefeitura, state, cep, note, "createdAt", "updatedAt"`,
-      [name, coordinates || null, prefeitura || null, state || null, cep || null, note || null, id]
+       RETURNING id, name, coordinates, prefeitura, state, cep, description, "createdAt", "updatedAt"`,
+      [name, coordinates || null, prefeitura || null, state || null, cep || null, description || null, id]
     )
 
     res.status(200).json(result.rows[0])
@@ -746,7 +746,7 @@ app.get('/api/hotels', async (req, res) => {
         h.rating,
         h."priceRange",
         h."destinationId",
-        h.note,
+          h.description,
         h."contactNumber",
         h.email,
         h.address,
@@ -783,7 +783,7 @@ app.post('/api/hotels', async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' })
     }
 
-    const { name, rating, priceRange, destinationId, note, contactNumber, email, address, coordinates } = req.body
+    const { name, rating, priceRange, destinationId, description, contactNumber, email, address, coordinates } = req.body
 
     if (!name) {
       return res.status(400).json({ message: 'Name is required' })
@@ -795,10 +795,10 @@ app.post('/api/hotels', async (req, res) => {
 
     const hotelId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO hotels (id, name, rating, "priceRange", "destinationId", note, "contactNumber", email, address, coordinates)
+      `INSERT INTO hotels (id, name, rating, "priceRange", "destinationId", description, "contactNumber", email, address, coordinates)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING id, name, rating, "priceRange", "destinationId", note, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
-      [hotelId, name, rating || null, priceRange || null, destinationId, note || null, contactNumber || null, email || null, address || null, coordinates || null]
+       RETURNING id, name, rating, "priceRange", "destinationId", description, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
+      [hotelId, name, rating || null, priceRange || null, destinationId, description || null, contactNumber || null, email || null, address || null, coordinates || null]
     )
 
     res.status(201).json(result.rows[0])
@@ -833,7 +833,7 @@ app.get('/api/hotels/:id', async (req, res) => {
         h.rating,
         h."priceRange",
         h."destinationId",
-        h.note,
+          h.description,
         h."contactNumber",
         h.email,
         h.address,
@@ -876,7 +876,7 @@ app.put('/api/hotels/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const { name, rating, priceRange, destinationId, note, contactNumber, email, address, coordinates } = req.body
+    const { name, rating, priceRange, destinationId, description, contactNumber, email, address, coordinates } = req.body
 
     if (!name) {
       return res.status(400).json({ message: 'Name is required' })
@@ -894,11 +894,11 @@ app.put('/api/hotels/:id', async (req, res) => {
 
     const result = await pool.query(
       `UPDATE hotels 
-       SET name = $1, rating = $2, "priceRange" = $3, "destinationId" = $4, note = $5, 
+       SET name = $1, rating = $2, "priceRange" = $3, "destinationId" = $4, description = $5, 
            "contactNumber" = $6, email = $7, address = $8, coordinates = $9, "updatedAt" = NOW()
        WHERE id = $10
-       RETURNING id, name, rating, "priceRange", "destinationId", note, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
-      [name, rating || null, priceRange || null, destinationId, note || null, contactNumber || null, email || null, address || null, coordinates || null, id]
+       RETURNING id, name, rating, "priceRange", "destinationId", description, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
+      [name, rating || null, priceRange || null, destinationId, description || null, contactNumber || null, email || null, address || null, coordinates || null, id]
     )
 
     res.status(200).json(result.rows[0])
