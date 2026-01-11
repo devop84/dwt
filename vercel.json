@@ -5,6 +5,38 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/clients",
+      "destination": "/api/entities/clients"
+    },
+    {
+      "source": "/api/clients/:id",
+      "destination": "/api/entities/clients/:id"
+    },
+    {
+      "source": "/api/destinations",
+      "destination": "/api/entities/destinations"
+    },
+    {
+      "source": "/api/destinations/:id",
+      "destination": "/api/entities/destinations/:id"
+    },
+    {
+      "source": "/api/hotels",
+      "destination": "/api/entities/hotels"
+    },
+    {
+      "source": "/api/hotels/:id",
+      "destination": "/api/entities/hotels/:id"
+    },
+    {
+      "source": "/api/guides",
+      "destination": "/api/entities/guides"
+    },
+    {
+      "source": "/api/guides/:id",
+      "destination": "/api/entities/guides/:id"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
