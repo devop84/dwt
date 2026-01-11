@@ -308,27 +308,6 @@ export function DestinationDetails() {
                   letterSpacing: '0.05em',
                   marginBottom: '0.5rem'
                 }}>
-                  Coordinates
-                </label>
-                <p style={{
-                  fontSize: '0.875rem',
-                  color: '#111827',
-                  margin: 0
-                }}>
-                  {destination.coordinates || '-'}
-                </p>
-              </div>
-
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '0.5rem'
-                }}>
                   Prefeitura
                 </label>
                 <p style={{
@@ -439,7 +418,7 @@ export function DestinationDetails() {
                   </label>
                   <div style={{
                     width: '100%',
-                    height: '200px',
+                    height: '300px',
                     borderRadius: '0.5rem',
                     overflow: 'hidden',
                     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
@@ -489,7 +468,7 @@ export function DestinationDetails() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                height: '200px',
+                height: '300px',
                 color: '#6b7280',
                 fontSize: '0.875rem'
               }}>
