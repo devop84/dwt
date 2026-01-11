@@ -14,6 +14,7 @@
     "seed:clients": "node scripts/seed-clients.js",
     "seed:destinations": "node scripts/seed-destinations.js",
     "seed:hotels": "node scripts/seed-hotels.js",
+    "seed:guides": "node scripts/seed-guides.js",
     "migrate:description": "node scripts/migrate-note-to-description.js",
     "create:guides-table": "node scripts/create-guides-table.js",
     "build": "vite build",
