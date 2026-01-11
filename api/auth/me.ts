@@ -3,10 +3,20 @@ import { verifyToken } from '../lib/auth'
 import { queryOne, initDb } from '../lib/db'
 
 export default async function handler(req: any, res: VercelResponse): Promise<void> {
-  // Initialize database on first request
-  await initDb()
   if (req.method !== 'GET') {
     res.status(405).json({ message: 'Method not allowed' })
+    return
+  }
+
+  try {
+    // Initialize database on first request
+    await initDb()
+  } catch (dbError: any) {
+    console.error('❌ Database initialization failed in me:', dbError)
+    res.status(500).json({ 
+      message: 'Database connection failed',
+      error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+    })
     return
   }
 

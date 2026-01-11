@@ -4,28 +4,73 @@ const globalForPool = globalThis as unknown as {
   pool: Pool | undefined
 }
 
-const pool = globalForPool.pool ?? new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false },
-})
+// Lazy initialization of pool - check DATABASE_URL at runtime
+function getPool(): Pool {
+  if (!process.env.DATABASE_URL) {
+    console.error('❌ DATABASE_URL environment variable is not set!')
+    throw new Error('DATABASE_URL environment variable is required. Please set it in your Vercel environment variables.')
+  }
 
-if (process.env.NODE_ENV !== 'production') globalForPool.pool = pool
+  if (!globalForPool.pool) {
+    globalForPool.pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false },
+    })
+
+    // Test connection on initialization
+    globalForPool.pool.on('error', (err) => {
+      console.error('❌ Unexpected database pool error:', err)
+    })
+
+    globalForPool.pool.on('connect', () => {
+      console.log('✅ Database pool connected')
+    })
+  }
+
+  return globalForPool.pool
+}
 
 export const query = async (text: string, params?: any[]) => {
-  const result = await pool.query(text, params)
+  const poolInstance = getPool()
+  const result = await poolInstance.query(text, params)
   return result.rows
 }
 
 export const queryOne = async (text: string, params?: any[]) => {
-  const result = await pool.query(text, params)
+  const poolInstance = getPool()
+  const result = await poolInstance.query(text, params)
   return result.rows[0] || null
 }
 
 // Initialize users table (auto-runs on first request)
 let dbInitialized = false
+let dbInitializing = false
+
 export const initDb = async () => {
   if (dbInitialized) return
+  if (dbInitializing) {
+    // Wait for ongoing initialization
+    while (dbInitializing) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    return
+  }
+  
+  dbInitializing = true
+  
   try {
+    console.log('🔧 Initializing database...')
+    
+    // Check DATABASE_URL is set
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is not set. Please configure it in Vercel dashboard → Settings → Environment Variables')
+    }
+    
+    // Test database connection first
+    const poolInstance = getPool()
+    await poolInstance.query('SELECT NOW()')
+    console.log('✅ Database connection successful')
+    
     // Create users table if not exists
     await query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -38,6 +83,7 @@ export const initDb = async () => {
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
     `)
+    console.log('✅ Users table ready')
     
     // Create clients table if not exists
     await query(`
@@ -54,6 +100,7 @@ export const initDb = async () => {
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
     `)
+    console.log('✅ Clients table ready')
     
     // Create destinations table if not exists
     await query(`
@@ -69,6 +116,7 @@ export const initDb = async () => {
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
     `)
+    console.log('✅ Destinations table ready')
     
     // Add prefeitura, state, and cep columns if they don't exist (migration for existing tables)
     try {
@@ -96,6 +144,7 @@ export const initDb = async () => {
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
     `)
+    console.log('✅ Hotels table ready')
     
     // Add username column if it doesn't exist (migration for existing tables)
     try {
@@ -118,8 +167,22 @@ export const initDb = async () => {
     }
     
     dbInitialized = true
-  } catch (error) {
-    // Table might already exist, that's fine
-    console.error('DB init error:', error)
+    dbInitializing = false
+    console.log('✅ Database initialization complete')
+  } catch (error: any) {
+    dbInitializing = false
+    const errorMessage = error?.message || String(error)
+    const errorStack = error?.stack || ''
+    console.error('❌ DB init error:', errorMessage)
+    console.error('❌ Error details:', {
+      message: errorMessage,
+      code: error?.code,
+      detail: error?.detail,
+      hint: error?.hint,
+      stack: errorStack.substring(0, 500) // Limit stack trace
+    })
+    
+    // Re-throw error so API endpoints can handle it properly
+    throw new Error(`Database initialization failed: ${errorMessage}`)
   }
 }
