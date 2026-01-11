@@ -26,7 +26,7 @@ let dbInitialized = false
 export const initDb = async () => {
   if (dbInitialized) return
   try {
-    // Create table if not exists
+    // Create users table if not exists
     await query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY,
@@ -34,6 +34,22 @@ export const initDb = async () => {
         username VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    
+    // Create clients table if not exists
+    await query(`
+      CREATE TABLE IF NOT EXISTS clients (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        "contactNumber" VARCHAR(50),
+        email VARCHAR(255),
+        "dateOfBirth" DATE,
+        nationality VARCHAR(100),
+        note TEXT,
+        "IDNumber" VARCHAR(100),
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )

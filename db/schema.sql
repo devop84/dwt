@@ -11,3 +11,17 @@ CREATE TABLE IF NOT EXISTS users (
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW()
 );
+
+-- Clients table
+CREATE TABLE IF NOT EXISTS clients (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  "contactNumber" VARCHAR(50),
+  email VARCHAR(255),
+  "dateOfBirth" DATE,
+  nationality VARCHAR(100),
+  note TEXT,
+  "IDNumber" VARCHAR(100),
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW()
+);

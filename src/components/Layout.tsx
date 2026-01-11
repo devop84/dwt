@@ -110,6 +110,34 @@ export function Layout({ children }: LayoutProps) {
           >
             Dashboard
           </Link>
+          <Link
+            to="/clients"
+            style={{
+              display: 'block',
+              padding: '0.75rem 1.5rem',
+              color: isActive('/clients') ? '#3b82f6' : '#6b7280',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: isActive('/clients') ? '600' : '500',
+              backgroundColor: isActive('/clients') ? '#eff6ff' : 'transparent',
+              borderLeft: isActive('/clients') ? '3px solid #3b82f6' : '3px solid transparent',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              if (!isActive('/clients')) {
+                e.currentTarget.style.backgroundColor = '#f9fafb'
+                e.currentTarget.style.color = '#111827'
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!isActive('/clients')) {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = '#6b7280'
+              }
+            }}
+          >
+            Clients
+          </Link>
         </nav>
       </aside>
 

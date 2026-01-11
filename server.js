@@ -24,7 +24,7 @@ async function initDb() {
     // Enable UUID extension if not exists (for older PostgreSQL versions)
     await pool.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
     
-    // Create table if not exists
+    // Create users table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY,
@@ -32,6 +32,22 @@ async function initDb() {
         username VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    
+    // Create clients table if not exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS clients (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        "contactNumber" VARCHAR(50),
+        email VARCHAR(255),
+        "dateOfBirth" DATE,
+        nationality VARCHAR(100),
+        note TEXT,
+        "IDNumber" VARCHAR(100),
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
@@ -255,6 +271,46 @@ app.get('/api/auth/me', async (req, res) => {
   } catch (error) {
     console.error('Me error:', error)
     res.status(500).json({ message: error.message || 'Failed to fetch user' })
+  }
+})
+
+// Get all clients
+app.get('/api/clients', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        id,
+        name,
+        "contactNumber",
+        email,
+        "dateOfBirth",
+        nationality,
+        note,
+        "IDNumber",
+        "createdAt",
+        "updatedAt"
+      FROM clients
+      ORDER BY "createdAt" DESC
+    `)
+
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Clients error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch clients' })
   }
 })
 

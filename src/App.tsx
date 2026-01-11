@@ -5,6 +5,7 @@ import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
 import { Dashboard } from './pages/Dashboard'
+import { ClientsList } from './pages/ClientsList'
 
 function App() {
   return (
@@ -25,6 +26,14 @@ function App() {
               element={
                 <Layout>
                   <Dashboard />
+                </Layout>
+              }
+            />
+            <Route
+              path="/clients"
+              element={
+                <Layout>
+                  <ClientsList />
                 </Layout>
               }
             />

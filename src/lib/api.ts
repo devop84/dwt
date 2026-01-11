@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User } from '../types'
+import type { AuthResponse, User, Client } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -28,6 +28,13 @@ export const authApi = {
   },
   me: async (): Promise<User> => {
     const { data } = await api.get<User>('/auth/me')
+    return data
+  },
+}
+
+export const clientsApi = {
+  getAll: async (): Promise<Client[]> => {
+    const { data } = await api.get<Client[]>('/clients')
     return data
   },
 }
