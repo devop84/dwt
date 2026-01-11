@@ -196,6 +196,35 @@ export function Layout({ children }: LayoutProps) {
           >
             Hotels
           </Link>
+          <Link
+            to="/guides"
+            style={{
+              display: 'block',
+              padding: '0.75rem 1.5rem',
+              color: isActive('/guides') ? '#3b82f6' : '#6b7280',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: isActive('/guides') ? '600' : '500',
+              backgroundColor: isActive('/guides') ? '#eff6ff' : 'transparent',
+              borderLeft: isActive('/guides') ? '3px solid #3b82f6' : '3px solid transparent',
+              transition: 'all 0.2s',
+              marginTop: '0.5rem'
+            }}
+            onMouseOver={(e) => {
+              if (!isActive('/guides')) {
+                e.currentTarget.style.backgroundColor = '#f9fafb'
+                e.currentTarget.style.color = '#111827'
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!isActive('/guides')) {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = '#6b7280'
+              }
+            }}
+          >
+            Guides
+          </Link>
         </nav>
       </aside>
 

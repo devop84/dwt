@@ -11,6 +11,8 @@ import { DestinationsList } from './pages/DestinationsList'
 import { DestinationDetails } from './pages/DestinationDetails'
 import { HotelsList } from './pages/HotelsList'
 import { HotelDetails } from './pages/HotelDetails'
+import { GuidesList } from './pages/GuidesList'
+import { GuideDetails } from './pages/GuideDetails'
 
 function App() {
   return (
@@ -79,6 +81,22 @@ function App() {
               element={
                 <Layout>
                   <HotelDetails />
+                </Layout>
+              }
+            />
+            <Route
+              path="/guides"
+              element={
+                <Layout>
+                  <GuidesList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/guides/:id"
+              element={
+                <Layout>
+                  <GuideDetails />
                 </Layout>
               }
             />

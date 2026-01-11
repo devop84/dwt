@@ -187,6 +187,22 @@ export const initDb = async () => {
       console.log('Migration note:', migrationError)
     }
     
+    // Create guides table if not exists
+    await query(`
+      CREATE TABLE IF NOT EXISTS guides (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        "contactNumber" VARCHAR(50),
+        email VARCHAR(255),
+        "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+        languages VARCHAR(255),
+        note TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    console.log('✅ Guides table ready')
+    
     // Add username column if it doesn't exist (migration for existing tables)
     try {
       await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(255) UNIQUE`)

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User, Client, Destination, Hotel } from '../types'
+import type { AuthResponse, User, Client, Destination, Hotel, Guide } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -95,5 +95,27 @@ export const hotelsApi = {
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/hotels/${id}`)
+  },
+}
+
+export const guidesApi = {
+  getAll: async (): Promise<Guide[]> => {
+    const { data } = await api.get<Guide[]>('/guides')
+    return data
+  },
+  getById: async (id: string): Promise<Guide> => {
+    const { data } = await api.get<Guide>(`/guides/${id}`)
+    return data
+  },
+  create: async (guide: Omit<Guide, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Guide> => {
+    const { data } = await api.post<Guide>('/guides', guide)
+    return data
+  },
+  update: async (id: string, guide: Omit<Guide, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Guide> => {
+    const { data } = await api.put<Guide>(`/guides/${id}`, guide)
+    return data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/guides/${id}`)
   },
 }

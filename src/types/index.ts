@@ -51,3 +51,16 @@ export interface Hotel {
   createdAt: string
   updatedAt: string
 }
+
+export interface Guide {
+  id: string
+  name: string
+  contactNumber: string | null
+  email: string | null
+  destinationId: string
+  languages: string | null
+  note: string | null
+  createdAt: string
+  updatedAt: string
+  destinationName?: string
+}
