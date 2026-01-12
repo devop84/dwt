@@ -3,5 +3,15 @@
   "outputDirectory": "dist",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "framework": "vite"
+  "framework": "vite",
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/[...path]"
+    },
+    {
+      "src": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
