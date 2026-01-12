@@ -4,6 +4,13 @@ import { query, queryOne, initDb } from './lib/db.js'
 import { randomUUID } from 'crypto'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  console.log('🚀 Catch-all route handler called:', { 
+    url: req.url, 
+    method: req.method,
+    query: req.query,
+    path: req.query.path
+  })
+  
   await initDb()
 
   try {
@@ -72,6 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // Auth routes (no auth required)
     if (route === 'auth') {
       const authAction = pathArray.length > 1 ? pathArray[1] : null
+      console.log('🔐 Auth route detected:', { route, authAction, pathArray, method: req.method, url: req.url })
       
       if (authAction === 'login') {
         if (req.method !== 'POST') {
@@ -177,7 +185,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         return
       }
 
-      res.status(404).json({ message: 'Auth route not found' })
+      console.log('❌ Unknown auth action:', authAction)
+      res.status(404).json({ message: 'Auth route not found', debug: { authAction, pathArray } })
       return
     }
 
