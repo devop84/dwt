@@ -4,6 +4,15 @@ import { query, queryOne, initDb } from '../lib/db.js'
 import { randomUUID } from 'crypto'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    res.status(200).end()
+    return
+  }
+
   console.log('🚀 Catch-all route handler called:', { 
     url: req.url, 
     method: req.method,
