@@ -13,8 +13,27 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  console.log('API Request:', config.method?.toUpperCase(), config.url, { baseURL: config.baseURL })
   return config
 })
+
+api.interceptors.response.use(
+  (response) => {
+    console.log('API Response:', response.config.method?.toUpperCase(), response.config.url, response.status, response.data)
+    return response
+  },
+  (error) => {
+    console.error('API Error:', {
+      method: error.config?.method?.toUpperCase(),
+      url: error.config?.url,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    })
+    return Promise.reject(error)
+  }
+)
 
 export const authApi = {
   login: async (identifier: string, password: string): Promise<AuthResponse> => {
