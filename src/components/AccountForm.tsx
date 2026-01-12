@@ -186,6 +186,70 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="accountType" style={labelStyle}>
+              Account Type <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <select
+              id="accountType"
+              value={formData.accountType}
+              onChange={(e) => {
+                const newType = e.target.value as AccountType
+                handleChange('accountType', newType)
+                // Clear fields that don't apply to the new type
+                if (newType === 'cash') {
+                  setFormData(prev => ({
+                    ...prev,
+                    accountType: newType,
+                    bankName: '',
+                    accountNumber: '',
+                    iban: '',
+                    swiftBic: '',
+                    routingNumber: '',
+                    serviceName: ''
+                  }))
+                } else if (newType === 'online') {
+                  setFormData(prev => ({
+                    ...prev,
+                    accountType: newType,
+                    bankName: '',
+                    accountNumber: '',
+                    iban: '',
+                    swiftBic: '',
+                    routingNumber: ''
+                  }))
+                } else if (newType === 'bank') {
+                  setFormData(prev => ({
+                    ...prev,
+                    accountType: newType,
+                    serviceName: ''
+                  }))
+                } else if (newType === 'other') {
+                  setFormData(prev => ({
+                    ...prev,
+                    accountType: newType,
+                    serviceName: ''
+                  }))
+                }
+              }}
+              required
+              style={inputStyle}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#3b82f6'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#d1d5db'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+            >
+              <option value="bank">Bank Account</option>
+              <option value="cash">Cash</option>
+              <option value="online">Online Banking (Wise, Revolut, PayPal, etc.)</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: '1rem' }}>
             <label htmlFor="accountHolderName" style={labelStyle}>
               Account Holder Name <span style={{ color: '#ef4444' }}>*</span>
             </label>
