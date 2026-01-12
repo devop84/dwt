@@ -4,12 +4,14 @@ import { query, queryOne, initDb } from '../lib/db.js'
 import { randomUUID } from 'crypto'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  console.log('✅ Clients API route hit:', req.method, req.url)
   await initDb()
 
   try {
     // All routes require authentication
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ No auth header')
       res.status(401).json({ message: 'Unauthorized' })
       return
     }
@@ -18,16 +20,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const decoded = verifyToken(token)
     
     if (!decoded) {
+      console.log('❌ Invalid token')
       res.status(401).json({ message: 'Invalid token' })
       return
     }
 
     if (req.method === 'GET') {
+      console.log('📋 Fetching clients from database...')
       const clients = await query(`
         SELECT id, name, "contactNumber", email, "dateOfBirth", nationality, note, "IDNumber", "createdAt", "updatedAt"
         FROM clients
         ORDER BY "createdAt" DESC
       `)
+      console.log(`✅ Found ${clients.length} clients`)
       res.status(200).json(clients)
     } else if (req.method === 'POST') {
       const { name, contactNumber, email, dateOfBirth, nationality, note, IDNumber } = req.body
