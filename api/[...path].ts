@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { verifyToken } from './lib/auth.js'
-import { query, queryOne, initDb } from './lib/db.js'
+import { verifyToken } from '../lib/auth.js'
+import { query, queryOne, initDb } from '../lib/db.js'
 import { randomUUID } from 'crypto'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -96,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         }
 
         // Import auth functions dynamically
-        const { authenticateUser, generateToken } = await import('./lib/auth.js')
+        const { authenticateUser, generateToken } = await import('../lib/auth.js')
         const user = await authenticateUser(identifier, password)
         const token = generateToken(user.id, user.email)
         
@@ -133,7 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         }
 
         // Hash password
-        const { hashPassword, generateToken } = await import('./lib/auth.js')
+        const { hashPassword, generateToken } = await import('../lib/auth.js')
         const hashedPassword = await hashPassword(password)
 
         // Generate UUID
