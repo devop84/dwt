@@ -7,13 +7,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   await initDb()
 
   try {
-    const path = req.query.path as string[] | undefined
-    const route = path && path.length > 0 ? path[0] : null
-    const id = path && path.length > 1 ? path[1] : null
+    // Parse path from query parameter (Vercel catch-all routes)
+    const path = req.query.path as string[] | string | undefined
+    let pathArray: string[] = []
+    
+    if (Array.isArray(path)) {
+      pathArray = path
+    } else if (typeof path === 'string') {
+      pathArray = [path]
+    } else if (path) {
+      pathArray = [String(path)]
+    }
+    
+    // Fallback: parse from URL if path is not in query
+    if (pathArray.length === 0 && req.url) {
+      try {
+        const urlPath = new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname
+        const segments = urlPath.replace(/^\/api\//, '').split('/').filter(Boolean)
+        pathArray = segments
+      } catch (e) {
+        // If URL parsing fails, try to parse from the raw URL
+        const urlMatch = req.url.match(/^\/api\/(.+)$/)
+        if (urlMatch) {
+          pathArray = urlMatch[1].split('/').filter(Boolean)
+        }
+      }
+    }
+    
+    // Debug logging
+    console.log('API Route Debug:', { 
+      url: req.url, 
+      queryPath: req.query.path, 
+      pathArray, 
+      method: req.method,
+      query: req.query
+    })
+    
+    const route = pathArray.length > 0 ? pathArray[0] : null
+    const id = pathArray.length > 1 ? pathArray[1] : null
+    
+    // If no route found, return 404 early
+    if (!route) {
+      console.log('No route found, returning 404')
+      res.status(404).json({ message: 'API route not found', debug: { pathArray, queryPath: req.query.path, url: req.url } })
+      return
+    }
 
     // Auth routes (no auth required)
     if (route === 'auth') {
-      const authAction = path && path.length > 1 ? path[1] : null
+      const authAction = pathArray.length > 1 ? pathArray[1] : null
       
       if (authAction === 'login') {
         if (req.method !== 'POST') {
