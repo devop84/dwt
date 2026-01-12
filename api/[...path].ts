@@ -44,9 +44,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // Try to get from URL directly
       const url = req.url || ''
       const urlPath = url.split('?')[0] // Remove query string
+      console.log('⚠️ Path array empty, parsing from URL:', { url, urlPath })
       const match = urlPath.match(/^\/api\/(.+)$/)
       if (match) {
         pathArray = match[1].split('/').filter(Boolean)
+        console.log('✅ Parsed path from URL:', pathArray)
+      } else {
+        console.log('❌ No match found in URL')
       }
     }
     
