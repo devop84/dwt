@@ -227,6 +227,23 @@ export const initDb = async () => {
       console.log('Migration note:', migrationError)
     }
     
+    // Create caterers table if not exists
+    await query(`
+      CREATE TABLE IF NOT EXISTS caterers (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        "contactNumber" VARCHAR(50),
+        email VARCHAR(255),
+        type VARCHAR(50) NOT NULL,
+        "destinationId" UUID REFERENCES destinations(id) ON DELETE SET NULL,
+        note TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW(),
+        CONSTRAINT check_caterer_type CHECK (type IN ('restaurant', 'hotel', 'particular'))
+      )
+    `)
+    console.log('✅ Caterers table ready')
+    
     // Create accounts table if not exists
     await query(`
       CREATE TABLE IF NOT EXISTS accounts (

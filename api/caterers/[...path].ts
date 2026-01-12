@@ -90,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.status(200).json(result[0])
       } else if (req.method === 'DELETE') {
         await query('DELETE FROM caterers WHERE id = $1', [id])
-        res.status(204).send()
+        res.status(204).end()
       }
     }
   } catch (error: any) {
