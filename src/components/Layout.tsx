@@ -278,34 +278,62 @@ export function Layout({ children }: LayoutProps) {
         >
           Caterers
         </Link>
-          <Link
-            to="/accounts"
-            style={{
-              display: 'block',
-              padding: '0.75rem 1.5rem',
-              color: isActive('/accounts') ? '#3b82f6' : '#6b7280',
-              textDecoration: 'none',
-              fontSize: '0.875rem',
-              fontWeight: isActive('/accounts') ? '600' : '500',
-              backgroundColor: isActive('/accounts') ? '#eff6ff' : 'transparent',
-              borderLeft: isActive('/accounts') ? '3px solid #3b82f6' : '3px solid transparent',
-              transition: 'all 0.2s'
-            }}
-            onMouseOver={(e) => {
-              if (!isActive('/accounts')) {
-                e.currentTarget.style.backgroundColor = '#f9fafb'
-                e.currentTarget.style.color = '#111827'
-              }
-            }}
-            onMouseOut={(e) => {
-              if (!isActive('/accounts')) {
-                e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.color = '#6b7280'
-              }
-            }}
-          >
-            Accounts
-          </Link>
+        <Link
+          to="/accounts"
+          style={{
+            display: 'block',
+            padding: '0.75rem 1.5rem',
+            color: isActive('/accounts') ? '#3b82f6' : '#6b7280',
+            textDecoration: 'none',
+            fontSize: '0.875rem',
+            fontWeight: isActive('/accounts') ? '600' : '500',
+            backgroundColor: isActive('/accounts') ? '#eff6ff' : 'transparent',
+            borderLeft: isActive('/accounts') ? '3px solid #3b82f6' : '3px solid transparent',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => {
+            if (!isActive('/accounts')) {
+              e.currentTarget.style.backgroundColor = '#f9fafb'
+              e.currentTarget.style.color = '#111827'
+            }
+          }}
+          onMouseOut={(e) => {
+            if (!isActive('/accounts')) {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = '#6b7280'
+            }
+          }}
+        >
+          Accounts
+        </Link>
+        <Link
+          to="/company-accounts"
+          style={{
+            display: 'block',
+            padding: '0.75rem 1.5rem',
+            color: isActive('/company-accounts') ? '#3b82f6' : '#6b7280',
+            textDecoration: 'none',
+            fontSize: '0.875rem',
+            fontWeight: isActive('/company-accounts') ? '600' : '500',
+            backgroundColor: isActive('/company-accounts') ? '#eff6ff' : 'transparent',
+            borderLeft: isActive('/company-accounts') ? '3px solid #3b82f6' : '3px solid transparent',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => {
+            if (!isActive('/company-accounts')) {
+              e.currentTarget.style.backgroundColor = '#f9fafb'
+              e.currentTarget.style.color = '#111827'
+            }
+          }}
+          onMouseOut={(e) => {
+            if (!isActive('/company-accounts')) {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = '#6b7280'
+            }
+          }}
+        >
+          Company Accounts
+        </Link>
         </nav>
       </aside>
 

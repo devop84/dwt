@@ -177,7 +177,7 @@ async function initDb() {
       CREATE TABLE IF NOT EXISTS accounts (
         id UUID PRIMARY KEY,
         "entityType" VARCHAR(50) NOT NULL,
-        "entityId" UUID NOT NULL,
+        "entityId" UUID,
         "accountType" VARCHAR(50) NOT NULL DEFAULT 'bank',
         "accountHolderName" VARCHAR(255) NOT NULL,
         "bankName" VARCHAR(255),
@@ -191,7 +191,7 @@ async function initDb() {
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),
-        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver', 'caterer')),
+        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver', 'caterer', 'company')),
         CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online', 'other'))
       )
     `)
@@ -1700,6 +1700,11 @@ app.get('/api/accounts', async (req, res) => {
       sql += ` AND "entityType" = $${paramIndex}`
       params.push(entityType)
       paramIndex++
+      
+      // For company accounts, entityId should be NULL
+      if (entityType === 'company') {
+        sql += ` AND "entityId" IS NULL`
+      }
     }
 
     if (entityId) {
@@ -1737,8 +1742,17 @@ app.post('/api/accounts', async (req, res) => {
 
     const { entityType, entityId, accountType, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, serviceName, isPrimary, note } = req.body
 
-    if (!entityType || !entityId || !accountHolderName) {
-      return res.status(400).json({ message: 'Entity type, entity ID, and account holder name are required' })
+    if (!entityType || !accountHolderName) {
+      return res.status(400).json({ message: 'Entity type and account holder name are required' })
+    }
+
+    // For company accounts, entityId is not required
+    if (entityType !== 'company' && !entityId) {
+      return res.status(400).json({ message: 'Entity ID is required for non-company accounts' })
+    }
+
+    if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company'].includes(entityType)) {
+      return res.status(400).json({ message: 'Invalid entity type' })
     }
 
     if (!accountType || !['bank', 'cash', 'online', 'other'].includes(accountType)) {
@@ -1753,16 +1767,22 @@ app.post('/api/accounts', async (req, res) => {
       return res.status(400).json({ message: 'Service name/tag is required for online accounts' })
     }
 
-    if (!['client', 'hotel', 'guide', 'driver'].includes(entityType)) {
+    if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company'].includes(entityType)) {
       return res.status(400).json({ message: 'Invalid entity type' })
     }
 
     // If setting as primary, unset other primary accounts for this entity
     if (isPrimary) {
-      await pool.query(
-        `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2`,
-        [entityType, entityId]
-      )
+      if (entityType === 'company') {
+        await pool.query(
+          `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = 'company' AND "entityId" IS NULL`
+        )
+      } else {
+        await pool.query(
+          `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2`,
+          [entityType, entityId]
+        )
+      }
     }
 
     const accountId = randomUUID()
@@ -1844,7 +1864,7 @@ app.put('/api/accounts/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const { accountType, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, serviceName, isPrimary, note } = req.body
+    const { entityType, entityId, accountType, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, serviceName, isPrimary, note } = req.body
 
     if (!accountHolderName) {
       return res.status(400).json({ message: 'Account holder name is required' })
@@ -1869,10 +1889,17 @@ app.put('/api/accounts/:id', async (req, res) => {
 
     // If setting as primary, unset other primary accounts for this entity
     if (isPrimary && (!existing.rows[0].isPrimary)) {
-      await pool.query(
-        `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2 AND id != $3`,
-        [existing.rows[0].entityType, existing.rows[0].entityId, id]
-      )
+      if (existing.rows[0].entityType === 'company') {
+        await pool.query(
+          `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = 'company' AND "entityId" IS NULL AND id != $1`,
+          [id]
+        )
+      } else {
+        await pool.query(
+          `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2 AND id != $3`,
+          [existing.rows[0].entityType, existing.rows[0].entityId, id]
+        )
+      }
     }
 
     const result = await pool.query(

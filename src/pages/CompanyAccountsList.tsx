@@ -1,25 +1,23 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { accountsApi, clientsApi, hotelsApi, guidesApi, driversApi, caterersApi } from '../lib/api'
-import type { Account, EntityType } from '../types'
+import { accountsApi } from '../lib/api'
+import type { Account } from '../types'
+import { CompanyAccountForm } from '../components/CompanyAccountForm'
 
-type FilterColumn = 'all' | 'accountHolderName' | 'bankName' | 'entityType' | 'serviceName'
-type SortColumn = 'accountHolderName' | 'bankName' | 'entityType' | 'createdAt'
+type FilterColumn = 'all' | 'accountHolderName' | 'bankName' | 'serviceName'
+type SortColumn = 'accountHolderName' | 'bankName' | 'accountType' | 'createdAt'
 
-interface AccountWithEntity extends Account {
-  entityName?: string
-}
-
-export function AccountsList() {
+export function CompanyAccountsList() {
   const navigate = useNavigate()
-  const [accounts, setAccounts] = useState<AccountWithEntity[]>([])
+  const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterColumn, setFilterColumn] = useState<FilterColumn>('all')
-  const [filterEntityType, setFilterEntityType] = useState<EntityType | 'all'>('all')
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
 
   useEffect(() => {
     loadAccounts()
@@ -29,49 +27,11 @@ export function AccountsList() {
     try {
       setLoading(true)
       setError(null)
-      const allAccounts = await accountsApi.getAll()
-      
-      // Load entity names for each account
-      const accountsWithNames = await Promise.all(
-        allAccounts.map(async (account) => {
-          let entityName = ''
-          try {
-            switch (account.entityType) {
-              case 'client':
-                const client = await clientsApi.getById(account.entityId)
-                entityName = client.name
-                break
-              case 'hotel':
-                const hotel = await hotelsApi.getById(account.entityId)
-                entityName = hotel.name
-                break
-              case 'guide':
-                const guide = await guidesApi.getById(account.entityId)
-                entityName = guide.name
-                break
-              case 'driver':
-                const driver = await driversApi.getById(account.entityId!)
-                entityName = driver.name
-                break
-              case 'caterer':
-                const caterer = await caterersApi.getById(account.entityId!)
-                entityName = caterer.name
-                break
-              case 'company':
-                entityName = 'Company'
-                break
-            }
-          } catch (err) {
-            console.error(`Error loading ${account.entityType} name:`, err)
-          }
-          return { ...account, entityName }
-        })
-      )
-      
-      setAccounts(accountsWithNames)
+      const data = await accountsApi.getAll('company')
+      setAccounts(data)
     } catch (err: any) {
-      setError(err.message || 'Failed to load accounts')
-      console.error('Error loading accounts:', err)
+      setError(err.message || 'Failed to load company accounts')
+      console.error('Error loading company accounts:', err)
     } finally {
       setLoading(false)
     }
@@ -81,11 +41,6 @@ export function AccountsList() {
   const filteredAccounts = useMemo(() => {
     let result = [...accounts]
 
-    // Apply entity type filter
-    if (filterEntityType !== 'all') {
-      result = result.filter(account => account.entityType === filterEntityType)
-    }
-
     // Apply search filter
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase().trim()
@@ -94,8 +49,7 @@ export function AccountsList() {
         if (filterColumn === 'all') {
           return (
             account.accountHolderName.toLowerCase().includes(search) ||
-            account.bankName.toLowerCase().includes(search) ||
-            (account.entityName && account.entityName.toLowerCase().includes(search)) ||
+            (account.bankName && account.bankName.toLowerCase().includes(search)) ||
             (account.serviceName && account.serviceName.toLowerCase().includes(search)) ||
             (account.accountNumber && account.accountNumber.toLowerCase().includes(search)) ||
             (account.iban && account.iban.toLowerCase().includes(search))
@@ -105,10 +59,7 @@ export function AccountsList() {
             case 'accountHolderName':
               return account.accountHolderName.toLowerCase().includes(search)
             case 'bankName':
-              return account.bankName.toLowerCase().includes(search)
-            case 'entityType':
-              return account.entityType.toLowerCase().includes(search) ||
-                     (account.entityName && account.entityName.toLowerCase().includes(search))
+              return account.bankName?.toLowerCase().includes(search) ?? false
             case 'serviceName':
               return account.serviceName?.toLowerCase().includes(search) ?? false
             default:
@@ -130,12 +81,12 @@ export function AccountsList() {
             bValue = b.accountHolderName.toLowerCase()
             break
           case 'bankName':
-            aValue = a.bankName.toLowerCase()
-            bValue = b.bankName.toLowerCase()
+            aValue = a.bankName?.toLowerCase() || ''
+            bValue = b.bankName?.toLowerCase() || ''
             break
-          case 'entityType':
-            aValue = `${a.entityType} ${a.entityName || ''}`.toLowerCase()
-            bValue = `${b.entityType} ${b.entityName || ''}`.toLowerCase()
+          case 'accountType':
+            aValue = a.accountType.toLowerCase()
+            bValue = b.accountType.toLowerCase()
             break
           case 'createdAt':
             aValue = a.createdAt
@@ -150,7 +101,7 @@ export function AccountsList() {
     }
 
     return result
-  }, [accounts, searchTerm, filterColumn, filterEntityType, sortColumn, sortDirection])
+  }, [accounts, searchTerm, filterColumn, sortColumn, sortDirection])
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -175,18 +126,37 @@ export function AccountsList() {
     return ''
   }
 
-  const handleRowClick = (account: AccountWithEntity) => {
-    const routes: Record<EntityType, string> = {
-      client: '/clients',
-      hotel: '/hotels',
-      guide: '/guides',
-      driver: '/drivers'
-    }
-    navigate(`${routes[account.entityType]}/${account.entityId}`)
+  const handleRowClick = (accountId: string) => {
+    navigate(`/company-accounts/${accountId}`)
   }
 
-  const getEntityTypeLabel = (type: EntityType) => {
-    return type.charAt(0).toUpperCase() + type.slice(1)
+  const handleAdd = () => {
+    setEditingAccount(null)
+    setShowForm(true)
+  }
+
+  const handleEdit = (account: Account) => {
+    setEditingAccount(account)
+    setShowForm(true)
+  }
+
+  const handleDelete = async (accountId: string) => {
+    if (!confirm('Are you sure you want to delete this company account? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      await accountsApi.delete(accountId)
+      await loadAccounts()
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Failed to delete account')
+    }
+  }
+
+  const handleSave = async () => {
+    await loadAccounts()
+    setShowForm(false)
+    setEditingAccount(null)
   }
 
   if (loading) {
@@ -207,7 +177,7 @@ export function AccountsList() {
             color: '#111827',
             margin: 0
           }}>
-            Accounts
+            Company Accounts
           </h1>
         </div>
         <div style={{
@@ -217,7 +187,7 @@ export function AccountsList() {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#6b7280', margin: 0 }}>Loading accounts...</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading company accounts...</p>
         </div>
       </div>
     )
@@ -241,7 +211,7 @@ export function AccountsList() {
             color: '#111827',
             margin: 0
           }}>
-            Accounts
+            Company Accounts
           </h1>
         </div>
         <div style={{
@@ -298,7 +268,7 @@ export function AccountsList() {
           color: '#111827',
           margin: 0
         }}>
-            Accounts
+          Company Accounts
         </h1>
         <div style={{
           display: 'flex',
@@ -309,11 +279,32 @@ export function AccountsList() {
             color: '#6b7280',
             fontSize: '0.875rem'
           }}>
-            {searchTerm || filterEntityType !== 'all' ? filteredAccounts.length : accounts.length} {filteredAccounts.length === 1 ? 'account' : 'accounts'}
+            {searchTerm ? filteredAccounts.length : accounts.length} {filteredAccounts.length === 1 ? 'account' : 'accounts'}
             {searchTerm && filteredAccounts.length !== accounts.length && (
               <span style={{ color: '#9ca3af' }}> of {accounts.length}</span>
             )}
           </div>
+          <button
+            onClick={handleAdd}
+            style={{
+              padding: '0.625rem 1.25rem',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
+          >
+            <span>+</span> Add Company Account
+          </button>
         </div>
       </div>
 
@@ -331,7 +322,7 @@ export function AccountsList() {
       }}>
         <input
           type="text"
-          placeholder="Search accounts..."
+          placeholder="Search company accounts..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
@@ -342,24 +333,6 @@ export function AccountsList() {
             fontSize: '0.875rem'
           }}
         />
-        <select
-          value={filterEntityType}
-          onChange={(e) => setFilterEntityType(e.target.value as EntityType | 'all')}
-          style={{
-            flex: '0 0 auto',
-            padding: '0.5rem 0.75rem',
-            border: '1px solid #d1d5db',
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            backgroundColor: 'white'
-          }}
-        >
-          <option value="all">All Entity Types</option>
-          <option value="client">Clients</option>
-          <option value="hotel">Hotels</option>
-          <option value="guide">Guides</option>
-          <option value="driver">Drivers</option>
-        </select>
         <select
           value={filterColumn}
           onChange={(e) => setFilterColumn(e.target.value as FilterColumn)}
@@ -375,15 +348,13 @@ export function AccountsList() {
           <option value="all">All Columns</option>
           <option value="accountHolderName">Account Holder</option>
           <option value="bankName">Bank/Service Name</option>
-          <option value="entityType">Entity</option>
-          <option value="serviceName">Service Tag</option>
+          <option value="serviceName">Service Name</option>
         </select>
-        {(searchTerm || filterEntityType !== 'all') && (
+        {searchTerm && (
           <button
             onClick={() => {
               setSearchTerm('')
               setFilterColumn('all')
-              setFilterEntityType('all')
             }}
             style={{
               padding: '0.5rem 1rem',
@@ -404,7 +375,7 @@ export function AccountsList() {
       </div>
 
       {/* Content Card */}
-      {filteredAccounts.length === 0 && (searchTerm || filterEntityType !== 'all') ? (
+      {filteredAccounts.length === 0 && searchTerm ? (
         <div style={{
           backgroundColor: 'white',
           padding: '3rem',
@@ -417,7 +388,7 @@ export function AccountsList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No accounts match your search criteria.
+            No company accounts match your search criteria.
           </p>
         </div>
       ) : filteredAccounts.length === 0 ? (
@@ -433,7 +404,7 @@ export function AccountsList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No accounts found. Accounts will appear here once added.
+            No company accounts found. Company accounts will appear here once added.
           </p>
         </div>
       ) : (
@@ -520,16 +491,16 @@ export function AccountsList() {
                       letterSpacing: '0.05em'
                     }}
                   >
-                    Account Number / Tag
+                    Account Number/Tag
                   </th>
                   <th
-                    onClick={() => handleSort('entityType')}
+                    onClick={() => handleSort('accountType')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'entityType' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'accountType' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -537,30 +508,39 @@ export function AccountsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'entityType') {
+                      if (sortColumn !== 'accountType') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'entityType') {
+                      if (sortColumn !== 'accountType') {
                         e.currentTarget.style.backgroundColor = '#f9fafb'
                       }
                     }}
                   >
-                    Entity{getSortIndicator('entityType')}
+                    Type{getSortIndicator('accountType')}
                   </th>
-                  <th
-                    style={{
-                      padding: '0.75rem 1rem',
-                      textAlign: 'left',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}
-                  >
+                  <th style={{
+                    padding: '0.75rem 1rem',
+                    textAlign: 'left',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>
                     Currency
+                  </th>
+                  <th style={{
+                    padding: '0.75rem 1rem',
+                    textAlign: 'left',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -568,7 +548,6 @@ export function AccountsList() {
                 {filteredAccounts.map((account) => (
                   <tr
                     key={account.id}
-                    onClick={() => handleRowClick(account)}
                     style={{
                       borderBottom: '1px solid #e5e7eb',
                       cursor: 'pointer',
@@ -580,6 +559,7 @@ export function AccountsList() {
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'white'
                     }}
+                    onClick={() => handleRowClick(account.id)}
                   >
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -602,6 +582,21 @@ export function AccountsList() {
                       <div>
                         {account.accountType === 'cash' ? (
                           <span style={{ fontWeight: '500' }}>💵 Cash</span>
+                        ) : account.accountType === 'online' ? (
+                          <>
+                            {account.serviceName || '-'}
+                            <span style={{
+                              marginLeft: '0.5rem',
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#e0f2fe',
+                              color: '#0284c7',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '500'
+                            }}>
+                              Online
+                            </span>
+                          </>
                         ) : account.accountType === 'other' ? (
                           <>
                             {account.bankName || '-'}
@@ -617,63 +612,74 @@ export function AccountsList() {
                               Other
                             </span>
                           </>
-                        ) : account.bankName ? (
-                          <>
-                            {account.bankName}
-                            {account.accountType === 'online' && (
-                              <span style={{
-                                marginLeft: '0.5rem',
-                                fontSize: '0.75rem',
-                                color: '#6b7280'
-                              }}>
-                                (Online)
-                              </span>
-                            )}
-                          </>
                         ) : (
-                          '-'
+                          account.bankName || '-'
                         )}
                       </div>
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {account.accountType === 'online' && account.serviceName ? (
-                        <span style={{ fontFamily: 'monospace' }}>{account.serviceName}</span>
-                      ) : account.accountType === 'bank' && account.accountNumber ? (
+                      {account.accountType === 'online' && account.accountNumber ? (
                         <span style={{ fontFamily: 'monospace' }}>{account.accountNumber}</span>
-                      ) : account.accountType === 'cash' ? (
-                        <span style={{ color: '#6b7280', fontStyle: 'italic' }}>N/A</span>
+                      ) : account.accountNumber ? (
+                        account.accountNumber
                       ) : (
                         '-'
                       )}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      <div>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '0.125rem 0.5rem',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          backgroundColor: '#e5e7eb',
-                          color: '#374151',
-                          marginRight: '0.5rem'
-                        }}>
-                          {getEntityTypeLabel(account.entityType)}
-                        </span>
-                        <span
-                          style={{
-                            color: '#3b82f6',
-                            textDecoration: 'none'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                          onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                        >
-                          {account.entityName || account.entityId}
-                        </span>
-                      </div>
+                      <span style={{
+                        textTransform: 'capitalize',
+                        fontWeight: '500'
+                      }}>
+                        {account.accountType}
+                      </span>
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
                       {account.currency || '-'}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleEdit(account)
+                          }}
+                          style={{
+                            padding: '0.25rem 0.75rem',
+                            backgroundColor: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '0.25rem',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(account.id)
+                          }}
+                          style={{
+                            padding: '0.25rem 0.75rem',
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '0.25rem',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -683,6 +689,16 @@ export function AccountsList() {
         </div>
       )}
 
+      {showForm && (
+        <CompanyAccountForm
+          account={editingAccount}
+          onClose={() => {
+            setShowForm(false)
+            setEditingAccount(null)
+          }}
+          onSave={handleSave}
+        />
+      )}
     </div>
   )
 }

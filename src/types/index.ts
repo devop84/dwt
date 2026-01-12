@@ -79,14 +79,14 @@ export interface Driver {
   destinationName?: string
 }
 
-export type EntityType = 'client' | 'hotel' | 'guide' | 'driver' | 'caterer'
+export type EntityType = 'client' | 'hotel' | 'guide' | 'driver' | 'caterer' | 'company'
 
 export type AccountType = 'bank' | 'cash' | 'online' | 'other'
 
 export interface Account {
   id: string
   entityType: EntityType
-  entityId: string
+  entityId: string | null
   accountType: AccountType
   accountHolderName: string
   bankName: string | null

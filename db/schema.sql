@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS caterers (
 CREATE TABLE IF NOT EXISTS accounts (
   id UUID PRIMARY KEY,
   "entityType" VARCHAR(50) NOT NULL,
-  "entityId" UUID NOT NULL,
+  "entityId" UUID,
   "accountType" VARCHAR(50) NOT NULL DEFAULT 'bank',
   "accountHolderName" VARCHAR(255) NOT NULL,
   "bankName" VARCHAR(255),
@@ -114,6 +114,6 @@ CREATE TABLE IF NOT EXISTS accounts (
   note TEXT,
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW(),
-  CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver', 'caterer')),
+  CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver', 'caterer', 'company')),
   CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online', 'other'))
 );

@@ -18,6 +18,8 @@ import { DriverDetails } from './pages/DriverDetails'
 import { CaterersList } from './pages/CaterersList'
 import { CatererDetails } from './pages/CatererDetails'
 import { AccountsList } from './pages/AccountsList'
+import { CompanyAccountsList } from './pages/CompanyAccountsList'
+import { CompanyAccountDetails } from './pages/CompanyAccountDetails'
 
 function App() {
   return (
@@ -142,6 +144,22 @@ function App() {
               element={
                 <Layout>
                   <AccountsList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/company-accounts"
+              element={
+                <Layout>
+                  <CompanyAccountsList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/company-accounts/:id"
+              element={
+                <Layout>
+                  <CompanyAccountDetails />
                 </Layout>
               }
             />

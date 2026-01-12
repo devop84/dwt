@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { destinationsApi, hotelsApi } from '../lib/api'
-import type { Destination, Hotel } from '../types'
+import { destinationsApi, hotelsApi, guidesApi, driversApi, caterersApi } from '../lib/api'
+import type { Destination, Hotel, Guide, Driver, Caterer } from '../types'
 import { DestinationForm } from '../components/DestinationForm'
+
+type TabType = 'hotels' | 'drivers' | 'caterers' | 'guides'
 
 export function DestinationDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [destination, setDestination] = useState<Destination | null>(null)
   const [hotels, setHotels] = useState<Hotel[]>([])
+  const [guides, setGuides] = useState<Guide[]>([])
+  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [caterers, setCaterers] = useState<Caterer[]>([])
+  const [activeTab, setActiveTab] = useState<TabType>('hotels')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditForm, setShowEditForm] = useState(false)
@@ -17,7 +23,7 @@ export function DestinationDetails() {
   useEffect(() => {
     if (id) {
       loadDestination()
-      loadHotels()
+      loadAllEntities()
     }
   }, [id])
 
@@ -35,14 +41,22 @@ export function DestinationDetails() {
     }
   }
 
-  const loadHotels = async () => {
+  const loadAllEntities = async () => {
     try {
-      const allHotels = await hotelsApi.getAll()
-      // Filter hotels for this destination
-      const destinationHotels = allHotels.filter(hotel => hotel.destinationId === id)
-      setHotels(destinationHotels)
+      const [allHotels, allGuides, allDrivers, allCaterers] = await Promise.all([
+        hotelsApi.getAll(),
+        guidesApi.getAll(),
+        driversApi.getAll(),
+        caterersApi.getAll()
+      ])
+      
+      // Filter entities for this destination
+      setHotels(allHotels.filter(hotel => hotel.destinationId === id))
+      setGuides(allGuides.filter(guide => guide.destinationId === id))
+      setDrivers(allDrivers.filter(driver => driver.destinationId === id))
+      setCaterers(allCaterers.filter(caterer => caterer.destinationId === id))
     } catch (err: any) {
-      console.error('Error loading hotels:', err)
+      console.error('Error loading entities:', err)
     }
   }
 
@@ -478,153 +492,528 @@ export function DestinationDetails() {
           })()}
         </div>
 
-        {/* Hotels Section */}
+        {/* Tabs Section */}
         <div style={{
           padding: '2rem',
           borderBottom: '1px solid #e5e7eb'
         }}>
+          {/* Tabs Navigation */}
           <div style={{
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '1.5rem'
+            borderBottom: '2px solid #e5e7eb',
+            marginBottom: '1.5rem',
+            gap: '0.5rem'
           }}>
-            <h3 style={{
-              fontSize: '1.25rem',
-              fontWeight: '700',
-              color: '#111827',
-              margin: 0
-            }}>
-              Hotels at {destination.name}
-            </h3>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#6b7280'
-            }}>
-              {hotels.length} {hotels.length === 1 ? 'hotel' : 'hotels'}
-            </div>
-          </div>
-
-          {hotels.length === 0 ? (
-            <div style={{
-              padding: '2rem',
-              textAlign: 'center',
-              backgroundColor: '#f9fafb',
-              borderRadius: '0.5rem',
-              border: '1px dashed #d1d5db'
-            }}>
-              <p style={{
-                color: '#6b7280',
-                margin: 0,
-                fontSize: '0.875rem'
-              }}>
-                No hotels found for this destination.
-              </p>
-            </div>
-          ) : (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-              gap: '1rem'
-            }}>
-              {hotels.map((hotel) => (
-                <div
-                  key={hotel.id}
-                  onClick={() => navigate(`/hotels/${hotel.id}`)}
+            {(['hotels', 'drivers', 'caterers', 'guides'] as TabType[]).map((tab) => {
+              const counts = {
+                hotels: hotels.length,
+                drivers: drivers.length,
+                caterers: caterers.length,
+                guides: guides.length
+              }
+              const isActive = activeTab === tab
+              
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
                   style={{
-                    padding: '1.5rem',
-                    backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '0.5rem',
+                    padding: '0.75rem 1.5rem',
+                    fontSize: '0.875rem',
+                    fontWeight: isActive ? '600' : '500',
+                    color: isActive ? '#3b82f6' : '#6b7280',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                    marginBottom: '-2px',
+                    textTransform: 'capitalize',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#3b82f6'
-                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)'
-                    e.currentTarget.style.transform = 'translateY(-2px)'
+                    if (!isActive) {
+                      e.currentTarget.style.color = '#111827'
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e5e7eb'
-                    e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)'
-                    e.currentTarget.style.transform = 'translateY(0)'
+                    if (!isActive) {
+                      e.currentTarget.style.color = '#6b7280'
+                    }
                   }}
                 >
-                  <h4 style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: '#111827',
-                    margin: '0 0 0.5rem 0'
+                  {tab}
+                  <span style={{
+                    fontSize: '0.75rem',
+                    color: isActive ? '#3b82f6' : '#9ca3af',
+                    backgroundColor: isActive ? '#eff6ff' : '#f3f4f6',
+                    padding: '0.125rem 0.5rem',
+                    borderRadius: '9999px',
+                    fontWeight: '500'
                   }}>
-                    {hotel.name}
-                  </h4>
-                  <div style={{
-                    display: 'flex',
-                    gap: '1rem',
-                    marginBottom: '0.75rem',
-                    flexWrap: 'wrap'
+                    {counts[tab]}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'hotels' && (
+            <div>
+              {hotels.length === 0 ? (
+                <div style={{
+                  padding: '2rem',
+                  textAlign: 'center',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '0.5rem',
+                  border: '1px dashed #d1d5db'
+                }}>
+                  <p style={{
+                    color: '#6b7280',
+                    margin: 0,
+                    fontSize: '0.875rem'
                   }}>
-                    {hotel.rating && (
-                      <div style={{
-                        fontSize: '0.875rem',
-                        color: '#f59e0b',
-                        fontWeight: '500'
-                      }}>
-                        {'★'.repeat(hotel.rating)}{'☆'.repeat(5 - hotel.rating)}
-                      </div>
-                    )}
-                    {hotel.priceRange && (
-                      <div style={{
-                        fontSize: '0.875rem',
-                        color: '#6b7280'
-                      }}>
-                        {hotel.priceRange}
-                      </div>
-                    )}
-                  </div>
-                  {hotel.contactNumber && (
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      marginBottom: '0.25rem'
-                    }}>
-                      📞 {hotel.contactNumber}
-                    </div>
-                  )}
-                  {hotel.email && (
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      marginBottom: '0.5rem'
-                    }}>
-                      ✉️ {hotel.email}
-                    </div>
-                  )}
-                  {hotel.address && (
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      marginBottom: '0.5rem'
-                    }}>
-                      📍 {hotel.address}
-                    </div>
-                  )}
-                  {hotel.description && (
-                    <p style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      margin: '0.5rem 0 0 0',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden'
-                    }}>
-                      {hotel.description}
-                    </p>
-                  )}
+                    No hotels found for this destination.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                  gap: '1rem'
+                }}>
+                  {hotels.map((hotel) => (
+                    <div
+                      key={hotel.id}
+                      onClick={() => navigate(`/hotels/${hotel.id}`)}
+                      style={{
+                        padding: '1.5rem',
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#3b82f6'
+                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)'
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#e5e7eb'
+                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)'
+                        e.currentTarget.style.transform = 'translateY(0)'
+                      }}
+                    >
+                      <h4 style={{
+                        fontSize: '1rem',
+                        fontWeight: '600',
+                        color: '#111827',
+                        margin: '0 0 0.5rem 0'
+                      }}>
+                        {hotel.name}
+                      </h4>
+                      <div style={{
+                        display: 'flex',
+                        gap: '1rem',
+                        marginBottom: '0.75rem',
+                        flexWrap: 'wrap'
+                      }}>
+                        {hotel.rating && (
+                          <div style={{
+                            fontSize: '0.875rem',
+                            color: '#f59e0b',
+                            fontWeight: '500'
+                          }}>
+                            {'★'.repeat(hotel.rating)}{'☆'.repeat(5 - hotel.rating)}
+                          </div>
+                        )}
+                        {hotel.priceRange && (
+                          <div style={{
+                            fontSize: '0.875rem',
+                            color: '#6b7280'
+                          }}>
+                            {hotel.priceRange}
+                          </div>
+                        )}
+                      </div>
+                      {hotel.contactNumber && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          marginBottom: '0.25rem'
+                        }}>
+                          📞 {hotel.contactNumber}
+                        </div>
+                      )}
+                      {hotel.email && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          marginBottom: '0.5rem'
+                        }}>
+                          ✉️ {hotel.email}
+                        </div>
+                      )}
+                      {hotel.address && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          marginBottom: '0.5rem'
+                        }}>
+                          📍 {hotel.address}
+                        </div>
+                      )}
+                      {hotel.description && (
+                        <p style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          margin: '0.5rem 0 0 0',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {hotel.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'drivers' && (
+            <div>
+              {drivers.length === 0 ? (
+                <div style={{
+                  padding: '2rem',
+                  textAlign: 'center',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '0.5rem',
+                  border: '1px dashed #d1d5db'
+                }}>
+                  <p style={{
+                    color: '#6b7280',
+                    margin: 0,
+                    fontSize: '0.875rem'
+                  }}>
+                    No drivers found for this destination.
+                  </p>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                  gap: '1rem'
+                }}>
+                  {drivers.map((driver) => (
+                    <div
+                      key={driver.id}
+                      onClick={() => navigate(`/drivers/${driver.id}`)}
+                      style={{
+                        padding: '1.5rem',
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#3b82f6'
+                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)'
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#e5e7eb'
+                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)'
+                        e.currentTarget.style.transform = 'translateY(0)'
+                      }}
+                    >
+                      <h4 style={{
+                        fontSize: '1rem',
+                        fontWeight: '600',
+                        color: '#111827',
+                        margin: '0 0 0.5rem 0'
+                      }}>
+                        {driver.name}
+                      </h4>
+                      {driver.vehicle && (
+                        <div style={{
+                          fontSize: '0.875rem',
+                          color: '#3b82f6',
+                          fontWeight: '500',
+                          marginBottom: '0.5rem'
+                        }}>
+                          🚗 {driver.vehicle}
+                        </div>
+                      )}
+                      {driver.languages && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          marginBottom: '0.5rem'
+                        }}>
+                          🗣️ {driver.languages}
+                        </div>
+                      )}
+                      {driver.contactNumber && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          marginBottom: '0.25rem'
+                        }}>
+                          📞 {driver.contactNumber}
+                        </div>
+                      )}
+                      {driver.email && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          marginBottom: '0.5rem'
+                        }}>
+                          ✉️ {driver.email}
+                        </div>
+                      )}
+                      {driver.note && (
+                        <p style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          margin: '0.5rem 0 0 0',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {driver.note}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'caterers' && (
+            <div>
+              {caterers.length === 0 ? (
+                <div style={{
+                  padding: '2rem',
+                  textAlign: 'center',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '0.5rem',
+                  border: '1px dashed #d1d5db'
+                }}>
+                  <p style={{
+                    color: '#6b7280',
+                    margin: 0,
+                    fontSize: '0.875rem'
+                  }}>
+                    No caterers found for this destination.
+                  </p>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                  gap: '1rem'
+                }}>
+                  {caterers.map((caterer) => {
+                    const getTypeLabel = (type: string) => {
+                      switch (type) {
+                        case 'restaurant': return 'Restaurant'
+                        case 'hotel': return 'Hotel'
+                        case 'particular': return 'Particular'
+                        default: return type
+                      }
+                    }
+                    
+                    return (
+                      <div
+                        key={caterer.id}
+                        onClick={() => navigate(`/caterers/${caterer.id}`)}
+                        style={{
+                          padding: '1.5rem',
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#3b82f6'
+                          e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)'
+                          e.currentTarget.style.transform = 'translateY(-2px)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e5e7eb'
+                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)'
+                          e.currentTarget.style.transform = 'translateY(0)'
+                        }}
+                      >
+                        <h4 style={{
+                          fontSize: '1rem',
+                          fontWeight: '600',
+                          color: '#111827',
+                          margin: '0 0 0.5rem 0'
+                        }}>
+                          {caterer.name}
+                        </h4>
+                        <div style={{
+                          fontSize: '0.875rem',
+                          color: '#3b82f6',
+                          fontWeight: '500',
+                          marginBottom: '0.5rem'
+                        }}>
+                          🍽️ {getTypeLabel(caterer.type)}
+                        </div>
+                        {caterer.contactNumber && (
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: '#6b7280',
+                            marginBottom: '0.25rem'
+                          }}>
+                            📞 {caterer.contactNumber}
+                          </div>
+                        )}
+                        {caterer.email && (
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: '#6b7280',
+                            marginBottom: '0.5rem'
+                          }}>
+                            ✉️ {caterer.email}
+                          </div>
+                        )}
+                        {caterer.note && (
+                          <p style={{
+                            fontSize: '0.75rem',
+                            color: '#6b7280',
+                            margin: '0.5rem 0 0 0',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}>
+                            {caterer.note}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'guides' && (
+            <div>
+              {guides.length === 0 ? (
+                <div style={{
+                  padding: '2rem',
+                  textAlign: 'center',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '0.5rem',
+                  border: '1px dashed #d1d5db'
+                }}>
+                  <p style={{
+                    color: '#6b7280',
+                    margin: 0,
+                    fontSize: '0.875rem'
+                  }}>
+                    No guides found for this destination.
+                  </p>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                  gap: '1rem'
+                }}>
+                  {guides.map((guide) => (
+                    <div
+                      key={guide.id}
+                      onClick={() => navigate(`/guides/${guide.id}`)}
+                      style={{
+                        padding: '1.5rem',
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#3b82f6'
+                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)'
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#e5e7eb'
+                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)'
+                        e.currentTarget.style.transform = 'translateY(0)'
+                      }}
+                    >
+                      <h4 style={{
+                        fontSize: '1rem',
+                        fontWeight: '600',
+                        color: '#111827',
+                        margin: '0 0 0.5rem 0'
+                      }}>
+                        {guide.name}
+                      </h4>
+                      {guide.languages && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          marginBottom: '0.5rem'
+                        }}>
+                          🗣️ {guide.languages}
+                        </div>
+                      )}
+                      {guide.contactNumber && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          marginBottom: '0.25rem'
+                        }}>
+                          📞 {guide.contactNumber}
+                        </div>
+                      )}
+                      {guide.email && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          marginBottom: '0.5rem'
+                        }}>
+                          ✉️ {guide.email}
+                        </div>
+                      )}
+                      {guide.note && (
+                        <p style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          margin: '0.5rem 0 0 0',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {guide.note}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

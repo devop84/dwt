@@ -53,12 +53,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       } else if (req.method === 'POST') {
         const { entityType, entityId, accountType, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, serviceName, isPrimary, note } = req.body
         
-        if (!entityType || !entityId || !accountHolderName) {
-          res.status(400).json({ message: 'Entity type, entity ID, and account holder name are required' })
+        if (!entityType || !accountHolderName) {
+          res.status(400).json({ message: 'Entity type and account holder name are required' })
           return
         }
 
-        if (!['client', 'hotel', 'guide', 'driver'].includes(entityType)) {
+        // For company accounts, entityId is not required
+        if (entityType !== 'company' && !entityId) {
+          res.status(400).json({ message: 'Entity ID is required for non-company accounts' })
+          return
+        }
+
+        if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company'].includes(entityType)) {
           res.status(400).json({ message: 'Invalid entity type' })
           return
         }
@@ -80,10 +86,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
         // If setting as primary, unset other primary accounts for this entity
         if (isPrimary) {
-          await query(
-            `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2`,
-            [entityType, entityId]
-          )
+          if (entityType === 'company') {
+            await query(
+              `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = 'company' AND "entityId" IS NULL`
+            )
+          } else {
+            await query(
+              `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2`,
+              [entityType, entityId]
+            )
+          }
         }
 
         const accountId = randomUUID()
@@ -93,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           [
             accountId,
             entityType,
-            entityId,
+            entityType === 'company' ? null : entityId,
             accountType,
             accountHolderName,
             (accountType === 'cash') ? null : (bankName || null),
@@ -120,7 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         }
         res.status(200).json(account)
       } else if (req.method === 'PUT') {
-        const { accountType, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, serviceName, isPrimary, note } = req.body
+        const { entityType, entityId, accountType, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, serviceName, isPrimary, note } = req.body
         
         if (!accountHolderName) {
           res.status(400).json({ message: 'Account holder name is required' })
@@ -150,10 +162,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
         // If setting as primary, unset other primary accounts for this entity
         if (isPrimary && (!existing.isPrimary)) {
-          await query(
-            `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2 AND id != $3`,
-            [existing.entityType, existing.entityId, id]
-          )
+          if (existing.entityType === 'company') {
+            await query(
+              `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = 'company' AND "entityId" IS NULL AND id != $1`,
+              [id]
+            )
+          } else {
+            await query(
+              `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2 AND id != $3`,
+              [existing.entityType, existing.entityId, id]
+            )
+          }
         }
 
         const result = await query(
