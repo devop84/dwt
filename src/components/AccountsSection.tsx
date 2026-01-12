@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react'
-import { bankAccountsApi } from '../lib/api'
-import type { BankAccount, EntityType } from '../types'
-import { BankAccountForm } from './BankAccountForm'
+import { accountsApi } from '../lib/api'
+import type { Account, EntityType } from '../types'
+import { AccountForm } from './AccountForm'
 
-interface BankAccountsSectionProps {
+interface AccountsSectionProps {
   entityType: EntityType
   entityId: string
 }
 
-export function BankAccountsSection({ entityType, entityId }: BankAccountsSectionProps) {
-  const [accounts, setAccounts] = useState<BankAccount[]>([])
+export function AccountsSection({ entityType, entityId }: AccountsSectionProps) {
+  const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null)
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -24,11 +24,11 @@ export function BankAccountsSection({ entityType, entityId }: BankAccountsSectio
     try {
       setLoading(true)
       setError(null)
-      const data = await bankAccountsApi.getAll(entityType, entityId)
+      const data = await accountsApi.getAll(entityType, entityId)
       setAccounts(data)
     } catch (err: any) {
-      setError(err.message || 'Failed to load bank accounts')
-      console.error('Error loading bank accounts:', err)
+      setError(err.message || 'Failed to load accounts')
+      console.error('Error loading accounts:', err)
     } finally {
       setLoading(false)
     }
@@ -45,16 +45,16 @@ export function BankAccountsSection({ entityType, entityId }: BankAccountsSectio
   }
 
   const handleDelete = async (accountId: string) => {
-    if (!confirm('Are you sure you want to delete this bank account? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete this account? This action cannot be undone.')) {
       return
     }
 
     try {
       setDeletingId(accountId)
-      await bankAccountsApi.delete(accountId)
+      await accountsApi.delete(accountId)
       await loadAccounts()
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to delete bank account')
+      alert(err.response?.data?.message || err.message || 'Failed to delete account')
     } finally {
       setDeletingId(null)
     }
@@ -73,7 +73,7 @@ export function BankAccountsSection({ entityType, entityId }: BankAccountsSectio
         borderBottom: '1px solid #e5e7eb',
         backgroundColor: '#f9fafb'
       }}>
-        <p style={{ color: '#6b7280', margin: 0 }}>Loading bank accounts...</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading accounts...</p>
       </div>
     )
   }
@@ -97,7 +97,7 @@ export function BankAccountsSection({ entityType, entityId }: BankAccountsSectio
             color: '#111827',
             margin: 0
           }}>
-            Bank Accounts
+            Accounts
           </h3>
           <button
             onClick={handleAdd}
@@ -138,7 +138,7 @@ export function BankAccountsSection({ entityType, entityId }: BankAccountsSectio
             fontSize: '0.875rem',
             margin: 0
           }}>
-            No bank accounts added yet.
+            No accounts added yet.
           </p>
         ) : (
           <div style={{
@@ -413,7 +413,7 @@ export function BankAccountsSection({ entityType, entityId }: BankAccountsSectio
       </div>
 
       {showForm && (
-        <BankAccountForm
+        <AccountForm
           account={editingAccount}
           entityType={entityType}
           entityId={entityId}

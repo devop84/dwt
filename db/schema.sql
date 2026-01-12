@@ -82,8 +82,8 @@ CREATE TABLE IF NOT EXISTS drivers (
   "updatedAt" TIMESTAMP DEFAULT NOW()
 );
 
--- Bank Accounts table (polymorphic relationship)
-CREATE TABLE IF NOT EXISTS bank_accounts (
+-- Accounts table (polymorphic relationship - supports bank accounts, online services, and cash)
+CREATE TABLE IF NOT EXISTS accounts (
   id UUID PRIMARY KEY,
   "entityType" VARCHAR(50) NOT NULL,
   "entityId" UUID NOT NULL,

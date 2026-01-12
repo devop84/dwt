@@ -251,32 +251,32 @@ export function Layout({ children }: LayoutProps) {
             Drivers
           </Link>
           <Link
-            to="/bank-accounts"
+            to="/accounts"
             style={{
               display: 'block',
               padding: '0.75rem 1.5rem',
-              color: isActive('/bank-accounts') ? '#3b82f6' : '#6b7280',
+              color: isActive('/accounts') ? '#3b82f6' : '#6b7280',
               textDecoration: 'none',
               fontSize: '0.875rem',
-              fontWeight: isActive('/bank-accounts') ? '600' : '500',
-              backgroundColor: isActive('/bank-accounts') ? '#eff6ff' : 'transparent',
-              borderLeft: isActive('/bank-accounts') ? '3px solid #3b82f6' : '3px solid transparent',
+              fontWeight: isActive('/accounts') ? '600' : '500',
+              backgroundColor: isActive('/accounts') ? '#eff6ff' : 'transparent',
+              borderLeft: isActive('/accounts') ? '3px solid #3b82f6' : '3px solid transparent',
               transition: 'all 0.2s'
             }}
             onMouseOver={(e) => {
-              if (!isActive('/bank-accounts')) {
+              if (!isActive('/accounts')) {
                 e.currentTarget.style.backgroundColor = '#f9fafb'
                 e.currentTarget.style.color = '#111827'
               }
             }}
             onMouseOut={(e) => {
-              if (!isActive('/bank-accounts')) {
+              if (!isActive('/accounts')) {
                 e.currentTarget.style.backgroundColor = 'transparent'
                 e.currentTarget.style.color = '#6b7280'
               }
             }}
           >
-            Bank Accounts
+            Accounts
           </Link>
         </nav>
       </aside>

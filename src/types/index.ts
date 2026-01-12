@@ -81,7 +81,7 @@ export interface Driver {
 
 export type EntityType = 'client' | 'hotel' | 'guide' | 'driver'
 
-export interface BankAccount {
+export interface Account {
   id: string
   entityType: EntityType
   entityId: string

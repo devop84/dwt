@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver, BankAccount, EntityType } from '../types'
+import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver, Account, EntityType } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -142,28 +142,28 @@ export const driversApi = {
   },
 }
 
-export const bankAccountsApi = {
-  getAll: async (entityType?: EntityType, entityId?: string): Promise<BankAccount[]> => {
+export const accountsApi = {
+  getAll: async (entityType?: EntityType, entityId?: string): Promise<Account[]> => {
     const params = new URLSearchParams()
     if (entityType) params.append('entityType', entityType)
     if (entityId) params.append('entityId', entityId)
     const queryString = params.toString()
-    const { data } = await api.get<BankAccount[]>(`/bank-accounts${queryString ? `?${queryString}` : ''}`)
+    const { data } = await api.get<Account[]>(`/accounts${queryString ? `?${queryString}` : ''}`)
     return data
   },
-  getById: async (id: string): Promise<BankAccount> => {
-    const { data } = await api.get<BankAccount>(`/bank-accounts/${id}`)
+  getById: async (id: string): Promise<Account> => {
+    const { data } = await api.get<Account>(`/accounts/${id}`)
     return data
   },
-  create: async (account: Omit<BankAccount, 'id' | 'createdAt' | 'updatedAt'>): Promise<BankAccount> => {
-    const { data } = await api.post<BankAccount>('/bank-accounts', account)
+  create: async (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>): Promise<Account> => {
+    const { data } = await api.post<Account>('/accounts', account)
     return data
   },
-  update: async (id: string, account: Omit<BankAccount, 'id' | 'createdAt' | 'updatedAt'>): Promise<BankAccount> => {
-    const { data } = await api.put<BankAccount>(`/bank-accounts/${id}`, account)
+  update: async (id: string, account: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>): Promise<Account> => {
+    const { data } = await api.put<Account>(`/accounts/${id}`, account)
     return data
   },
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/bank-accounts/${id}`)
+    await api.delete(`/accounts/${id}`)
   },
 }

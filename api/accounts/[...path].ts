@@ -25,12 +25,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const id = path && path.length > 0 ? path[0] : null
 
     if (!id) {
-      // GET all bank accounts (with optional entity filter)
+      // GET all accounts (with optional entity filter)
       if (req.method === 'GET') {
         const entityType = req.query.entityType as string | undefined
         const entityId = req.query.entityId as string | undefined
 
-        let sql = `SELECT * FROM bank_accounts WHERE 1=1`
+        let sql = `SELECT * FROM accounts WHERE 1=1`
         const params: any[] = []
         let paramIndex = 1
 
@@ -66,14 +66,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         // If setting as primary, unset other primary accounts for this entity
         if (isPrimary) {
           await query(
-            `UPDATE bank_accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2`,
+            `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2`,
             [entityType, entityId]
           )
         }
 
         const accountId = randomUUID()
         const result = await query(
-          `INSERT INTO bank_accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isOnlineService", "serviceName", "isPrimary", note)
+          `INSERT INTO accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isOnlineService", "serviceName", "isPrimary", note)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
           [
             accountId,
@@ -98,9 +98,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       }
     } else {
       if (req.method === 'GET') {
-        const account = await queryOne('SELECT * FROM bank_accounts WHERE id = $1', [id])
+        const account = await queryOne('SELECT * FROM accounts WHERE id = $1', [id])
         if (!account) {
-          res.status(404).json({ message: 'Bank account not found' })
+          res.status(404).json({ message: 'Account not found' })
           return
         }
         res.status(200).json(account)
@@ -112,22 +112,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           return
         }
 
-        const existing = await queryOne('SELECT * FROM bank_accounts WHERE id = $1', [id])
+        const existing = await queryOne('SELECT * FROM accounts WHERE id = $1', [id])
         if (!existing) {
-          res.status(404).json({ message: 'Bank account not found' })
+          res.status(404).json({ message: 'Account not found' })
           return
         }
 
         // If setting as primary, unset other primary accounts for this entity
         if (isPrimary && (!existing.isPrimary)) {
           await query(
-            `UPDATE bank_accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2 AND id != $3`,
+            `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2 AND id != $3`,
             [existing.entityType, existing.entityId, id]
           )
         }
 
         const result = await query(
-          `UPDATE bank_accounts 
+          `UPDATE accounts 
            SET "accountHolderName" = $1, "bankName" = $2, "accountNumber" = $3, iban = $4, "swiftBic" = $5, "routingNumber" = $6, currency = $7, "isOnlineService" = $8, "serviceName" = $9, "isPrimary" = $10, note = $11, "updatedAt" = NOW()
            WHERE id = $12 RETURNING *`,
           [
@@ -147,19 +147,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         )
         res.status(200).json(result[0])
       } else if (req.method === 'DELETE') {
-        const existing = await queryOne('SELECT id FROM bank_accounts WHERE id = $1', [id])
+        const existing = await queryOne('SELECT id FROM accounts WHERE id = $1', [id])
         if (!existing) {
-          res.status(404).json({ message: 'Bank account not found' })
+          res.status(404).json({ message: 'Account not found' })
           return
         }
-        await query('DELETE FROM bank_accounts WHERE id = $1', [id])
-        res.status(200).json({ message: 'Bank account deleted successfully' })
+        await query('DELETE FROM accounts WHERE id = $1', [id])
+        res.status(200).json({ message: 'Account deleted successfully' })
       } else {
         res.status(405).json({ message: 'Method not allowed' })
       }
     }
   } catch (error: any) {
-    console.error('Bank accounts API error:', error)
+    console.error('Accounts API error:', error)
     res.status(500).json({ message: error.message || 'Failed to process request' })
   }
 }

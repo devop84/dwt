@@ -211,7 +211,7 @@ const bankAccountsToSeed = [
 
 async function seedBankAccounts() {
   try {
-    console.log('🔄 Starting bank accounts seed...\n')
+    console.log('🔄 Starting accounts seed...\n')
 
     // Get all entities to assign bank accounts
     const clientsResult = await pool.query('SELECT id, name FROM clients ORDER BY name LIMIT 10')
@@ -235,21 +235,35 @@ async function seedBankAccounts() {
     // Add online service columns if they don't exist
     console.log('🔧 Checking for online service columns...')
     try {
-      await pool.query(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS "isOnlineService" BOOLEAN DEFAULT FALSE`)
-      await pool.query(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
+      await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "isOnlineService" BOOLEAN DEFAULT FALSE`)
+      await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
       console.log('✅ Online service columns ready\n')
     } catch (migrationError) {
       // Columns might already exist, that's fine
       console.log('ℹ️  Online service columns check completed\n')
     }
+    
+    // Migrate bank_accounts table to accounts if it exists
+    try {
+      await pool.query(`
+        DO $$ 
+        BEGIN 
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'bank_accounts') THEN
+            ALTER TABLE bank_accounts RENAME TO accounts;
+          END IF;
+        END $$;
+      `)
+    } catch (migrationError) {
+      // Table might not exist or already renamed, that's fine
+    }
 
-    // Clear existing bank accounts
-    console.log('🗑️  Clearing existing bank accounts...')
-    await pool.query('DELETE FROM bank_accounts')
-    console.log('✅ Cleared existing bank accounts\n')
+    // Clear existing accounts
+    console.log('🗑️  Clearing existing accounts...')
+    await pool.query('DELETE FROM accounts')
+    console.log('✅ Cleared existing accounts\n')
 
-    // Seed bank accounts
-    console.log('🌱 Seeding bank accounts...\n')
+    // Seed accounts
+    console.log('🌱 Seeding accounts...\n')
     let seededCount = 0
 
     for (const accountData of bankAccountsToSeed) {
@@ -305,13 +319,13 @@ async function seedBankAccounts() {
       // If setting as primary, check if there's already a primary account for this entity
       if (accountData.isPrimary) {
         const existingPrimary = await pool.query(
-          `SELECT id FROM bank_accounts WHERE "entityType" = $1 AND "entityId" = $2 AND "isPrimary" = TRUE`,
+          `SELECT id FROM accounts WHERE "entityType" = $1 AND "entityId" = $2 AND "isPrimary" = TRUE`,
           [accountData.entityType, entityId]
         )
         if (existingPrimary.rows.length > 0) {
           // Unset existing primary
           await pool.query(
-            `UPDATE bank_accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2`,
+            `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2`,
             [accountData.entityType, entityId]
           )
         }
@@ -320,7 +334,7 @@ async function seedBankAccounts() {
       const accountId = randomUUID()
 
       await pool.query(
-        `INSERT INTO bank_accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isOnlineService", "serviceName", "isPrimary", note)
+        `INSERT INTO accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isOnlineService", "serviceName", "isPrimary", note)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
         [
           accountId,
@@ -347,11 +361,11 @@ async function seedBankAccounts() {
       seededCount++
     }
 
-    console.log(`\n✅ Successfully seeded ${seededCount} bank accounts!`)
+    console.log(`\n✅ Successfully seeded ${seededCount} accounts!`)
     await pool.end()
     process.exit(0)
   } catch (error) {
-    console.error('\n❌ Error seeding bank accounts:', error.message)
+    console.error('\n❌ Error seeding accounts:', error.message)
     console.error('Stack:', error.stack)
     await pool.end()
     process.exit(1)

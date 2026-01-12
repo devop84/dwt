@@ -15,7 +15,7 @@ import { GuidesList } from './pages/GuidesList'
 import { GuideDetails } from './pages/GuideDetails'
 import { DriversList } from './pages/DriversList'
 import { DriverDetails } from './pages/DriverDetails'
-import { BankAccountsList } from './pages/BankAccountsList'
+import { AccountsList } from './pages/AccountsList'
 
 function App() {
   return (
@@ -120,10 +120,10 @@ function App() {
               }
             />
             <Route
-              path="/bank-accounts"
+              path="/accounts"
               element={
                 <Layout>
-                  <BankAccountsList />
+                  <AccountsList />
                 </Layout>
               }
             />

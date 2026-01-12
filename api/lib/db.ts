@@ -227,9 +227,9 @@ export const initDb = async () => {
       console.log('Migration note:', migrationError)
     }
     
-    // Create bank_accounts table if not exists
+    // Create accounts table if not exists
     await query(`
-      CREATE TABLE IF NOT EXISTS bank_accounts (
+      CREATE TABLE IF NOT EXISTS accounts (
         id UUID PRIMARY KEY,
         "entityType" VARCHAR(50) NOT NULL,
         "entityId" UUID NOT NULL,
@@ -249,12 +249,26 @@ export const initDb = async () => {
         CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver'))
       )
     `)
-    console.log('✅ Bank accounts table ready')
+    console.log('✅ Accounts table ready')
     
     // Add online service columns if they don't exist (migration for existing tables)
     try {
-      await query(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS "isOnlineService" BOOLEAN DEFAULT FALSE`)
-      await query(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
+      await query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "isOnlineService" BOOLEAN DEFAULT FALSE`)
+      await query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
+    } catch (migrationError) {
+      console.log('Migration note:', migrationError)
+    }
+    
+    // Migrate bank_accounts table to accounts if it exists
+    try {
+      await query(`
+        DO $$ 
+        BEGIN 
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'bank_accounts') THEN
+            ALTER TABLE bank_accounts RENAME TO accounts;
+          END IF;
+        END $$;
+      `)
     } catch (migrationError) {
       console.log('Migration note:', migrationError)
     }

@@ -156,9 +156,9 @@ async function initDb() {
       // Column might already exist, that's fine
     }
     
-    // Create bank_accounts table if not exists
+    // Create accounts table if not exists
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS bank_accounts (
+      CREATE TABLE IF NOT EXISTS accounts (
         id UUID PRIMARY KEY,
         "entityType" VARCHAR(50) NOT NULL,
         "entityId" UUID NOT NULL,
@@ -181,8 +181,8 @@ async function initDb() {
     
     // Add online service columns if they don't exist (migration for existing tables)
     try {
-      await pool.query(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS "isOnlineService" BOOLEAN DEFAULT FALSE`)
-      await pool.query(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
+      await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "isOnlineService" BOOLEAN DEFAULT FALSE`)
+      await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
     } catch (migrationError) {
       // Columns might already exist, that's fine
     }
@@ -1439,9 +1439,9 @@ app.delete('/api/drivers/:id', async (req, res) => {
   }
 })
 
-// Bank Accounts API routes
-// Get all bank accounts (with optional filters)
-app.get('/api/bank-accounts', async (req, res) => {
+// Accounts API routes
+// Get all accounts (with optional filters)
+app.get('/api/accounts', async (req, res) => {
   await initDb()
   
   try {
@@ -1460,7 +1460,7 @@ app.get('/api/bank-accounts', async (req, res) => {
     const entityType = req.query.entityType
     const entityId = req.query.entityId
 
-    let sql = `SELECT * FROM bank_accounts WHERE 1=1`
+    let sql = `SELECT * FROM accounts WHERE 1=1`
     const params = []
     let paramIndex = 1
 
@@ -1482,12 +1482,12 @@ app.get('/api/bank-accounts', async (req, res) => {
     res.json(result.rows)
   } catch (error) {
     console.error('Bank accounts error:', error)
-    res.status(500).json({ message: error.message || 'Failed to fetch bank accounts' })
+    res.status(500).json({ message: error.message || 'Failed to fetch accounts' })
   }
 })
 
-// Create a new bank account
-app.post('/api/bank-accounts', async (req, res) => {
+// Create a new account
+app.post('/api/accounts', async (req, res) => {
   await initDb()
   
   try {
@@ -1516,14 +1516,14 @@ app.post('/api/bank-accounts', async (req, res) => {
     // If setting as primary, unset other primary accounts for this entity
     if (isPrimary) {
       await pool.query(
-        `UPDATE bank_accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2`,
+        `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2`,
         [entityType, entityId]
       )
     }
 
     const accountId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO bank_accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isOnlineService", "serviceName", "isPrimary", note)
+      `INSERT INTO accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isOnlineService", "serviceName", "isPrimary", note)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
       [
@@ -1547,12 +1547,12 @@ app.post('/api/bank-accounts', async (req, res) => {
     res.status(201).json(result.rows[0])
   } catch (error) {
     console.error('Create bank account error:', error)
-    res.status(500).json({ message: error.message || 'Failed to create bank account' })
+    res.status(500).json({ message: error.message || 'Failed to create account' })
   }
 })
 
-// Get a single bank account
-app.get('/api/bank-accounts/:id', async (req, res) => {
+// Get a single account
+app.get('/api/accounts/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -1569,21 +1569,21 @@ app.get('/api/bank-accounts/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const result = await pool.query('SELECT * FROM bank_accounts WHERE id = $1', [id])
+    const result = await pool.query('SELECT * FROM accounts WHERE id = $1', [id])
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Bank account not found' })
+      return res.status(404).json({ message: 'Account not found' })
     }
 
     res.json(result.rows[0])
   } catch (error) {
     console.error('Bank account error:', error)
-    res.status(500).json({ message: error.message || 'Failed to fetch bank account' })
+    res.status(500).json({ message: error.message || 'Failed to fetch account' })
   }
 })
 
-// Update a bank account
-app.put('/api/bank-accounts/:id', async (req, res) => {
+// Update an account
+app.put('/api/accounts/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -1606,21 +1606,21 @@ app.put('/api/bank-accounts/:id', async (req, res) => {
       return res.status(400).json({ message: 'Account holder name and bank name are required' })
     }
 
-    const existing = await pool.query('SELECT * FROM bank_accounts WHERE id = $1', [id])
+    const existing = await pool.query('SELECT * FROM accounts WHERE id = $1', [id])
     if (existing.rows.length === 0) {
-      return res.status(404).json({ message: 'Bank account not found' })
+      return res.status(404).json({ message: 'Account not found' })
     }
 
     // If setting as primary, unset other primary accounts for this entity
     if (isPrimary && (!existing.rows[0].isPrimary)) {
       await pool.query(
-        `UPDATE bank_accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2 AND id != $3`,
+        `UPDATE accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2 AND id != $3`,
         [existing.rows[0].entityType, existing.rows[0].entityId, id]
       )
     }
 
     const result = await pool.query(
-      `UPDATE bank_accounts 
+      `UPDATE accounts 
        SET "accountHolderName" = $1, "bankName" = $2, "accountNumber" = $3, iban = $4, "swiftBic" = $5, "routingNumber" = $6, currency = $7, "isPrimary" = $8, note = $9, "updatedAt" = NOW()
        WHERE id = $10
        RETURNING *`,
@@ -1641,12 +1641,12 @@ app.put('/api/bank-accounts/:id', async (req, res) => {
     res.status(200).json(result.rows[0])
   } catch (error) {
     console.error('Update bank account error:', error)
-    res.status(500).json({ message: error.message || 'Failed to update bank account' })
+    res.status(500).json({ message: error.message || 'Failed to update account' })
   }
 })
 
-// Delete a bank account
-app.delete('/api/bank-accounts/:id', async (req, res) => {
+// Delete an account
+app.delete('/api/accounts/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -1663,17 +1663,17 @@ app.delete('/api/bank-accounts/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const existing = await pool.query('SELECT id FROM bank_accounts WHERE id = $1', [id])
+    const existing = await pool.query('SELECT id FROM accounts WHERE id = $1', [id])
     if (existing.rows.length === 0) {
-      return res.status(404).json({ message: 'Bank account not found' })
+      return res.status(404).json({ message: 'Account not found' })
     }
 
-    await pool.query('DELETE FROM bank_accounts WHERE id = $1', [id])
+    await pool.query('DELETE FROM accounts WHERE id = $1', [id])
 
-    res.status(200).json({ message: 'Bank account deleted successfully' })
+    res.status(200).json({ message: 'Account deleted successfully' })
   } catch (error) {
     console.error('Delete bank account error:', error)
-    res.status(500).json({ message: error.message || 'Failed to delete bank account' })
+    res.status(500).json({ message: error.message || 'Failed to delete account' })
   }
 })
 

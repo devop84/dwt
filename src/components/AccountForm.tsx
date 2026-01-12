@@ -1,16 +1,16 @@
 import { useState, useEffect, FormEvent } from 'react'
-import { bankAccountsApi } from '../lib/api'
-import type { BankAccount, EntityType } from '../types'
+import { accountsApi } from '../lib/api'
+import type { Account, EntityType } from '../types'
 
-interface BankAccountFormProps {
-  account?: BankAccount | null
+interface AccountFormProps {
+  account?: Account | null
   entityType: EntityType
   entityId: string
   onClose: () => void
   onSave: () => Promise<void>
 }
 
-export function BankAccountForm({ account, entityType, entityId, onClose, onSave }: BankAccountFormProps) {
+export function AccountForm({ account, entityType, entityId, onClose, onSave }: AccountFormProps) {
   const [formData, setFormData] = useState({
     accountHolderName: '',
     bankName: '',
@@ -62,7 +62,7 @@ export function BankAccountForm({ account, entityType, entityId, onClose, onSave
     setLoading(true)
     try {
       if (account) {
-        await bankAccountsApi.update(account.id, {
+        await accountsApi.update(account.id, {
           entityType,
           entityId,
           accountHolderName: formData.accountHolderName.trim(),
@@ -78,7 +78,7 @@ export function BankAccountForm({ account, entityType, entityId, onClose, onSave
           note: formData.note.trim() || null,
         })
       } else {
-        await bankAccountsApi.create({
+        await accountsApi.create({
           entityType,
           entityId,
           accountHolderName: formData.accountHolderName.trim(),
@@ -97,7 +97,7 @@ export function BankAccountForm({ account, entityType, entityId, onClose, onSave
       await onSave()
       onClose()
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to save bank account')
+      setError(err.response?.data?.message || err.message || 'Failed to save account')
     } finally {
       setLoading(false)
     }
@@ -161,7 +161,7 @@ export function BankAccountForm({ account, entityType, entityId, onClose, onSave
           color: '#111827',
           marginBottom: '1.5rem'
         }}>
-          {account ? 'Edit Bank Account' : 'Add Bank Account'}
+          {account ? 'Edit Account' : 'Add Account'}
         </h2>
 
         {error && (
@@ -360,7 +360,7 @@ export function BankAccountForm({ account, entityType, entityId, onClose, onSave
               value={formData.note}
               onChange={(e) => handleChange('note', e.target.value)}
               rows={3}
-              placeholder="Additional information about this bank account..."
+              placeholder="Additional information about this account..."
               style={{
                 ...inputStyle,
                 resize: 'vertical',

@@ -1,19 +1,19 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { bankAccountsApi, clientsApi, hotelsApi, guidesApi, driversApi } from '../lib/api'
-import type { BankAccount, EntityType } from '../types'
-import { BankAccountForm } from '../components/BankAccountForm'
+import { accountsApi, clientsApi, hotelsApi, guidesApi, driversApi } from '../lib/api'
+import type { Account, EntityType } from '../types'
+import { AccountForm } from '../components/AccountForm'
 
 type FilterColumn = 'all' | 'accountHolderName' | 'bankName' | 'entityType' | 'serviceName'
 type SortColumn = 'accountHolderName' | 'bankName' | 'entityType' | 'createdAt'
 
-interface BankAccountWithEntity extends BankAccount {
+interface AccountWithEntity extends Account {
   entityName?: string
 }
 
-export function BankAccountsList() {
+export function AccountsList() {
   const navigate = useNavigate()
-  const [accounts, setAccounts] = useState<BankAccountWithEntity[]>([])
+  const [accounts, setAccounts] = useState<AccountWithEntity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -21,7 +21,7 @@ export function BankAccountsList() {
   const [filterEntityType, setFilterEntityType] = useState<EntityType | 'all'>('all')
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null)
-  const [editingAccount, setEditingAccount] = useState<BankAccountWithEntity | null>(null)
+  const [editingAccount, setEditingAccount] = useState<AccountWithEntity | null>(null)
   const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export function BankAccountsList() {
     try {
       setLoading(true)
       setError(null)
-      const allAccounts = await bankAccountsApi.getAll()
+      const allAccounts = await accountsApi.getAll()
       
       // Load entity names for each account
       const accountsWithNames = await Promise.all(
@@ -66,8 +66,8 @@ export function BankAccountsList() {
       
       setAccounts(accountsWithNames)
     } catch (err: any) {
-      setError(err.message || 'Failed to load bank accounts')
-      console.error('Error loading bank accounts:', err)
+      setError(err.message || 'Failed to load accounts')
+      console.error('Error loading accounts:', err)
     } finally {
       setLoading(false)
     }
@@ -171,7 +171,7 @@ export function BankAccountsList() {
     return ''
   }
 
-  const handleRowClick = (account: BankAccountWithEntity) => {
+  const handleRowClick = (account: AccountWithEntity) => {
     const routes: Record<EntityType, string> = {
       client: '/clients',
       hotel: '/hotels',
@@ -181,7 +181,7 @@ export function BankAccountsList() {
     navigate(`${routes[account.entityType]}/${account.entityId}`)
   }
 
-  const handleEdit = (account: BankAccountWithEntity) => {
+  const handleEdit = (account: AccountWithEntity) => {
     setEditingAccount(account)
     setShowForm(true)
   }
@@ -214,7 +214,7 @@ export function BankAccountsList() {
             color: '#111827',
             margin: 0
           }}>
-            Bank Accounts
+            Accounts
           </h1>
         </div>
         <div style={{
@@ -224,7 +224,7 @@ export function BankAccountsList() {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#6b7280', margin: 0 }}>Loading bank accounts...</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading accounts...</p>
         </div>
       </div>
     )
@@ -248,7 +248,7 @@ export function BankAccountsList() {
             color: '#111827',
             margin: 0
           }}>
-            Bank Accounts
+            Accounts
           </h1>
         </div>
         <div style={{
@@ -305,7 +305,7 @@ export function BankAccountsList() {
           color: '#111827',
           margin: 0
         }}>
-          Bank Accounts
+            Accounts
         </h1>
         <div style={{
           display: 'flex',
@@ -338,7 +338,7 @@ export function BankAccountsList() {
       }}>
         <input
           type="text"
-          placeholder="Search bank accounts..."
+          placeholder="Search accounts..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
@@ -424,7 +424,7 @@ export function BankAccountsList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No bank accounts match your search criteria.
+            No accounts match your search criteria.
           </p>
         </div>
       ) : filteredAccounts.length === 0 ? (
@@ -440,7 +440,7 @@ export function BankAccountsList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No bank accounts found. Bank accounts will appear here once added.
+            No accounts found. Accounts will appear here once added.
           </p>
         </div>
       ) : (
@@ -703,7 +703,7 @@ export function BankAccountsList() {
       )}
 
       {showForm && editingAccount && (
-        <BankAccountForm
+        <AccountForm
           account={editingAccount}
           entityType={editingAccount.entityType}
           entityId={editingAccount.entityId}
