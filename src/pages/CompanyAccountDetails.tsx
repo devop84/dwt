@@ -400,7 +400,7 @@ export function CompanyAccountDetails() {
                   letterSpacing: '0.05em',
                   marginBottom: '0.5rem'
                 }}>
-                  Service Name
+                  Online Service Name
                 </label>
                 <p style={{
                   fontSize: '0.875rem',

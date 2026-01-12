@@ -52,6 +52,20 @@ export function CompanyAccountForm({ account, onClose, onSave }: CompanyAccountF
       return
     }
 
+    if ((formData.accountType === 'bank' || formData.accountType === 'other') && !formData.bankName.trim()) {
+      setError(formData.accountType === 'bank' ? 'Bank name is required for bank accounts' : 'Account name/description is required')
+      return
+    }
+
+    if (formData.accountType === 'online' && !formData.serviceName.trim()) {
+      setError('Online service name is required for online accounts')
+      return
+    }
+    if (formData.accountType === 'online' && !formData.accountNumber.trim()) {
+      setError('Tag/Username is required for online accounts')
+      return
+    }
+
     setLoading(true)
     try {
       if (account) {
@@ -60,7 +74,7 @@ export function CompanyAccountForm({ account, onClose, onSave }: CompanyAccountF
           entityId: null,
           accountType: formData.accountType,
           accountHolderName: formData.accountHolderName.trim(),
-          bankName: formData.bankName.trim() || null,
+          bankName: formData.accountType === 'cash' ? null : (formData.bankName.trim() || null),
           accountNumber: formData.accountNumber.trim() || null,
           iban: formData.iban.trim() || null,
           swiftBic: formData.swiftBic.trim() || null,
@@ -76,7 +90,7 @@ export function CompanyAccountForm({ account, onClose, onSave }: CompanyAccountF
           entityId: null,
           accountType: formData.accountType,
           accountHolderName: formData.accountHolderName.trim(),
-          bankName: formData.bankName.trim() || null,
+          bankName: formData.accountType === 'cash' ? null : (formData.bankName.trim() || null),
           accountNumber: formData.accountNumber.trim() || null,
           iban: formData.iban.trim() || null,
           swiftBic: formData.swiftBic.trim() || null,
@@ -288,7 +302,7 @@ export function CompanyAccountForm({ account, onClose, onSave }: CompanyAccountF
             <>
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="serviceName" style={labelStyle}>
-                  Service Name <span style={{ color: '#ef4444' }}>*</span>
+                  Online Service Name <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   id="serviceName"
