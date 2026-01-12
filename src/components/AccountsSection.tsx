@@ -210,7 +210,7 @@ export function AccountsSection({ entityType, entityId }: AccountsSectionProps) 
                         letterSpacing: '0.05em',
                         marginBottom: '0.25rem'
                       }}>
-                        {account.accountType === 'online' ? 'Service Name' : 'Bank Name'}
+                        {account.accountType === 'online' ? 'Service Name' : account.accountType === 'other' ? 'Account Name' : 'Bank Name'}
                       </label>
                       <p style={{
                         fontSize: '0.875rem',
@@ -221,6 +221,19 @@ export function AccountsSection({ entityType, entityId }: AccountsSectionProps) 
                         {account.accountType === 'online' && account.serviceName && (
                           <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>
                             ({account.serviceName})
+                          </span>
+                        )}
+                        {account.accountType === 'other' && (
+                          <span style={{
+                            marginLeft: '0.5rem',
+                            padding: '0.25rem 0.5rem',
+                            backgroundColor: '#fef3c7',
+                            color: '#92400e',
+                            borderRadius: '0.25rem',
+                            fontSize: '0.75rem',
+                            fontWeight: '500'
+                          }}>
+                            Other
                           </span>
                         )}
                       </p>

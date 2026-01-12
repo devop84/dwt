@@ -176,7 +176,7 @@ async function initDb() {
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),
         CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver')),
-        CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online'))
+        CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online', 'other'))
       )
     `)
     
@@ -1535,13 +1535,13 @@ app.post('/api/accounts', async (req, res) => {
       return res.status(400).json({ message: 'Entity type, entity ID, and account holder name are required' })
     }
 
-    if (!accountType || !['bank', 'cash', 'online'].includes(accountType)) {
-      return res.status(400).json({ message: 'Account type must be bank, cash, or online' })
+    if (!accountType || !['bank', 'cash', 'online', 'other'].includes(accountType)) {
+      return res.status(400).json({ message: 'Account type must be bank, cash, online, or other' })
     }
 
     // Validate required fields based on account type
-    if (accountType === 'bank' && !bankName) {
-      return res.status(400).json({ message: 'Bank name is required for bank accounts' })
+    if ((accountType === 'bank' || accountType === 'other') && !bankName) {
+      return res.status(400).json({ message: accountType === 'bank' ? 'Bank name is required for bank accounts' : 'Account name/description is required' })
     }
     if (accountType === 'online' && !serviceName) {
       return res.status(400).json({ message: 'Service name/tag is required for online accounts' })
@@ -1644,13 +1644,13 @@ app.put('/api/accounts/:id', async (req, res) => {
       return res.status(400).json({ message: 'Account holder name is required' })
     }
 
-    if (!accountType || !['bank', 'cash', 'online'].includes(accountType)) {
-      return res.status(400).json({ message: 'Account type must be bank, cash, or online' })
+    if (!accountType || !['bank', 'cash', 'online', 'other'].includes(accountType)) {
+      return res.status(400).json({ message: 'Account type must be bank, cash, online, or other' })
     }
 
     // Validate required fields based on account type
-    if (accountType === 'bank' && !bankName) {
-      return res.status(400).json({ message: 'Bank name is required for bank accounts' })
+    if ((accountType === 'bank' || accountType === 'other') && !bankName) {
+      return res.status(400).json({ message: accountType === 'bank' ? 'Bank name is required for bank accounts' : 'Account name/description is required' })
     }
     if (accountType === 'online' && !serviceName) {
       return res.status(400).json({ message: 'Service name/tag is required for online accounts' })
@@ -1677,7 +1677,7 @@ app.put('/api/accounts/:id', async (req, res) => {
       [
         accountType,
         accountHolderName,
-        accountType === 'cash' ? null : (bankName || null),
+        (accountType === 'cash') ? null : (bankName || null),
         accountNumber || null,
         iban || null,
         swiftBic || null,

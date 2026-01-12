@@ -620,6 +620,21 @@ export function AccountsList() {
                       <div>
                         {account.accountType === 'cash' ? (
                           <span style={{ fontWeight: '500' }}>💵 Cash</span>
+                        ) : account.accountType === 'other' ? (
+                          <>
+                            {account.bankName || '-'}
+                            <span style={{
+                              marginLeft: '0.5rem',
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#fef3c7',
+                              color: '#92400e',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '500'
+                            }}>
+                              Other
+                            </span>
+                          </>
                         ) : account.bankName ? (
                           <>
                             {account.bankName}

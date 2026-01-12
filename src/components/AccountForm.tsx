@@ -54,8 +54,8 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
       return
     }
 
-    if (formData.accountType === 'bank' && !formData.bankName.trim()) {
-      setError('Bank name is required for bank accounts')
+    if ((formData.accountType === 'bank' || formData.accountType === 'other') && !formData.bankName.trim()) {
+      setError(formData.accountType === 'bank' ? 'Bank name is required for bank accounts' : 'Account name/description is required')
       return
     }
 
@@ -207,29 +207,109 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
             />
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="bankName" style={labelStyle}>
-              Bank Name <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <input
-              id="bankName"
-              type="text"
-              value={formData.bankName}
-              onChange={(e) => handleChange('bankName', e.target.value)}
-              required
-              style={inputStyle}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#3b82f6'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db'
-                e.currentTarget.style.boxShadow = 'none'
-              }}
-            />
-          </div>
+          {(formData.accountType === 'bank' || formData.accountType === 'other') && (
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="bankName" style={labelStyle}>
+                {formData.accountType === 'bank' ? 'Bank Name' : 'Account Name/Description'} <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                id="bankName"
+                type="text"
+                value={formData.bankName}
+                onChange={(e) => handleChange('bankName', e.target.value)}
+                required
+                placeholder={formData.accountType === 'bank' ? 'e.g., Bank of America, Banco do Brasil' : 'e.g., Cryptocurrency wallet, Gift card, etc.'}
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#3b82f6'
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+              />
+            </div>
+          )}
 
-          {formData.accountType !== 'cash' && (
+          {formData.accountType === 'online' && (
+            <>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="bankName" style={labelStyle}>
+                  Service Name <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  id="bankName"
+                  type="text"
+                  value={formData.bankName}
+                  onChange={(e) => handleChange('bankName', e.target.value)}
+                  required
+                  placeholder="e.g., Wise, Revolut, PayPal"
+                  style={inputStyle}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#3b82f6'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#d1d5db'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="serviceName" style={labelStyle}>
+                  Tag/Username <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  id="serviceName"
+                  type="text"
+                  value={formData.serviceName}
+                  onChange={(e) => handleChange('serviceName', e.target.value)}
+                  required
+                  placeholder="e.g., @username, email, or account identifier"
+                  style={inputStyle}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#3b82f6'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#d1d5db'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                />
+              </div>
+            </>
+          )}
+
+          {formData.accountType === 'cash' && (
+            <div style={{
+              marginBottom: '1rem',
+              padding: '0.75rem',
+              backgroundColor: '#f0f9ff',
+              border: '1px solid #bae6fd',
+              borderRadius: '0.375rem',
+              fontSize: '0.875rem',
+              color: '#0369a1'
+            }}>
+              💵 Cash account - No bank details required. Use the note field to track cash transactions.
+            </div>
+          )}
+
+          {formData.accountType === 'other' && (
+            <div style={{
+              marginBottom: '1rem',
+              padding: '0.75rem',
+              backgroundColor: '#fef3c7',
+              border: '1px solid #fde68a',
+              borderRadius: '0.375rem',
+              fontSize: '0.875rem',
+              color: '#92400e'
+            }}>
+              ℹ️ Other account type - Use this for non-standard payment methods (cryptocurrency, gift cards, etc.). Fill in the details as needed.
+            </div>
+          )}
+
+          {(formData.accountType === 'bank' || formData.accountType === 'other' || formData.accountType === 'online') && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label htmlFor="accountNumber" style={labelStyle}>

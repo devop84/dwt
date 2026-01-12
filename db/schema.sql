@@ -101,5 +101,5 @@ CREATE TABLE IF NOT EXISTS accounts (
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW(),
   CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver')),
-  CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online'))
+  CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online', 'other'))
 );

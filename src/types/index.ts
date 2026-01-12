@@ -81,7 +81,7 @@ export interface Driver {
 
 export type EntityType = 'client' | 'hotel' | 'guide' | 'driver'
 
-export type AccountType = 'bank' | 'cash' | 'online'
+export type AccountType = 'bank' | 'cash' | 'online' | 'other'
 
 export interface Account {
   id: string

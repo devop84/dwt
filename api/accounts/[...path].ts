@@ -63,14 +63,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           return
         }
 
-        if (!accountType || !['bank', 'cash', 'online'].includes(accountType)) {
-          res.status(400).json({ message: 'Account type must be bank, cash, or online' })
+        if (!accountType || !['bank', 'cash', 'online', 'other'].includes(accountType)) {
+          res.status(400).json({ message: 'Account type must be bank, cash, online, or other' })
           return
         }
 
         // Validate required fields based on account type
-        if (accountType === 'bank' && !bankName) {
-          res.status(400).json({ message: 'Bank name is required for bank accounts' })
+        if ((accountType === 'bank' || accountType === 'other') && !bankName) {
+          res.status(400).json({ message: accountType === 'bank' ? 'Bank name is required for bank accounts' : 'Account name/description is required' })
           return
         }
         if (accountType === 'online' && !serviceName) {
@@ -96,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             entityId,
             accountType,
             accountHolderName,
-            accountType === 'cash' ? null : (bankName || null),
+            (accountType === 'cash') ? null : (bankName || null),
             accountNumber || null,
             iban || null,
             swiftBic || null,
@@ -127,14 +127,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           return
         }
 
-        if (!accountType || !['bank', 'cash', 'online'].includes(accountType)) {
-          res.status(400).json({ message: 'Account type must be bank, cash, or online' })
+        if (!accountType || !['bank', 'cash', 'online', 'other'].includes(accountType)) {
+          res.status(400).json({ message: 'Account type must be bank, cash, online, or other' })
           return
         }
 
         // Validate required fields based on account type
-        if (accountType === 'bank' && !bankName) {
-          res.status(400).json({ message: 'Bank name is required for bank accounts' })
+        if ((accountType === 'bank' || accountType === 'other') && !bankName) {
+          res.status(400).json({ message: accountType === 'bank' ? 'Bank name is required for bank accounts' : 'Account name/description is required' })
           return
         }
         if (accountType === 'online' && !serviceName) {
@@ -163,7 +163,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           [
             accountType,
             accountHolderName,
-            accountType === 'cash' ? null : (bankName || null),
+            (accountType === 'cash') ? null : (bankName || null),
             accountNumber || null,
             iban || null,
             swiftBic || null,
