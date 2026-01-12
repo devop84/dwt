@@ -79,7 +79,7 @@ export interface Driver {
   destinationName?: string
 }
 
-export type EntityType = 'client' | 'hotel' | 'guide' | 'driver'
+export type EntityType = 'client' | 'hotel' | 'guide' | 'driver' | 'caterer'
 
 export type AccountType = 'bank' | 'cash' | 'online' | 'other'
 

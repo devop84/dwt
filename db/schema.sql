@@ -82,6 +82,20 @@ CREATE TABLE IF NOT EXISTS drivers (
   "updatedAt" TIMESTAMP DEFAULT NOW()
 );
 
+-- Caterers table
+CREATE TABLE IF NOT EXISTS caterers (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  "contactNumber" VARCHAR(50),
+  email VARCHAR(255),
+  type VARCHAR(50) NOT NULL,
+  "destinationId" UUID REFERENCES destinations(id) ON DELETE SET NULL,
+  note TEXT,
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT check_caterer_type CHECK (type IN ('restaurant', 'hotel', 'particular'))
+);
+
 -- Accounts table (polymorphic relationship - supports bank accounts, online services, and cash)
 CREATE TABLE IF NOT EXISTS accounts (
   id UUID PRIMARY KEY,
@@ -100,6 +114,6 @@ CREATE TABLE IF NOT EXISTS accounts (
   note TEXT,
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW(),
-  CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver')),
+  CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver', 'caterer')),
   CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online', 'other'))
 );

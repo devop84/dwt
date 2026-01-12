@@ -15,6 +15,8 @@ import { GuidesList } from './pages/GuidesList'
 import { GuideDetails } from './pages/GuideDetails'
 import { DriversList } from './pages/DriversList'
 import { DriverDetails } from './pages/DriverDetails'
+import { CaterersList } from './pages/CaterersList'
+import { CatererDetails } from './pages/CatererDetails'
 import { AccountsList } from './pages/AccountsList'
 
 function App() {
@@ -116,6 +118,22 @@ function App() {
               element={
                 <Layout>
                   <DriverDetails />
+                </Layout>
+              }
+            />
+            <Route
+              path="/caterers"
+              element={
+                <Layout>
+                  <CaterersList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/caterers/:id"
+              element={
+                <Layout>
+                  <CatererDetails />
                 </Layout>
               }
             />

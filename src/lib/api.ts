@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver, Account, EntityType } from '../types'
+import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver, Caterer, Account, EntityType } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -139,6 +139,28 @@ export const driversApi = {
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/drivers/${id}`)
+  },
+}
+
+export const caterersApi = {
+  getAll: async (): Promise<Caterer[]> => {
+    const { data } = await api.get<Caterer[]>('/caterers')
+    return data
+  },
+  getById: async (id: string): Promise<Caterer> => {
+    const { data } = await api.get<Caterer>(`/caterers/${id}`)
+    return data
+  },
+  create: async (caterer: Omit<Caterer, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Caterer> => {
+    const { data } = await api.post<Caterer>('/caterers', caterer)
+    return data
+  },
+  update: async (id: string, caterer: Omit<Caterer, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Caterer> => {
+    const { data } = await api.put<Caterer>(`/caterers/${id}`, caterer)
+    return data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/caterers/${id}`)
   },
 }
 

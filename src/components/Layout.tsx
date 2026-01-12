@@ -222,34 +222,62 @@ export function Layout({ children }: LayoutProps) {
           >
             Guides
           </Link>
-          <Link
-            to="/drivers"
-            style={{
-              display: 'block',
-              padding: '0.75rem 1.5rem',
-              color: isActive('/drivers') ? '#3b82f6' : '#6b7280',
-              textDecoration: 'none',
-              fontSize: '0.875rem',
-              fontWeight: isActive('/drivers') ? '600' : '500',
-              backgroundColor: isActive('/drivers') ? '#eff6ff' : 'transparent',
-              borderLeft: isActive('/drivers') ? '3px solid #3b82f6' : '3px solid transparent',
-              transition: 'all 0.2s'
-            }}
-            onMouseOver={(e) => {
-              if (!isActive('/drivers')) {
-                e.currentTarget.style.backgroundColor = '#f9fafb'
-                e.currentTarget.style.color = '#111827'
-              }
-            }}
-            onMouseOut={(e) => {
-              if (!isActive('/drivers')) {
-                e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.color = '#6b7280'
-              }
-            }}
-          >
-            Drivers
-          </Link>
+        <Link
+          to="/drivers"
+          style={{
+            display: 'block',
+            padding: '0.75rem 1.5rem',
+            color: isActive('/drivers') ? '#3b82f6' : '#6b7280',
+            textDecoration: 'none',
+            fontSize: '0.875rem',
+            fontWeight: isActive('/drivers') ? '600' : '500',
+            backgroundColor: isActive('/drivers') ? '#eff6ff' : 'transparent',
+            borderLeft: isActive('/drivers') ? '3px solid #3b82f6' : '3px solid transparent',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => {
+            if (!isActive('/drivers')) {
+              e.currentTarget.style.backgroundColor = '#f9fafb'
+              e.currentTarget.style.color = '#111827'
+            }
+          }}
+          onMouseOut={(e) => {
+            if (!isActive('/drivers')) {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = '#6b7280'
+            }
+          }}
+        >
+          Drivers
+        </Link>
+        <Link
+          to="/caterers"
+          style={{
+            display: 'block',
+            padding: '0.75rem 1.5rem',
+            color: isActive('/caterers') ? '#3b82f6' : '#6b7280',
+            textDecoration: 'none',
+            fontSize: '0.875rem',
+            fontWeight: isActive('/caterers') ? '600' : '500',
+            backgroundColor: isActive('/caterers') ? '#eff6ff' : 'transparent',
+            borderLeft: isActive('/caterers') ? '3px solid #3b82f6' : '3px solid transparent',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => {
+            if (!isActive('/caterers')) {
+              e.currentTarget.style.backgroundColor = '#f9fafb'
+              e.currentTarget.style.color = '#111827'
+            }
+          }}
+          onMouseOut={(e) => {
+            if (!isActive('/caterers')) {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = '#6b7280'
+            }
+          }}
+        >
+          Caterers
+        </Link>
           <Link
             to="/accounts"
             style={{

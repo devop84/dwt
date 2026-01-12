@@ -39,7 +39,7 @@ export function AccountsSection({ entityType, entityId }: AccountsSectionProps) 
     setShowForm(true)
   }
 
-  const handleEdit = (account: BankAccount) => {
+  const handleEdit = (account: Account) => {
     setEditingAccount(account)
     setShowForm(true)
   }

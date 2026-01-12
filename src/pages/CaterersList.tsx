@@ -1,109 +1,87 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { accountsApi, clientsApi, hotelsApi, guidesApi, driversApi } from '../lib/api'
-import type { Account, EntityType } from '../types'
+import { caterersApi, destinationsApi } from '../lib/api'
+import type { Caterer, Destination } from '../types'
+import { CatererForm } from '../components/CatererForm'
 
-type FilterColumn = 'all' | 'accountHolderName' | 'bankName' | 'entityType' | 'serviceName'
-type SortColumn = 'accountHolderName' | 'bankName' | 'entityType' | 'createdAt'
+type FilterColumn = 'all' | 'name' | 'destinationName' | 'type' | 'contactNumber' | 'email'
+type SortColumn = 'name' | 'destinationName' | 'type' | 'contactNumber' | 'email'
+type SortDirection = 'asc' | 'desc' | null
 
-interface AccountWithEntity extends Account {
-  entityName?: string
+interface CatererWithDestination extends Caterer {
+  destinationName?: string
 }
 
-export function AccountsList() {
+export function CaterersList() {
   const navigate = useNavigate()
-  const [accounts, setAccounts] = useState<AccountWithEntity[]>([])
+  const [caterers, setCaterers] = useState<CatererWithDestination[]>([])
+  const [destinations, setDestinations] = useState<Destination[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterColumn, setFilterColumn] = useState<FilterColumn>('all')
-  const [filterEntityType, setFilterEntityType] = useState<EntityType | 'all'>('all')
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editingCaterer, setEditingCaterer] = useState<CatererWithDestination | null>(null)
 
   useEffect(() => {
-    loadAccounts()
+    loadCaterers()
+    loadDestinations()
   }, [])
 
-  const loadAccounts = async () => {
+  const loadCaterers = async () => {
     try {
       setLoading(true)
       setError(null)
-      const allAccounts = await accountsApi.getAll()
-      
-      // Load entity names for each account
-      const accountsWithNames = await Promise.all(
-        allAccounts.map(async (account) => {
-          let entityName = ''
-          try {
-            switch (account.entityType) {
-              case 'client':
-                const client = await clientsApi.getById(account.entityId)
-                entityName = client.name
-                break
-              case 'hotel':
-                const hotel = await hotelsApi.getById(account.entityId)
-                entityName = hotel.name
-                break
-              case 'guide':
-                const guide = await guidesApi.getById(account.entityId)
-                entityName = guide.name
-                break
-              case 'driver':
-                const driver = await driversApi.getById(account.entityId)
-                entityName = driver.name
-                break
-            }
-          } catch (err) {
-            console.error(`Error loading ${account.entityType} name:`, err)
-          }
-          return { ...account, entityName }
-        })
-      )
-      
-      setAccounts(accountsWithNames)
+      const data = await caterersApi.getAll() as CatererWithDestination[]
+      setCaterers(data)
     } catch (err: any) {
-      setError(err.message || 'Failed to load accounts')
-      console.error('Error loading accounts:', err)
+      setError(err.message || 'Failed to load caterers')
+      console.error('Error loading caterers:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  // Filter and sort accounts
-  const filteredAccounts = useMemo(() => {
-    let result = [...accounts]
-
-    // Apply entity type filter
-    if (filterEntityType !== 'all') {
-      result = result.filter(account => account.entityType === filterEntityType)
+  const loadDestinations = async () => {
+    try {
+      const data = await destinationsApi.getAll()
+      setDestinations(data)
+    } catch (err: any) {
+      console.error('Error loading destinations:', err)
     }
+  }
+
+  // Filter and sort caterers
+  const filteredCaterers = useMemo(() => {
+    let result = [...caterers]
 
     // Apply search filter
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase().trim()
 
-      result = result.filter((account) => {
+      result = result.filter((caterer) => {
         if (filterColumn === 'all') {
           return (
-            account.accountHolderName.toLowerCase().includes(search) ||
-            account.bankName.toLowerCase().includes(search) ||
-            (account.entityName && account.entityName.toLowerCase().includes(search)) ||
-            (account.serviceName && account.serviceName.toLowerCase().includes(search)) ||
-            (account.accountNumber && account.accountNumber.toLowerCase().includes(search)) ||
-            (account.iban && account.iban.toLowerCase().includes(search))
+            caterer.name.toLowerCase().includes(search) ||
+            (caterer.destinationName && caterer.destinationName.toLowerCase().includes(search)) ||
+            (caterer.type && caterer.type.toLowerCase().includes(search)) ||
+            (caterer.contactNumber && caterer.contactNumber.toLowerCase().includes(search)) ||
+            (caterer.email && caterer.email.toLowerCase().includes(search))
           )
         } else {
           switch (filterColumn) {
-            case 'accountHolderName':
-              return account.accountHolderName.toLowerCase().includes(search)
-            case 'bankName':
-              return account.bankName.toLowerCase().includes(search)
-            case 'entityType':
-              return account.entityType.toLowerCase().includes(search) ||
-                     (account.entityName && account.entityName.toLowerCase().includes(search))
-            case 'serviceName':
-              return account.serviceName?.toLowerCase().includes(search) ?? false
+            case 'name':
+              return caterer.name.toLowerCase().includes(search)
+            case 'destinationName':
+              return caterer.destinationName?.toLowerCase().includes(search) ?? false
+            case 'type':
+              return caterer.type?.toLowerCase().includes(search) ?? false
+            case 'contactNumber':
+              return caterer.contactNumber?.toLowerCase().includes(search) ?? false
+            case 'email':
+              return caterer.email?.toLowerCase().includes(search) ?? false
             default:
               return true
           }
@@ -118,21 +96,25 @@ export function AccountsList() {
         let bValue: string = ''
 
         switch (sortColumn) {
-          case 'accountHolderName':
-            aValue = a.accountHolderName.toLowerCase()
-            bValue = b.accountHolderName.toLowerCase()
+          case 'name':
+            aValue = a.name.toLowerCase()
+            bValue = b.name.toLowerCase()
             break
-          case 'bankName':
-            aValue = a.bankName.toLowerCase()
-            bValue = b.bankName.toLowerCase()
+          case 'destinationName':
+            aValue = a.destinationName?.toLowerCase() || ''
+            bValue = b.destinationName?.toLowerCase() || ''
             break
-          case 'entityType':
-            aValue = `${a.entityType} ${a.entityName || ''}`.toLowerCase()
-            bValue = `${b.entityType} ${b.entityName || ''}`.toLowerCase()
+          case 'type':
+            aValue = a.type?.toLowerCase() || ''
+            bValue = b.type?.toLowerCase() || ''
             break
-          case 'createdAt':
-            aValue = a.createdAt
-            bValue = b.createdAt
+          case 'contactNumber':
+            aValue = a.contactNumber?.toLowerCase() || ''
+            bValue = b.contactNumber?.toLowerCase() || ''
+            break
+          case 'email':
+            aValue = a.email?.toLowerCase() || ''
+            bValue = b.email?.toLowerCase() || ''
             break
         }
 
@@ -143,7 +125,7 @@ export function AccountsList() {
     }
 
     return result
-  }, [accounts, searchTerm, filterColumn, filterEntityType, sortColumn, sortDirection])
+  }, [caterers, searchTerm, filterColumn, sortColumn, sortDirection])
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -168,18 +150,32 @@ export function AccountsList() {
     return ''
   }
 
-  const handleRowClick = (account: AccountWithEntity) => {
-    const routes: Record<EntityType, string> = {
-      client: '/clients',
-      hotel: '/hotels',
-      guide: '/guides',
-      driver: '/drivers'
-    }
-    navigate(`${routes[account.entityType]}/${account.entityId}`)
+  const handleRowClick = (catererId: string) => {
+    navigate(`/caterers/${catererId}`)
   }
 
-  const getEntityTypeLabel = (type: EntityType) => {
-    return type.charAt(0).toUpperCase() + type.slice(1)
+  const handleAdd = () => {
+    setEditingCaterer(null)
+    setShowForm(true)
+  }
+
+  const handleSave = async () => {
+    await loadCaterers()
+    setShowForm(false)
+    setEditingCaterer(null)
+  }
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'restaurant':
+        return 'Restaurant'
+      case 'hotel':
+        return 'Hotel'
+      case 'particular':
+        return 'Particular'
+      default:
+        return type
+    }
   }
 
   if (loading) {
@@ -200,7 +196,7 @@ export function AccountsList() {
             color: '#111827',
             margin: 0
           }}>
-            Accounts
+            Caterers
           </h1>
         </div>
         <div style={{
@@ -210,7 +206,7 @@ export function AccountsList() {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#6b7280', margin: 0 }}>Loading accounts...</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading caterers...</p>
         </div>
       </div>
     )
@@ -234,7 +230,7 @@ export function AccountsList() {
             color: '#111827',
             margin: 0
           }}>
-            Accounts
+            Caterers
           </h1>
         </div>
         <div style={{
@@ -253,7 +249,7 @@ export function AccountsList() {
             <p style={{ margin: 0 }}>Error: {error}</p>
           </div>
           <button
-            onClick={loadAccounts}
+            onClick={loadCaterers}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: '#3b82f6',
@@ -291,7 +287,7 @@ export function AccountsList() {
           color: '#111827',
           margin: 0
         }}>
-            Accounts
+          Caterers
         </h1>
         <div style={{
           display: 'flex',
@@ -302,11 +298,32 @@ export function AccountsList() {
             color: '#6b7280',
             fontSize: '0.875rem'
           }}>
-            {searchTerm || filterEntityType !== 'all' ? filteredAccounts.length : accounts.length} {filteredAccounts.length === 1 ? 'account' : 'accounts'}
-            {searchTerm && filteredAccounts.length !== accounts.length && (
-              <span style={{ color: '#9ca3af' }}> of {accounts.length}</span>
+            {searchTerm ? filteredCaterers.length : caterers.length} {filteredCaterers.length === 1 ? 'caterer' : 'caterers'}
+            {searchTerm && filteredCaterers.length !== caterers.length && (
+              <span style={{ color: '#9ca3af' }}> of {caterers.length}</span>
             )}
           </div>
+          <button
+            onClick={handleAdd}
+            style={{
+              padding: '0.625rem 1.25rem',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
+          >
+            <span>+</span> Add Caterer
+          </button>
         </div>
       </div>
 
@@ -324,7 +341,7 @@ export function AccountsList() {
       }}>
         <input
           type="text"
-          placeholder="Search accounts..."
+          placeholder="Search caterers..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
@@ -335,24 +352,6 @@ export function AccountsList() {
             fontSize: '0.875rem'
           }}
         />
-        <select
-          value={filterEntityType}
-          onChange={(e) => setFilterEntityType(e.target.value as EntityType | 'all')}
-          style={{
-            flex: '0 0 auto',
-            padding: '0.5rem 0.75rem',
-            border: '1px solid #d1d5db',
-            borderRadius: '0.375rem',
-            fontSize: '0.875rem',
-            backgroundColor: 'white'
-          }}
-        >
-          <option value="all">All Entity Types</option>
-          <option value="client">Clients</option>
-          <option value="hotel">Hotels</option>
-          <option value="guide">Guides</option>
-          <option value="driver">Drivers</option>
-        </select>
         <select
           value={filterColumn}
           onChange={(e) => setFilterColumn(e.target.value as FilterColumn)}
@@ -366,17 +365,17 @@ export function AccountsList() {
           }}
         >
           <option value="all">All Columns</option>
-          <option value="accountHolderName">Account Holder</option>
-          <option value="bankName">Bank/Service Name</option>
-          <option value="entityType">Entity</option>
-          <option value="serviceName">Service Tag</option>
+          <option value="name">Name</option>
+          <option value="contactNumber">Contact Number</option>
+          <option value="email">Email</option>
+          <option value="destinationName">Destination</option>
+          <option value="type">Type</option>
         </select>
-        {(searchTerm || filterEntityType !== 'all') && (
+        {searchTerm && (
           <button
             onClick={() => {
               setSearchTerm('')
               setFilterColumn('all')
-              setFilterEntityType('all')
             }}
             style={{
               padding: '0.5rem 1rem',
@@ -397,7 +396,7 @@ export function AccountsList() {
       </div>
 
       {/* Content Card */}
-      {filteredAccounts.length === 0 && (searchTerm || filterEntityType !== 'all') ? (
+      {filteredCaterers.length === 0 && searchTerm ? (
         <div style={{
           backgroundColor: 'white',
           padding: '3rem',
@@ -410,10 +409,10 @@ export function AccountsList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No accounts match your search criteria.
+            No caterers match your search criteria.
           </p>
         </div>
-      ) : filteredAccounts.length === 0 ? (
+      ) : filteredCaterers.length === 0 ? (
         <div style={{
           backgroundColor: 'white',
           padding: '3rem',
@@ -426,7 +425,7 @@ export function AccountsList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No accounts found. Accounts will appear here once added.
+            No caterers found. Caterers will appear here once added.
           </p>
         </div>
       ) : (
@@ -449,13 +448,13 @@ export function AccountsList() {
                   borderBottom: '2px solid #e5e7eb'
                 }}>
                   <th
-                    onClick={() => handleSort('accountHolderName')}
+                    onClick={() => handleSort('name')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'accountHolderName' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'name' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -463,26 +462,26 @@ export function AccountsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'accountHolderName') {
+                      if (sortColumn !== 'name') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'accountHolderName') {
+                      if (sortColumn !== 'name') {
                         e.currentTarget.style.backgroundColor = '#f9fafb'
                       }
                     }}
                   >
-                    Account Holder{getSortIndicator('accountHolderName')}
+                    Name{getSortIndicator('name')}
                   </th>
                   <th
-                    onClick={() => handleSort('bankName')}
+                    onClick={() => handleSort('contactNumber')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'bankName' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'contactNumber' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -490,39 +489,26 @@ export function AccountsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'bankName') {
+                      if (sortColumn !== 'contactNumber') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'bankName') {
+                      if (sortColumn !== 'contactNumber') {
                         e.currentTarget.style.backgroundColor = '#f9fafb'
                       }
                     }}
                   >
-                    Bank/Service{getSortIndicator('bankName')}
+                    Contact{getSortIndicator('contactNumber')}
                   </th>
                   <th
+                    onClick={() => handleSort('email')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}
-                  >
-                    Account Number / Tag
-                  </th>
-                  <th
-                    onClick={() => handleSort('entityType')}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      textAlign: 'left',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      color: sortColumn === 'entityType' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'email' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -530,38 +516,79 @@ export function AccountsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'entityType') {
+                      if (sortColumn !== 'email') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'entityType') {
+                      if (sortColumn !== 'email') {
                         e.currentTarget.style.backgroundColor = '#f9fafb'
                       }
                     }}
                   >
-                    Entity{getSortIndicator('entityType')}
+                    Email{getSortIndicator('email')}
                   </th>
                   <th
+                    onClick={() => handleSort('type')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: '#6b7280',
+                      color: sortColumn === 'type' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
+                      letterSpacing: '0.05em',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      transition: 'color 0.2s, background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (sortColumn !== 'type') {
+                        e.currentTarget.style.backgroundColor = '#f3f4f6'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (sortColumn !== 'type') {
+                        e.currentTarget.style.backgroundColor = '#f9fafb'
+                      }
                     }}
                   >
-                    Currency
+                    Type{getSortIndicator('type')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('destinationName')}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      textAlign: 'left',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      color: sortColumn === 'destinationName' ? '#3b82f6' : '#6b7280',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      transition: 'color 0.2s, background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (sortColumn !== 'destinationName') {
+                        e.currentTarget.style.backgroundColor = '#f3f4f6'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (sortColumn !== 'destinationName') {
+                        e.currentTarget.style.backgroundColor = '#f9fafb'
+                      }
+                    }}
+                  >
+                    Destination{getSortIndicator('destinationName')}
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {filteredAccounts.map((account) => (
+                {filteredCaterers.map((caterer) => (
                   <tr
-                    key={account.id}
-                    onClick={() => handleRowClick(account)}
+                    key={caterer.id}
+                    onClick={() => handleRowClick(caterer.id)}
                     style={{
                       borderBottom: '1px solid #e5e7eb',
                       cursor: 'pointer',
@@ -575,98 +602,19 @@ export function AccountsList() {
                     }}
                   >
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {account.accountHolderName}
-                        {account.isPrimary && (
-                          <span style={{
-                            backgroundColor: '#3b82f6',
-                            color: 'white',
-                            padding: '0.125rem 0.375rem',
-                            borderRadius: '0.25rem',
-                            fontSize: '0.625rem',
-                            fontWeight: '600'
-                          }}>
-                            PRIMARY
-                          </span>
-                        )}
-                      </div>
+                      {caterer.name}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      <div>
-                        {account.accountType === 'cash' ? (
-                          <span style={{ fontWeight: '500' }}>💵 Cash</span>
-                        ) : account.accountType === 'other' ? (
-                          <>
-                            {account.bankName || '-'}
-                            <span style={{
-                              marginLeft: '0.5rem',
-                              padding: '0.25rem 0.5rem',
-                              backgroundColor: '#fef3c7',
-                              color: '#92400e',
-                              borderRadius: '0.25rem',
-                              fontSize: '0.75rem',
-                              fontWeight: '500'
-                            }}>
-                              Other
-                            </span>
-                          </>
-                        ) : account.bankName ? (
-                          <>
-                            {account.bankName}
-                            {account.accountType === 'online' && (
-                              <span style={{
-                                marginLeft: '0.5rem',
-                                fontSize: '0.75rem',
-                                color: '#6b7280'
-                              }}>
-                                (Online)
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          '-'
-                        )}
-                      </div>
+                      {caterer.contactNumber || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {account.accountType === 'online' && account.serviceName ? (
-                        <span style={{ fontFamily: 'monospace' }}>{account.serviceName}</span>
-                      ) : account.accountType === 'bank' && account.accountNumber ? (
-                        <span style={{ fontFamily: 'monospace' }}>{account.accountNumber}</span>
-                      ) : account.accountType === 'cash' ? (
-                        <span style={{ color: '#6b7280', fontStyle: 'italic' }}>N/A</span>
-                      ) : (
-                        '-'
-                      )}
+                      {caterer.email || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      <div>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '0.125rem 0.5rem',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          backgroundColor: '#e5e7eb',
-                          color: '#374151',
-                          marginRight: '0.5rem'
-                        }}>
-                          {getEntityTypeLabel(account.entityType)}
-                        </span>
-                        <span
-                          style={{
-                            color: '#3b82f6',
-                            textDecoration: 'none'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                          onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                        >
-                          {account.entityName || account.entityId}
-                        </span>
-                      </div>
+                      {getTypeLabel(caterer.type)}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {account.currency || '-'}
+                      {caterer.destinationName || '-'}
                     </td>
                   </tr>
                 ))}
@@ -676,6 +624,17 @@ export function AccountsList() {
         </div>
       )}
 
+      {showForm && (
+        <CatererForm
+          caterer={editingCaterer}
+          destinations={destinations}
+          onClose={() => {
+            setShowForm(false)
+            setEditingCaterer(null)
+          }}
+          onSave={handleSave}
+        />
+      )}
     </div>
   )
 }
