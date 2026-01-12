@@ -8,48 +8,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   try {
     // Parse path from query parameter (Vercel catch-all routes)
+    // For api/[...path].ts, Vercel puts path segments in req.query.path as an array
     const path = req.query.path as string[] | string | undefined
     let pathArray: string[] = []
     
     if (Array.isArray(path)) {
       pathArray = path
     } else if (typeof path === 'string') {
-      pathArray = [path]
+      pathArray = path.split('/').filter(Boolean)
     } else if (path) {
-      pathArray = [String(path)]
+      pathArray = String(path).split('/').filter(Boolean)
     }
     
     // Fallback: parse from URL if path is not in query
-    if (pathArray.length === 0 && req.url) {
-      try {
-        const urlPath = new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname
-        const segments = urlPath.replace(/^\/api\//, '').split('/').filter(Boolean)
-        pathArray = segments
-      } catch (e) {
-        // If URL parsing fails, try to parse from the raw URL
-        const urlMatch = req.url.match(/^\/api\/(.+)$/)
-        if (urlMatch) {
-          pathArray = urlMatch[1].split('/').filter(Boolean)
-        }
+    if (pathArray.length === 0) {
+      // Try to get from URL directly
+      const url = req.url || ''
+      const urlPath = url.split('?')[0] // Remove query string
+      const match = urlPath.match(/^\/api\/(.+)$/)
+      if (match) {
+        pathArray = match[1].split('/').filter(Boolean)
       }
     }
     
     // Debug logging
     console.log('API Route Debug:', { 
       url: req.url, 
-      queryPath: req.query.path, 
+      queryPath: req.query.path,
+      allQuery: req.query,
       pathArray, 
       method: req.method,
-      query: req.query
+      headers: { host: req.headers.host }
     })
     
     const route = pathArray.length > 0 ? pathArray[0] : null
     const id = pathArray.length > 1 ? pathArray[1] : null
     
-    // If no route found, return 404 early
+    // Health check endpoint
+    if (route === 'health' || (pathArray.length === 0 && req.url?.includes('health'))) {
+      res.status(200).json({ status: 'ok', message: 'API handler is working', pathArray, query: req.query })
+      return
+    }
+    
+    // If no route found, return 404 early with debug info
     if (!route) {
       console.log('No route found, returning 404')
-      res.status(404).json({ message: 'API route not found', debug: { pathArray, queryPath: req.query.path, url: req.url } })
+      res.status(404).json({ 
+        message: 'API route not found', 
+        debug: { 
+          pathArray, 
+          queryPath: req.query.path, 
+          url: req.url,
+          allQuery: req.query,
+          method: req.method
+        } 
+      })
       return
     }
 
