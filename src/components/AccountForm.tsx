@@ -365,6 +365,8 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
               />
             </div>
           </div>
+            </>
+          )}
 
           <div style={{ marginBottom: '1rem' }}>
             <label style={{
