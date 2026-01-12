@@ -79,11 +79,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // Auth routes (no auth required)
     if (route === 'auth') {
       const authAction = pathArray.length > 1 ? pathArray[1] : null
-      console.log('🔐 Auth route detected:', { route, authAction, pathArray, method: req.method, url: req.url })
+      console.log('🔐 Auth route detected:', { route, authAction, pathArray, method: req.method, url: req.url, headers: req.headers })
       
       if (authAction === 'login') {
+        console.log('📝 Login route - Method check:', { method: req.method, expected: 'POST', isPost: req.method === 'POST' })
         if (req.method !== 'POST') {
-          res.status(405).json({ message: 'Method not allowed' })
+          res.status(405).json({ message: 'Method not allowed', received: req.method, expected: 'POST' })
           return
         }
         
