@@ -75,8 +75,8 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
           entityType,
           entityId,
           accountHolderName: formData.accountHolderName.trim(),
-          bankName: formData.bankName.trim(),
           accountType: formData.accountType,
+          bankName: formData.accountType === 'cash' ? null : (formData.bankName.trim() || null),
           accountNumber: formData.accountNumber.trim() || null,
           iban: formData.iban.trim() || null,
           swiftBic: formData.swiftBic.trim() || null,
@@ -85,15 +85,14 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
           serviceName: formData.serviceName.trim() || null,
           isPrimary: formData.isPrimary,
           note: formData.note.trim() || null,
-          bankName: formData.accountType === 'cash' ? null : (formData.bankName.trim() || null),
         })
       } else {
         await accountsApi.create({
           entityType,
           entityId,
           accountHolderName: formData.accountHolderName.trim(),
-          bankName: formData.bankName.trim(),
           accountType: formData.accountType,
+          bankName: formData.accountType === 'cash' ? null : (formData.bankName.trim() || null),
           accountNumber: formData.accountNumber.trim() || null,
           iban: formData.iban.trim() || null,
           swiftBic: formData.swiftBic.trim() || null,
@@ -102,7 +101,6 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
           serviceName: formData.serviceName.trim() || null,
           isPrimary: formData.isPrimary,
           note: formData.note.trim() || null,
-          bankName: formData.accountType === 'cash' ? null : (formData.bankName.trim() || null),
         })
       }
       await onSave()
