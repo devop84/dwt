@@ -240,6 +240,8 @@ export const initDb = async () => {
         "swiftBic" VARCHAR(50),
         "routingNumber" VARCHAR(50),
         currency VARCHAR(10),
+        "isOnlineService" BOOLEAN DEFAULT FALSE,
+        "serviceName" VARCHAR(100),
         "isPrimary" BOOLEAN DEFAULT FALSE,
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
@@ -248,6 +250,14 @@ export const initDb = async () => {
       )
     `)
     console.log('✅ Bank accounts table ready')
+    
+    // Add online service columns if they don't exist (migration for existing tables)
+    try {
+      await query(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS "isOnlineService" BOOLEAN DEFAULT FALSE`)
+      await query(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
+    } catch (migrationError) {
+      console.log('Migration note:', migrationError)
+    }
     
     // Add username column if it doesn't exist (migration for existing tables)
     try {

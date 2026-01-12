@@ -19,6 +19,8 @@ export function BankAccountForm({ account, entityType, entityId, onClose, onSave
     swiftBic: '',
     routingNumber: '',
     currency: '',
+    isOnlineService: false,
+    serviceName: '',
     isPrimary: false,
     note: '',
   })
@@ -35,6 +37,8 @@ export function BankAccountForm({ account, entityType, entityId, onClose, onSave
         swiftBic: account.swiftBic || '',
         routingNumber: account.routingNumber || '',
         currency: account.currency || '',
+        isOnlineService: account.isOnlineService || false,
+        serviceName: account.serviceName || '',
         isPrimary: account.isPrimary || false,
         note: account.note || '',
       })
@@ -68,6 +72,8 @@ export function BankAccountForm({ account, entityType, entityId, onClose, onSave
           swiftBic: formData.swiftBic.trim() || null,
           routingNumber: formData.routingNumber.trim() || null,
           currency: formData.currency.trim() || null,
+          isOnlineService: formData.isOnlineService,
+          serviceName: formData.serviceName.trim() || null,
           isPrimary: formData.isPrimary,
           note: formData.note.trim() || null,
         })
@@ -82,6 +88,8 @@ export function BankAccountForm({ account, entityType, entityId, onClose, onSave
           swiftBic: formData.swiftBic.trim() || null,
           routingNumber: formData.routingNumber.trim() || null,
           currency: formData.currency.trim() || null,
+          isOnlineService: formData.isOnlineService,
+          serviceName: formData.serviceName.trim() || null,
           isPrimary: formData.isPrimary,
           note: formData.note.trim() || null,
         })

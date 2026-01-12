@@ -169,6 +169,8 @@ async function initDb() {
         "swiftBic" VARCHAR(50),
         "routingNumber" VARCHAR(50),
         currency VARCHAR(10),
+        "isOnlineService" BOOLEAN DEFAULT FALSE,
+        "serviceName" VARCHAR(100),
         "isPrimary" BOOLEAN DEFAULT FALSE,
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
@@ -176,6 +178,14 @@ async function initDb() {
         CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver'))
       )
     `)
+    
+    // Add online service columns if they don't exist (migration for existing tables)
+    try {
+      await pool.query(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS "isOnlineService" BOOLEAN DEFAULT FALSE`)
+      await pool.query(`ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
+    } catch (migrationError) {
+      // Columns might already exist, that's fine
+    }
     
     dbInitialized = true
     console.log('✅ Database initialized')
@@ -1493,7 +1503,7 @@ app.post('/api/bank-accounts', async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' })
     }
 
-    const { entityType, entityId, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, isPrimary, note } = req.body
+    const { entityType, entityId, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, isOnlineService, serviceName, isPrimary, note } = req.body
 
     if (!entityType || !entityId || !accountHolderName || !bankName) {
       return res.status(400).json({ message: 'Entity type, entity ID, account holder name, and bank name are required' })
@@ -1513,8 +1523,8 @@ app.post('/api/bank-accounts', async (req, res) => {
 
     const accountId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO bank_accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isPrimary", note)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      `INSERT INTO bank_accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isOnlineService", "serviceName", "isPrimary", note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
       [
         accountId,
@@ -1527,6 +1537,8 @@ app.post('/api/bank-accounts', async (req, res) => {
         swiftBic || null,
         routingNumber || null,
         currency || null,
+        isOnlineService || false,
+        serviceName || null,
         isPrimary || false,
         note || null
       ]

@@ -94,6 +94,8 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
   "swiftBic" VARCHAR(50),
   "routingNumber" VARCHAR(50),
   currency VARCHAR(10),
+  "isOnlineService" BOOLEAN DEFAULT FALSE,
+  "serviceName" VARCHAR(100),
   "isPrimary" BOOLEAN DEFAULT FALSE,
   note TEXT,
   "createdAt" TIMESTAMP DEFAULT NOW(),

@@ -51,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         const accounts = await query(sql, params.length > 0 ? params : undefined)
         res.status(200).json(accounts)
       } else if (req.method === 'POST') {
-        const { entityType, entityId, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, isPrimary, note } = req.body
+        const { entityType, entityId, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, isOnlineService, serviceName, isPrimary, note } = req.body
         
         if (!entityType || !entityId || !accountHolderName || !bankName) {
           res.status(400).json({ message: 'Entity type, entity ID, account holder name, and bank name are required' })
@@ -73,8 +73,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
         const accountId = randomUUID()
         const result = await query(
-          `INSERT INTO bank_accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isPrimary", note)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+          `INSERT INTO bank_accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isOnlineService", "serviceName", "isPrimary", note)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
           [
             accountId,
             entityType,
@@ -86,6 +86,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             swiftBic || null,
             routingNumber || null,
             currency || null,
+            isOnlineService || false,
+            serviceName || null,
             isPrimary || false,
             note || null
           ]
@@ -103,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         }
         res.status(200).json(account)
       } else if (req.method === 'PUT') {
-        const { accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, isPrimary, note } = req.body
+        const { accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, isOnlineService, serviceName, isPrimary, note } = req.body
         
         if (!accountHolderName || !bankName) {
           res.status(400).json({ message: 'Account holder name and bank name are required' })
@@ -126,8 +128,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
         const result = await query(
           `UPDATE bank_accounts 
-           SET "accountHolderName" = $1, "bankName" = $2, "accountNumber" = $3, iban = $4, "swiftBic" = $5, "routingNumber" = $6, currency = $7, "isPrimary" = $8, note = $9, "updatedAt" = NOW()
-           WHERE id = $10 RETURNING *`,
+           SET "accountHolderName" = $1, "bankName" = $2, "accountNumber" = $3, iban = $4, "swiftBic" = $5, "routingNumber" = $6, currency = $7, "isOnlineService" = $8, "serviceName" = $9, "isPrimary" = $10, note = $11, "updatedAt" = NOW()
+           WHERE id = $12 RETURNING *`,
           [
             accountHolderName,
             bankName,
@@ -136,6 +138,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             swiftBic || null,
             routingNumber || null,
             currency || null,
+            isOnlineService || false,
+            serviceName || null,
             isPrimary || false,
             note || null,
             id

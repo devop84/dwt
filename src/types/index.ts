@@ -92,6 +92,8 @@ export interface BankAccount {
   swiftBic: string | null
   routingNumber: string | null
   currency: string | null
+  isOnlineService: boolean
+  serviceName: string | null
   isPrimary: boolean
   note: string | null
   createdAt: string

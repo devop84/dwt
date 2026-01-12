@@ -15,6 +15,7 @@ import { GuidesList } from './pages/GuidesList'
 import { GuideDetails } from './pages/GuideDetails'
 import { DriversList } from './pages/DriversList'
 import { DriverDetails } from './pages/DriverDetails'
+import { BankAccountsList } from './pages/BankAccountsList'
 
 function App() {
   return (
@@ -115,6 +116,14 @@ function App() {
               element={
                 <Layout>
                   <DriverDetails />
+                </Layout>
+              }
+            />
+            <Route
+              path="/bank-accounts"
+              element={
+                <Layout>
+                  <BankAccountsList />
                 </Layout>
               }
             />

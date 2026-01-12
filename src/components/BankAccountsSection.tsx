@@ -209,7 +209,7 @@ export function BankAccountsSection({ entityType, entityId }: BankAccountsSectio
                       letterSpacing: '0.05em',
                       marginBottom: '0.25rem'
                     }}>
-                      Bank Name
+                      {account.isOnlineService ? 'Service Name' : 'Bank Name'}
                     </label>
                     <p style={{
                       fontSize: '0.875rem',
@@ -217,6 +217,11 @@ export function BankAccountsSection({ entityType, entityId }: BankAccountsSectio
                       margin: 0
                     }}>
                       {account.bankName}
+                      {account.isOnlineService && account.serviceName && (
+                        <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>
+                          ({account.serviceName})
+                        </span>
+                      )}
                     </p>
                   </div>
                   {account.accountNumber && (
