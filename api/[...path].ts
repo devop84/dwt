@@ -8,19 +8,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   try {
     // Parse path from query parameter (Vercel catch-all routes)
-    // For api/[...path].ts, Vercel puts path segments in req.query.path as an array
+    // For api/[...path].ts, Vercel puts path segments in req.query.path
+    // It can be an array like ["auth", "login"] or a string like "auth/login" or "auth"
     const path = req.query.path as string[] | string | undefined
     let pathArray: string[] = []
     
     if (Array.isArray(path)) {
-      pathArray = path
+      // Already an array: ["auth", "login"]
+      pathArray = path.filter(Boolean)
     } else if (typeof path === 'string') {
+      // String might be "auth/login" or just "auth"
       pathArray = path.split('/').filter(Boolean)
     } else if (path) {
       pathArray = String(path).split('/').filter(Boolean)
     }
     
-    // Fallback: parse from URL if path is not in query
+    // Fallback: parse from URL if path is not in query or empty
     if (pathArray.length === 0) {
       // Try to get from URL directly
       const url = req.url || ''
@@ -69,6 +72,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // Auth routes (no auth required)
     if (route === 'auth') {
       const authAction = pathArray.length > 1 ? pathArray[1] : null
+      
+      console.log('Auth route detected:', { route, authAction, pathArray, fullPath: req.query.path })
       
       if (authAction === 'login') {
         if (req.method !== 'POST') {
