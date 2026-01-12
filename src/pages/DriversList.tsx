@@ -35,9 +35,10 @@ export function DriversList() {
       setLoading(true)
       setError(null)
       const data = await driversApi.getAll() as DriverWithDestination[]
-      setDrivers(data)
+      setDrivers(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load drivers')
+      setDrivers([]) // Ensure drivers is always an array
       console.error('Error loading drivers:', err)
     } finally {
       setLoading(false)
@@ -47,8 +48,9 @@ export function DriversList() {
   const loadDestinations = async () => {
     try {
       const data = await destinationsApi.getAll()
-      setDestinations(data)
+      setDestinations(Array.isArray(data) ? data : [])
     } catch (err: any) {
+      setDestinations([]) // Ensure destinations is always an array
       console.error('Error loading destinations:', err)
     }
   }

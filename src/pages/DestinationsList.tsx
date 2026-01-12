@@ -29,9 +29,10 @@ export function DestinationsList() {
       setLoading(true)
       setError(null)
       const data = await destinationsApi.getAll()
-      setDestinations(data)
+      setDestinations(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load destinations')
+      setDestinations([]) // Ensure destinations is always an array
       console.error('Error loading destinations:', err)
     } finally {
       setLoading(false)

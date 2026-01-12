@@ -26,9 +26,10 @@ export function AccountsCards({ entityType, entityId }: AccountsCardsProps) {
       setLoading(true)
       setError(null)
       const data = await accountsApi.getAll(entityType, entityId)
-      setAccounts(data)
+      setAccounts(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load accounts')
+      setAccounts([]) // Ensure accounts is always an array
       console.error('Error loading accounts:', err)
     } finally {
       setLoading(false)

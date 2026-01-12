@@ -35,9 +35,10 @@ export function GuidesList() {
       setLoading(true)
       setError(null)
       const data = await guidesApi.getAll() as GuideWithDestination[]
-      setGuides(data)
+      setGuides(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load guides')
+      setGuides([]) // Ensure guides is always an array
       console.error('Error loading guides:', err)
     } finally {
       setLoading(false)
@@ -47,8 +48,9 @@ export function GuidesList() {
   const loadDestinations = async () => {
     try {
       const data = await destinationsApi.getAll()
-      setDestinations(data)
+      setDestinations(Array.isArray(data) ? data : [])
     } catch (err: any) {
+      setDestinations([]) // Ensure destinations is always an array
       console.error('Error loading destinations:', err)
     }
   }

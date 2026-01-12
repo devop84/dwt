@@ -29,9 +29,10 @@ export function ClientsList() {
       setLoading(true)
       setError(null)
       const data = await clientsApi.getAll()
-      setClients(data)
+      setClients(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load clients')
+      setClients([]) // Ensure clients is always an array
       console.error('Error loading clients:', err)
     } finally {
       setLoading(false)

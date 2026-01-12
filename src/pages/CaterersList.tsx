@@ -35,9 +35,10 @@ export function CaterersList() {
       setLoading(true)
       setError(null)
       const data = await caterersApi.getAll() as CatererWithDestination[]
-      setCaterers(data)
+      setCaterers(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load caterers')
+      setCaterers([]) // Ensure caterers is always an array
       console.error('Error loading caterers:', err)
     } finally {
       setLoading(false)
@@ -47,8 +48,9 @@ export function CaterersList() {
   const loadDestinations = async () => {
     try {
       const data = await destinationsApi.getAll()
-      setDestinations(data)
+      setDestinations(Array.isArray(data) ? data : [])
     } catch (err: any) {
+      setDestinations([]) // Ensure destinations is always an array
       console.error('Error loading destinations:', err)
     }
   }

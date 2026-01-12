@@ -50,13 +50,18 @@ export function DestinationDetails() {
         caterersApi.getAll()
       ])
       
-      // Filter entities for this destination
-      setHotels(allHotels.filter(hotel => hotel.destinationId === id))
-      setGuides(allGuides.filter(guide => guide.destinationId === id))
-      setDrivers(allDrivers.filter(driver => driver.destinationId === id))
-      setCaterers(allCaterers.filter(caterer => caterer.destinationId === id))
+      // Filter entities for this destination, ensuring arrays
+      setHotels(Array.isArray(allHotels) ? allHotels.filter(hotel => hotel.destinationId === id) : [])
+      setGuides(Array.isArray(allGuides) ? allGuides.filter(guide => guide.destinationId === id) : [])
+      setDrivers(Array.isArray(allDrivers) ? allDrivers.filter(driver => driver.destinationId === id) : [])
+      setCaterers(Array.isArray(allCaterers) ? allCaterers.filter(caterer => caterer.destinationId === id) : [])
     } catch (err: any) {
       console.error('Error loading entities:', err)
+      // Ensure all arrays are set to empty arrays on error
+      setHotels([])
+      setGuides([])
+      setDrivers([])
+      setCaterers([])
     }
   }
 

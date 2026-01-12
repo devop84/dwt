@@ -27,9 +27,10 @@ export function CompanyAccountsList() {
       setLoading(true)
       setError(null)
       const data = await accountsApi.getAll('company')
-      setAccounts(data)
+      setAccounts(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load company accounts')
+      setAccounts([]) // Ensure accounts is always an array
       console.error('Error loading company accounts:', err)
     } finally {
       setLoading(false)
