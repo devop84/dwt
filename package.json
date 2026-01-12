@@ -16,6 +16,7 @@
     "seed:hotels": "node scripts/seed-hotels.js",
     "seed:guides": "node scripts/seed-guides.js",
     "seed:drivers": "node scripts/seed-drivers.js",
+    "seed:bank-accounts": "node scripts/seed-bank-accounts.js",
     "migrate:description": "node scripts/migrate-note-to-description.js",
     "create:guides-table": "node scripts/create-guides-table.js",
     "build": "vite build",
