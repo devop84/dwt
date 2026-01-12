@@ -127,16 +127,13 @@ export const initDb = async () => {
       await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS description TEXT`)
       // Copy data from note to description if note exists and description doesn't
       await query(`
-        UPDATE destinations 
-        SET description = note 
-        WHERE note IS NOT NULL AND (description IS NULL OR description = '')
-      `)
-      // Drop the old note column if it exists (after migration)
-      await query(`
         DO $$ 
         BEGIN 
           IF EXISTS (SELECT 1 FROM information_schema.columns 
                      WHERE table_name = 'destinations' AND column_name = 'note') THEN
+            UPDATE destinations 
+            SET description = note 
+            WHERE note IS NOT NULL AND (description IS NULL OR description = '');
             ALTER TABLE destinations DROP COLUMN note;
           END IF;
         END $$;
@@ -169,16 +166,13 @@ export const initDb = async () => {
       await query(`ALTER TABLE hotels ADD COLUMN IF NOT EXISTS description TEXT`)
       // Copy data from note to description if note exists and description doesn't
       await query(`
-        UPDATE hotels 
-        SET description = note 
-        WHERE note IS NOT NULL AND (description IS NULL OR description = '')
-      `)
-      // Drop the old note column if it exists (after migration)
-      await query(`
         DO $$ 
         BEGIN 
           IF EXISTS (SELECT 1 FROM information_schema.columns 
                      WHERE table_name = 'hotels' AND column_name = 'note') THEN
+            UPDATE hotels 
+            SET description = note 
+            WHERE note IS NOT NULL AND (description IS NULL OR description = '');
             ALTER TABLE hotels DROP COLUMN note;
           END IF;
         END $$;
