@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { clientsApi } from '../lib/api'
 import type { Client } from '../types'
 import { ClientForm } from '../components/ClientForm'
-import { AccountsSection } from '../components/AccountsSection'
+import { AccountsCards } from '../components/AccountsCards'
 
 export function ClientDetails() {
   const { id } = useParams<{ id: string }>()
@@ -428,7 +428,7 @@ export function ClientDetails() {
           </div>
         )}
 
-        <AccountsSection entityType="client" entityId={client.id} />
+        <AccountsCards entityType="client" entityId={client.id} />
 
         <div style={{
           padding: '1.5rem 2rem',

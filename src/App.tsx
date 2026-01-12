@@ -18,6 +18,7 @@ import { DriverDetails } from './pages/DriverDetails'
 import { CaterersList } from './pages/CaterersList'
 import { CatererDetails } from './pages/CatererDetails'
 import { AccountsList } from './pages/AccountsList'
+import { AccountDetails } from './pages/AccountDetails'
 import { CompanyAccountsList } from './pages/CompanyAccountsList'
 import { CompanyAccountDetails } from './pages/CompanyAccountDetails'
 
@@ -144,6 +145,14 @@ function App() {
               element={
                 <Layout>
                   <AccountsList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/accounts/:id"
+              element={
+                <Layout>
+                  <AccountDetails />
                 </Layout>
               }
             />

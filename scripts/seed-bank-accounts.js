@@ -120,12 +120,12 @@ const bankAccountsToSeed = [
     entityType: 'client',
     accountType: 'online',
     accountHolderName: 'John Smith',
-    bankName: 'Wise',
-    accountNumber: null,
+    bankName: null,
+    accountNumber: '@johnsmith',
     iban: null,
     swiftBic: null,
     currency: 'USD',
-    serviceName: '@johnsmith',
+    serviceName: 'Wise',
     isPrimary: false,
     note: 'International transfers'
   },
@@ -133,12 +133,12 @@ const bankAccountsToSeed = [
     entityType: 'client',
     accountType: 'online',
     accountHolderName: 'Maria Garcia',
-    bankName: 'Revolut',
-    accountNumber: null,
+    bankName: null,
+    accountNumber: 'maria.garcia@revolut',
     iban: null,
     swiftBic: null,
     currency: 'EUR',
-    serviceName: 'maria.garcia@revolut',
+    serviceName: 'Revolut',
     isPrimary: false,
     note: 'Multi-currency account'
   },
@@ -146,12 +146,12 @@ const bankAccountsToSeed = [
     entityType: 'hotel',
     accountType: 'online',
     accountHolderName: 'Hotel Cumbuco Beach',
-    bankName: 'Wise',
-    accountNumber: null,
+    bankName: null,
+    accountNumber: 'hotel.cumbuco@wise',
     iban: null,
     swiftBic: null,
     currency: 'USD',
-    serviceName: 'hotel.cumbuco@wise',
+    serviceName: 'Wise',
     isPrimary: false,
     note: 'For international guest payments'
   },
@@ -159,12 +159,12 @@ const bankAccountsToSeed = [
     entityType: 'guide',
     accountType: 'online',
     accountHolderName: 'João Silva',
-    bankName: 'PayPal',
-    accountNumber: null,
+    bankName: null,
+    accountNumber: 'joao.silva@paypal.com',
     iban: null,
     swiftBic: null,
     currency: 'USD',
-    serviceName: 'joao.silva@paypal.com',
+    serviceName: 'PayPal',
     isPrimary: false,
     note: 'Quick payment option'
   },
@@ -172,12 +172,12 @@ const bankAccountsToSeed = [
     entityType: 'guide',
     accountType: 'online',
     accountHolderName: 'Carlos Oliveira',
-    bankName: 'Wise',
-    accountNumber: null,
+    bankName: null,
+    accountNumber: '@carlos.oliveira',
     iban: null,
     swiftBic: null,
     currency: 'EUR',
-    serviceName: '@carlos.oliveira',
+    serviceName: 'Wise',
     isPrimary: true,
     note: 'Primary account for international clients'
   },
@@ -185,12 +185,12 @@ const bankAccountsToSeed = [
     entityType: 'driver',
     accountType: 'online',
     accountHolderName: 'Antonio Ferreira',
-    bankName: 'Revolut',
-    accountNumber: null,
+    bankName: null,
+    accountNumber: 'antonio.ferreira@revolut',
     iban: null,
     swiftBic: null,
     currency: 'USD',
-    serviceName: 'antonio.ferreira@revolut',
+    serviceName: 'Revolut',
     isPrimary: false,
     note: 'Alternative payment method'
   },
@@ -198,12 +198,12 @@ const bankAccountsToSeed = [
     entityType: 'driver',
     accountType: 'online',
     accountHolderName: 'Paulo Alves',
-    bankName: 'Wise',
-    accountNumber: null,
+    bankName: null,
+    accountNumber: '@paulo.alves',
     iban: null,
     swiftBic: null,
     currency: 'BRL',
-    serviceName: '@paulo.alves',
+    serviceName: 'Wise',
     isPrimary: true,
     note: 'Main account for payments'
   },
@@ -259,15 +259,14 @@ async function seedBankAccounts() {
       process.exit(1)
     }
 
-    // Add online service columns if they don't exist
-    console.log('🔧 Checking for online service columns...')
+    // Ensure accountType column exists
+    console.log('🔧 Checking for accountType column...')
     try {
-      await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "isOnlineService" BOOLEAN DEFAULT FALSE`)
-      await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
-      console.log('✅ Online service columns ready\n')
+      await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "accountType" VARCHAR(50) DEFAULT 'bank'`)
+      console.log('✅ Account type column ready\n')
     } catch (migrationError) {
-      // Columns might already exist, that's fine
-      console.log('ℹ️  Online service columns check completed\n')
+      // Column might already exist, that's fine
+      console.log('ℹ️  Account type column check completed\n')
     }
     
     // Migrate bank_accounts table to accounts if it exists
@@ -361,30 +360,32 @@ async function seedBankAccounts() {
       const accountId = randomUUID()
 
       await pool.query(
-        `INSERT INTO accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isOnlineService", "serviceName", "isPrimary", note)
+        `INSERT INTO accounts (id, "entityType", "entityId", "accountType", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "serviceName", "isPrimary", note)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
         [
           accountId,
           accountData.entityType,
           entityId,
+          accountData.accountType,
           accountData.accountHolderName,
-          accountData.bankName,
-          accountData.accountNumber,
-          accountData.iban,
-          accountData.swiftBic,
+          accountData.bankName || null,
+          accountData.accountNumber || null,
+          accountData.iban || null,
+          accountData.swiftBic || null,
           null, // routingNumber
-          accountData.currency,
-          accountData.isOnlineService,
-          accountData.serviceName,
-          accountData.isPrimary,
-          accountData.note,
+          accountData.currency || null,
+          accountData.serviceName || null,
+          accountData.isPrimary || false,
+          accountData.note || null,
         ]
       )
 
-      const serviceInfo = accountData.isOnlineService 
-        ? ` (${accountData.serviceName})` 
-        : ''
-      console.log(`   ✓ Seeded ${accountData.entityType} account: ${accountData.bankName}${serviceInfo} → ${entityName}`)
+      const accountDisplay = accountData.accountType === 'online'
+        ? `${accountData.serviceName} (${accountData.accountNumber})`
+        : accountData.accountType === 'cash'
+        ? 'Cash'
+        : accountData.bankName
+      console.log(`   ✓ Seeded ${accountData.entityType} account: ${accountDisplay} → ${entityName}`)
       seededCount++
     }
 

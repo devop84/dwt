@@ -602,6 +602,21 @@ export function AccountsList() {
                       <div>
                         {account.accountType === 'cash' ? (
                           <span style={{ fontWeight: '500' }}>💵 Cash</span>
+                        ) : account.accountType === 'online' ? (
+                          <>
+                            {account.serviceName || '-'}
+                            <span style={{
+                              marginLeft: '0.5rem',
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#e0f2fe',
+                              color: '#0284c7',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '500'
+                            }}>
+                              Online
+                            </span>
+                          </>
                         ) : account.accountType === 'other' ? (
                           <>
                             {account.bankName || '-'}
@@ -617,33 +632,20 @@ export function AccountsList() {
                               Other
                             </span>
                           </>
-                        ) : account.bankName ? (
-                          <>
-                            {account.bankName}
-                            {account.accountType === 'online' && (
-                              <span style={{
-                                marginLeft: '0.5rem',
-                                fontSize: '0.75rem',
-                                color: '#6b7280'
-                              }}>
-                                (Online)
-                              </span>
-                            )}
-                          </>
                         ) : (
-                          '-'
+                          account.bankName || '-'
                         )}
                       </div>
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {account.accountType === 'online' && account.serviceName ? (
-                        <span style={{ fontFamily: 'monospace' }}>{account.serviceName}</span>
+                      {account.accountType === 'online' && account.accountNumber ? (
+                        <span style={{ fontFamily: 'monospace' }}>{account.accountNumber}</span>
                       ) : account.accountType === 'bank' && account.accountNumber ? (
                         <span style={{ fontFamily: 'monospace' }}>{account.accountNumber}</span>
                       ) : account.accountType === 'cash' ? (
                         <span style={{ color: '#6b7280', fontStyle: 'italic' }}>N/A</span>
                       ) : (
-                        '-'
+                        account.accountNumber || '-'
                       )}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>

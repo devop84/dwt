@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { guidesApi, destinationsApi } from '../lib/api'
 import type { Guide, Destination } from '../types'
 import { GuideForm } from '../components/GuideForm'
-import { AccountsSection } from '../components/AccountsSection'
+import { AccountsCards } from '../components/AccountsCards'
 
 interface GuideWithDestination extends Guide {
   destinationName?: string
@@ -408,7 +408,7 @@ export function GuideDetails() {
           </div>
         )}
 
-        <AccountsSection entityType="guide" entityId={guide.id} />
+        <AccountsCards entityType="guide" entityId={guide.id} />
 
         <div style={{
           padding: '1.5rem 2rem',

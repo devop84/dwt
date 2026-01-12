@@ -125,11 +125,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       }
     } else {
       if (req.method === 'GET') {
-        const account = await queryOne('SELECT * FROM accounts WHERE id = $1', [id])
+        // Get account with entity name if applicable
+        let account = await queryOne('SELECT * FROM accounts WHERE id = $1', [id])
         if (!account) {
           res.status(404).json({ message: 'Account not found' })
           return
         }
+        
+        // Add entity name if entityId exists
+        if (account.entityId && account.entityType) {
+          let entityName = null
+          try {
+            if (account.entityType === 'client') {
+              const entity = await queryOne('SELECT name FROM clients WHERE id = $1', [account.entityId])
+              entityName = entity?.name || null
+            } else if (account.entityType === 'hotel') {
+              const entity = await queryOne('SELECT name FROM hotels WHERE id = $1', [account.entityId])
+              entityName = entity?.name || null
+            } else if (account.entityType === 'guide') {
+              const entity = await queryOne('SELECT name FROM guides WHERE id = $1', [account.entityId])
+              entityName = entity?.name || null
+            } else if (account.entityType === 'driver') {
+              const entity = await queryOne('SELECT name FROM drivers WHERE id = $1', [account.entityId])
+              entityName = entity?.name || null
+            } else if (account.entityType === 'caterer') {
+              const entity = await queryOne('SELECT name FROM caterers WHERE id = $1', [account.entityId])
+              entityName = entity?.name || null
+            }
+          } catch (err) {
+            console.error('Error fetching entity name:', err)
+          }
+          account = { ...account, entityName }
+        }
+        
         res.status(200).json(account)
       } else if (req.method === 'PUT') {
         const { entityType, entityId, accountType, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, serviceName, isPrimary, note } = req.body

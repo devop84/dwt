@@ -60,7 +60,11 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
     }
 
     if (formData.accountType === 'online' && !formData.serviceName.trim()) {
-      setError('Service name/tag is required for online accounts')
+      setError('Online service name is required for online accounts')
+      return
+    }
+    if (formData.accountType === 'online' && !formData.accountNumber.trim()) {
+      setError('Tag/Username is required for online accounts')
       return
     }
 
@@ -299,14 +303,14 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
           {formData.accountType === 'online' && (
             <>
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="bankName" style={labelStyle}>
-                  Service Name <span style={{ color: '#ef4444' }}>*</span>
+                <label htmlFor="serviceName" style={labelStyle}>
+                  Online Service Name <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
-                  id="bankName"
+                  id="serviceName"
                   type="text"
-                  value={formData.bankName}
-                  onChange={(e) => handleChange('bankName', e.target.value)}
+                  value={formData.serviceName}
+                  onChange={(e) => handleChange('serviceName', e.target.value)}
                   required
                   placeholder="e.g., Wise, Revolut, PayPal"
                   style={inputStyle}
@@ -321,14 +325,14 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="serviceName" style={labelStyle}>
-                  Tag/Username <span style={{ color: '#ef4444' }}>*</span>
+                <label htmlFor="accountNumber" style={labelStyle}>
+                  Tag / Username <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
-                  id="serviceName"
+                  id="accountNumber"
                   type="text"
-                  value={formData.serviceName}
-                  onChange={(e) => handleChange('serviceName', e.target.value)}
+                  value={formData.accountNumber}
+                  onChange={(e) => handleChange('accountNumber', e.target.value)}
                   required
                   placeholder="e.g., @username, email, or account identifier"
                   style={inputStyle}
@@ -373,7 +377,7 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
             </div>
           )}
 
-          {(formData.accountType === 'bank' || formData.accountType === 'other' || formData.accountType === 'online') && (
+          {(formData.accountType === 'bank' || formData.accountType === 'other') && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label htmlFor="accountNumber" style={labelStyle}>
@@ -416,6 +420,30 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
                   }}
                 />
               </div>
+            </div>
+          )}
+
+          {formData.accountType === 'online' && (
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="currency" style={labelStyle}>
+                Currency
+              </label>
+              <input
+                id="currency"
+                type="text"
+                value={formData.currency}
+                onChange={(e) => handleChange('currency', e.target.value)}
+                placeholder="e.g., BRL, USD, EUR"
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#3b82f6'
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+              />
             </div>
           )}
 

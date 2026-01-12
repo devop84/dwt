@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { caterersApi, destinationsApi } from '../lib/api'
 import type { Caterer, Destination } from '../types'
 import { CatererForm } from '../components/CatererForm'
-import { AccountsSection } from '../components/AccountsSection'
+import { AccountsCards } from '../components/AccountsCards'
 
 interface CatererWithDestination extends Caterer {
   destinationName?: string
@@ -425,7 +425,7 @@ export function CatererDetails() {
           </div>
         )}
 
-        <AccountsSection entityType="caterer" entityId={caterer.id} />
+        <AccountsCards entityType="caterer" entityId={caterer.id} />
 
         <div style={{
           padding: '1.5rem 2rem',

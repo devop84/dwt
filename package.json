@@ -18,6 +18,7 @@
     "seed:drivers": "node scripts/seed-drivers.js",
     "seed:caterers": "node scripts/seed-caterers.js",
     "seed:accounts": "node scripts/seed-bank-accounts.js",
+    "seed:company-accounts": "node scripts/seed-company-accounts.js",
     "migrate:description": "node scripts/migrate-note-to-description.js",
     "create:guides-table": "node scripts/create-guides-table.js",
     "build": "vite build",

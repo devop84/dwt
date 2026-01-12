@@ -17,7 +17,6 @@ export function CompanyAccountsList() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
 
   useEffect(() => {
     loadAccounts()
@@ -131,32 +130,12 @@ export function CompanyAccountsList() {
   }
 
   const handleAdd = () => {
-    setEditingAccount(null)
     setShowForm(true)
-  }
-
-  const handleEdit = (account: Account) => {
-    setEditingAccount(account)
-    setShowForm(true)
-  }
-
-  const handleDelete = async (accountId: string) => {
-    if (!confirm('Are you sure you want to delete this company account? This action cannot be undone.')) {
-      return
-    }
-
-    try {
-      await accountsApi.delete(accountId)
-      await loadAccounts()
-    } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to delete account')
-    }
   }
 
   const handleSave = async () => {
     await loadAccounts()
     setShowForm(false)
-    setEditingAccount(null)
   }
 
   if (loading) {
@@ -531,17 +510,6 @@ export function CompanyAccountsList() {
                   }}>
                     Currency
                   </th>
-                  <th style={{
-                    padding: '0.75rem 1rem',
-                    textAlign: 'left',
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
-                  }}>
-                    Actions
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -637,50 +605,6 @@ export function CompanyAccountsList() {
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
                       {account.currency || '-'}
                     </td>
-                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleEdit(account)
-                          }}
-                          style={{
-                            padding: '0.25rem 0.75rem',
-                            backgroundColor: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.25rem',
-                            fontSize: '0.75rem',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDelete(account.id)
-                          }}
-                          style={{
-                            padding: '0.25rem 0.75rem',
-                            backgroundColor: '#ef4444',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.25rem',
-                            fontSize: '0.75rem',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -691,10 +615,9 @@ export function CompanyAccountsList() {
 
       {showForm && (
         <CompanyAccountForm
-          account={editingAccount}
+          account={null}
           onClose={() => {
             setShowForm(false)
-            setEditingAccount(null)
           }}
           onSave={handleSave}
         />

@@ -1839,7 +1839,35 @@ app.get('/api/accounts/:id', async (req, res) => {
       return res.status(404).json({ message: 'Account not found' })
     }
 
-    res.json(result.rows[0])
+    let account = result.rows[0]
+    
+    // Add entity name if entityId exists
+    if (account.entityId && account.entityType) {
+      let entityName = null
+      try {
+        if (account.entityType === 'client') {
+          const entityResult = await pool.query('SELECT name FROM clients WHERE id = $1', [account.entityId])
+          entityName = entityResult.rows[0]?.name || null
+        } else if (account.entityType === 'hotel') {
+          const entityResult = await pool.query('SELECT name FROM hotels WHERE id = $1', [account.entityId])
+          entityName = entityResult.rows[0]?.name || null
+        } else if (account.entityType === 'guide') {
+          const entityResult = await pool.query('SELECT name FROM guides WHERE id = $1', [account.entityId])
+          entityName = entityResult.rows[0]?.name || null
+        } else if (account.entityType === 'driver') {
+          const entityResult = await pool.query('SELECT name FROM drivers WHERE id = $1', [account.entityId])
+          entityName = entityResult.rows[0]?.name || null
+        } else if (account.entityType === 'caterer') {
+          const entityResult = await pool.query('SELECT name FROM caterers WHERE id = $1', [account.entityId])
+          entityName = entityResult.rows[0]?.name || null
+        }
+      } catch (err) {
+        console.error('Error fetching entity name:', err)
+      }
+      account = { ...account, entityName }
+    }
+
+    res.json(account)
   } catch (error) {
     console.error('Bank account error:', error)
     res.status(500).json({ message: error.message || 'Failed to fetch account' })
