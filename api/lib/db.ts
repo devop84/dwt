@@ -227,6 +227,28 @@ export const initDb = async () => {
       console.log('Migration note:', migrationError)
     }
     
+    // Create bank_accounts table if not exists
+    await query(`
+      CREATE TABLE IF NOT EXISTS bank_accounts (
+        id UUID PRIMARY KEY,
+        "entityType" VARCHAR(50) NOT NULL,
+        "entityId" UUID NOT NULL,
+        "accountHolderName" VARCHAR(255) NOT NULL,
+        "bankName" VARCHAR(255) NOT NULL,
+        "accountNumber" VARCHAR(100),
+        iban VARCHAR(100),
+        "swiftBic" VARCHAR(50),
+        "routingNumber" VARCHAR(50),
+        currency VARCHAR(10),
+        "isPrimary" BOOLEAN DEFAULT FALSE,
+        note TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW(),
+        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver'))
+      )
+    `)
+    console.log('✅ Bank accounts table ready')
+    
     // Add username column if it doesn't exist (migration for existing tables)
     try {
       await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(255) UNIQUE`)

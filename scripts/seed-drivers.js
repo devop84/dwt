@@ -108,6 +108,16 @@ async function seedDrivers() {
 
     console.log(`📋 Found ${destinations.length} destinations\n`)
 
+    // Add vehicle column if it doesn't exist
+    console.log('🔧 Checking for vehicle column...')
+    try {
+      await pool.query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS vehicle VARCHAR(50)`)
+      console.log('✅ Vehicle column ready\n')
+    } catch (migrationError) {
+      // Column might already exist, that's fine
+      console.log('ℹ️  Vehicle column check completed\n')
+    }
+
     // Clear existing drivers
     console.log('🗑️  Clearing existing drivers...')
     await pool.query('DELETE FROM drivers')

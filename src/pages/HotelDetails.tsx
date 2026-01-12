@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { hotelsApi, destinationsApi } from '../lib/api'
 import type { Hotel, Destination } from '../types'
 import { HotelForm } from '../components/HotelForm'
+import { BankAccountsSection } from '../components/BankAccountsSection'
 
 interface HotelWithDestination extends Hotel {
   destinationName?: string
@@ -544,6 +545,8 @@ export function HotelDetails() {
           }
           return null
         })()}
+
+        <BankAccountsSection entityType="hotel" entityId={hotel.id} />
 
         <div style={{
           padding: '1.5rem 2rem',

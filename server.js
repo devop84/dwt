@@ -156,6 +156,27 @@ async function initDb() {
       // Column might already exist, that's fine
     }
     
+    // Create bank_accounts table if not exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS bank_accounts (
+        id UUID PRIMARY KEY,
+        "entityType" VARCHAR(50) NOT NULL,
+        "entityId" UUID NOT NULL,
+        "accountHolderName" VARCHAR(255) NOT NULL,
+        "bankName" VARCHAR(255) NOT NULL,
+        "accountNumber" VARCHAR(100),
+        iban VARCHAR(100),
+        "swiftBic" VARCHAR(50),
+        "routingNumber" VARCHAR(50),
+        currency VARCHAR(10),
+        "isPrimary" BOOLEAN DEFAULT FALSE,
+        note TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW(),
+        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver'))
+      )
+    `)
+    
     dbInitialized = true
     console.log('✅ Database initialized')
   } catch (error) {
@@ -1405,6 +1426,242 @@ app.delete('/api/drivers/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete driver error:', error)
     res.status(500).json({ message: error.message || 'Failed to delete driver' })
+  }
+})
+
+// Bank Accounts API routes
+// Get all bank accounts (with optional filters)
+app.get('/api/bank-accounts', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const entityType = req.query.entityType
+    const entityId = req.query.entityId
+
+    let sql = `SELECT * FROM bank_accounts WHERE 1=1`
+    const params = []
+    let paramIndex = 1
+
+    if (entityType) {
+      sql += ` AND "entityType" = $${paramIndex}`
+      params.push(entityType)
+      paramIndex++
+    }
+
+    if (entityId) {
+      sql += ` AND "entityId" = $${paramIndex}`
+      params.push(entityId)
+      paramIndex++
+    }
+
+    sql += ` ORDER BY "isPrimary" DESC, "createdAt" ASC`
+
+    const result = await pool.query(sql, params.length > 0 ? params : undefined)
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Bank accounts error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch bank accounts' })
+  }
+})
+
+// Create a new bank account
+app.post('/api/bank-accounts', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { entityType, entityId, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, isPrimary, note } = req.body
+
+    if (!entityType || !entityId || !accountHolderName || !bankName) {
+      return res.status(400).json({ message: 'Entity type, entity ID, account holder name, and bank name are required' })
+    }
+
+    if (!['client', 'hotel', 'guide', 'driver'].includes(entityType)) {
+      return res.status(400).json({ message: 'Invalid entity type' })
+    }
+
+    // If setting as primary, unset other primary accounts for this entity
+    if (isPrimary) {
+      await pool.query(
+        `UPDATE bank_accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2`,
+        [entityType, entityId]
+      )
+    }
+
+    const accountId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO bank_accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isPrimary", note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING *`,
+      [
+        accountId,
+        entityType,
+        entityId,
+        accountHolderName,
+        bankName,
+        accountNumber || null,
+        iban || null,
+        swiftBic || null,
+        routingNumber || null,
+        currency || null,
+        isPrimary || false,
+        note || null
+      ]
+    )
+
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create bank account error:', error)
+    res.status(500).json({ message: error.message || 'Failed to create bank account' })
+  }
+})
+
+// Get a single bank account
+app.get('/api/bank-accounts/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const result = await pool.query('SELECT * FROM bank_accounts WHERE id = $1', [id])
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Bank account not found' })
+    }
+
+    res.json(result.rows[0])
+  } catch (error) {
+    console.error('Bank account error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch bank account' })
+  }
+})
+
+// Update a bank account
+app.put('/api/bank-accounts/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const { accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, isPrimary, note } = req.body
+
+    if (!accountHolderName || !bankName) {
+      return res.status(400).json({ message: 'Account holder name and bank name are required' })
+    }
+
+    const existing = await pool.query('SELECT * FROM bank_accounts WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Bank account not found' })
+    }
+
+    // If setting as primary, unset other primary accounts for this entity
+    if (isPrimary && (!existing.rows[0].isPrimary)) {
+      await pool.query(
+        `UPDATE bank_accounts SET "isPrimary" = FALSE WHERE "entityType" = $1 AND "entityId" = $2 AND id != $3`,
+        [existing.rows[0].entityType, existing.rows[0].entityId, id]
+      )
+    }
+
+    const result = await pool.query(
+      `UPDATE bank_accounts 
+       SET "accountHolderName" = $1, "bankName" = $2, "accountNumber" = $3, iban = $4, "swiftBic" = $5, "routingNumber" = $6, currency = $7, "isPrimary" = $8, note = $9, "updatedAt" = NOW()
+       WHERE id = $10
+       RETURNING *`,
+      [
+        accountHolderName,
+        bankName,
+        accountNumber || null,
+        iban || null,
+        swiftBic || null,
+        routingNumber || null,
+        currency || null,
+        isPrimary || false,
+        note || null,
+        id
+      ]
+    )
+
+    res.status(200).json(result.rows[0])
+  } catch (error) {
+    console.error('Update bank account error:', error)
+    res.status(500).json({ message: error.message || 'Failed to update bank account' })
+  }
+})
+
+// Delete a bank account
+app.delete('/api/bank-accounts/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const existing = await pool.query('SELECT id FROM bank_accounts WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Bank account not found' })
+    }
+
+    await pool.query('DELETE FROM bank_accounts WHERE id = $1', [id])
+
+    res.status(200).json({ message: 'Bank account deleted successfully' })
+  } catch (error) {
+    console.error('Delete bank account error:', error)
+    res.status(500).json({ message: error.message || 'Failed to delete bank account' })
   }
 })
 

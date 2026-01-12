@@ -78,3 +78,22 @@ export interface Driver {
   updatedAt: string
   destinationName?: string
 }
+
+export type EntityType = 'client' | 'hotel' | 'guide' | 'driver'
+
+export interface BankAccount {
+  id: string
+  entityType: EntityType
+  entityId: string
+  accountHolderName: string
+  bankName: string
+  accountNumber: string | null
+  iban: string | null
+  swiftBic: string | null
+  routingNumber: string | null
+  currency: string | null
+  isPrimary: boolean
+  note: string | null
+  createdAt: string
+  updatedAt: string
+}

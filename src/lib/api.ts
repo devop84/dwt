@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver } from '../types'
+import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver, BankAccount, EntityType } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -139,5 +139,31 @@ export const driversApi = {
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/drivers/${id}`)
+  },
+}
+
+export const bankAccountsApi = {
+  getAll: async (entityType?: EntityType, entityId?: string): Promise<BankAccount[]> => {
+    const params = new URLSearchParams()
+    if (entityType) params.append('entityType', entityType)
+    if (entityId) params.append('entityId', entityId)
+    const queryString = params.toString()
+    const { data } = await api.get<BankAccount[]>(`/bank-accounts${queryString ? `?${queryString}` : ''}`)
+    return data
+  },
+  getById: async (id: string): Promise<BankAccount> => {
+    const { data } = await api.get<BankAccount>(`/bank-accounts/${id}`)
+    return data
+  },
+  create: async (account: Omit<BankAccount, 'id' | 'createdAt' | 'updatedAt'>): Promise<BankAccount> => {
+    const { data } = await api.post<BankAccount>('/bank-accounts', account)
+    return data
+  },
+  update: async (id: string, account: Omit<BankAccount, 'id' | 'createdAt' | 'updatedAt'>): Promise<BankAccount> => {
+    const { data } = await api.put<BankAccount>(`/bank-accounts/${id}`, account)
+    return data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/bank-accounts/${id}`)
   },
 }

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { driversApi, destinationsApi } from '../lib/api'
 import type { Driver, Destination } from '../types'
 import { DriverForm } from '../components/DriverForm'
+import { BankAccountsSection } from '../components/BankAccountsSection'
 
 interface DriverWithDestination extends Driver {
   destinationName?: string
@@ -427,6 +428,8 @@ export function DriverDetails() {
             </p>
           </div>
         )}
+
+        <BankAccountsSection entityType="driver" entityId={driver.id} />
 
         <div style={{
           padding: '1.5rem 2rem',
