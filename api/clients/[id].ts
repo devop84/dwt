@@ -3,12 +3,14 @@ import { verifyToken } from '../lib/auth.js'
 import { query, queryOne, initDb } from '../lib/db.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  console.log('✅ Client by ID API route hit:', req.method, req.url, req.query)
   await initDb()
 
   try {
     // All routes require authentication
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ No auth header')
       res.status(401).json({ message: 'Unauthorized' })
       return
     }
@@ -17,11 +19,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const decoded = verifyToken(token)
     
     if (!decoded) {
+      console.log('❌ Invalid token')
       res.status(401).json({ message: 'Invalid token' })
       return
     }
 
     const id = req.query.id as string
+    console.log('📋 Fetching client with ID:', id)
 
     if (req.method === 'GET') {
       const client = await queryOne('SELECT * FROM clients WHERE id = $1', [id])
