@@ -162,29 +162,55 @@ async function initDb() {
         id UUID PRIMARY KEY,
         "entityType" VARCHAR(50) NOT NULL,
         "entityId" UUID NOT NULL,
+        "accountType" VARCHAR(50) NOT NULL DEFAULT 'bank',
         "accountHolderName" VARCHAR(255) NOT NULL,
-        "bankName" VARCHAR(255) NOT NULL,
+        "bankName" VARCHAR(255),
         "accountNumber" VARCHAR(100),
         iban VARCHAR(100),
         "swiftBic" VARCHAR(50),
         "routingNumber" VARCHAR(50),
         currency VARCHAR(10),
-        "isOnlineService" BOOLEAN DEFAULT FALSE,
         "serviceName" VARCHAR(100),
         "isPrimary" BOOLEAN DEFAULT FALSE,
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),
-        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver'))
+        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver')),
+        CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online'))
       )
     `)
     
-    // Add online service columns if they don't exist (migration for existing tables)
+    // Add accountType column if it doesn't exist (migration for existing tables)
     try {
-      await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "isOnlineService" BOOLEAN DEFAULT FALSE`)
+      await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "accountType" VARCHAR(50) DEFAULT 'bank'`)
+      // Migrate isOnlineService to accountType
+      await pool.query(`
+        UPDATE accounts 
+        SET "accountType" = CASE 
+          WHEN "isOnlineService" = TRUE THEN 'online'
+          ELSE 'bank'
+        END
+        WHERE "accountType" IS NULL OR "accountType" = 'bank'
+      `)
+      // Make accountType NOT NULL after migration
+      await pool.query(`ALTER TABLE accounts ALTER COLUMN "accountType" SET NOT NULL`)
+      await pool.query(`ALTER TABLE accounts ALTER COLUMN "accountType" SET DEFAULT 'bank'`)
+    } catch (migrationError) {
+      // Migration might fail if column already exists, that's fine
+    }
+    
+    // Make bankName nullable (for cash accounts)
+    try {
+      await pool.query(`ALTER TABLE accounts ALTER COLUMN "bankName" DROP NOT NULL`)
+    } catch (migrationError) {
+      // Column might already be nullable, that's fine
+    }
+    
+    // Add serviceName column if it doesn't exist
+    try {
       await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
     } catch (migrationError) {
-      // Columns might already exist, that's fine
+      // Column might already exist, that's fine
     }
     
     dbInitialized = true
@@ -1503,10 +1529,22 @@ app.post('/api/accounts', async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' })
     }
 
-    const { entityType, entityId, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, isOnlineService, serviceName, isPrimary, note } = req.body
+    const { entityType, entityId, accountType, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, serviceName, isPrimary, note } = req.body
 
-    if (!entityType || !entityId || !accountHolderName || !bankName) {
-      return res.status(400).json({ message: 'Entity type, entity ID, account holder name, and bank name are required' })
+    if (!entityType || !entityId || !accountHolderName) {
+      return res.status(400).json({ message: 'Entity type, entity ID, and account holder name are required' })
+    }
+
+    if (!accountType || !['bank', 'cash', 'online'].includes(accountType)) {
+      return res.status(400).json({ message: 'Account type must be bank, cash, or online' })
+    }
+
+    // Validate required fields based on account type
+    if (accountType === 'bank' && !bankName) {
+      return res.status(400).json({ message: 'Bank name is required for bank accounts' })
+    }
+    if (accountType === 'online' && !serviceName) {
+      return res.status(400).json({ message: 'Service name/tag is required for online accounts' })
     }
 
     if (!['client', 'hotel', 'guide', 'driver'].includes(entityType)) {
@@ -1600,10 +1638,22 @@ app.put('/api/accounts/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const { accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, isPrimary, note } = req.body
+    const { accountType, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, serviceName, isPrimary, note } = req.body
 
-    if (!accountHolderName || !bankName) {
-      return res.status(400).json({ message: 'Account holder name and bank name are required' })
+    if (!accountHolderName) {
+      return res.status(400).json({ message: 'Account holder name is required' })
+    }
+
+    if (!accountType || !['bank', 'cash', 'online'].includes(accountType)) {
+      return res.status(400).json({ message: 'Account type must be bank, cash, or online' })
+    }
+
+    // Validate required fields based on account type
+    if (accountType === 'bank' && !bankName) {
+      return res.status(400).json({ message: 'Bank name is required for bank accounts' })
+    }
+    if (accountType === 'online' && !serviceName) {
+      return res.status(400).json({ message: 'Service name/tag is required for online accounts' })
     }
 
     const existing = await pool.query('SELECT * FROM accounts WHERE id = $1', [id])
@@ -1621,17 +1671,19 @@ app.put('/api/accounts/:id', async (req, res) => {
 
     const result = await pool.query(
       `UPDATE accounts 
-       SET "accountHolderName" = $1, "bankName" = $2, "accountNumber" = $3, iban = $4, "swiftBic" = $5, "routingNumber" = $6, currency = $7, "isPrimary" = $8, note = $9, "updatedAt" = NOW()
-       WHERE id = $10
+       SET "accountType" = $1, "accountHolderName" = $2, "bankName" = $3, "accountNumber" = $4, iban = $5, "swiftBic" = $6, "routingNumber" = $7, currency = $8, "serviceName" = $9, "isPrimary" = $10, note = $11, "updatedAt" = NOW()
+       WHERE id = $12
        RETURNING *`,
       [
+        accountType,
         accountHolderName,
-        bankName,
+        accountType === 'cash' ? null : (bankName || null),
         accountNumber || null,
         iban || null,
         swiftBic || null,
         routingNumber || null,
         currency || null,
+        serviceName || null,
         isPrimary || false,
         note || null,
         id

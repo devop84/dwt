@@ -199,31 +199,56 @@ export function AccountsSection({ entityType, entityId }: AccountsSectionProps) 
                       {account.accountHolderName}
                     </p>
                   </div>
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      marginBottom: '0.25rem'
-                    }}>
-                      {account.isOnlineService ? 'Service Name' : 'Bank Name'}
-                    </label>
-                    <p style={{
-                      fontSize: '0.875rem',
-                      color: '#111827',
-                      margin: 0
-                    }}>
-                      {account.bankName}
-                      {account.isOnlineService && account.serviceName && (
-                        <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>
-                          ({account.serviceName})
-                        </span>
-                      )}
-                    </p>
-                  </div>
+                  {account.accountType !== 'cash' && (
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        color: '#6b7280',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        marginBottom: '0.25rem'
+                      }}>
+                        {account.accountType === 'online' ? 'Service Name' : 'Bank Name'}
+                      </label>
+                      <p style={{
+                        fontSize: '0.875rem',
+                        color: '#111827',
+                        margin: 0
+                      }}>
+                        {account.bankName || '-'}
+                        {account.accountType === 'online' && account.serviceName && (
+                          <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>
+                            ({account.serviceName})
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                  {account.accountType === 'cash' && (
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        color: '#6b7280',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        marginBottom: '0.25rem'
+                      }}>
+                        Account Type
+                      </label>
+                      <p style={{
+                        fontSize: '0.875rem',
+                        color: '#111827',
+                        margin: 0,
+                        fontWeight: '500'
+                      }}>
+                        💵 Cash
+                      </p>
+                    </div>
+                  )}
                   {account.accountNumber && (
                     <div>
                       <label style={{
@@ -246,7 +271,7 @@ export function AccountsSection({ entityType, entityId }: AccountsSectionProps) 
                       </p>
                     </div>
                   )}
-                  {account.iban && (
+                  {account.accountType === 'bank' && account.iban && (
                     <div>
                       <label style={{
                         display: 'block',
@@ -269,7 +294,7 @@ export function AccountsSection({ entityType, entityId }: AccountsSectionProps) 
                       </p>
                     </div>
                   )}
-                  {account.swiftBic && (
+                  {account.accountType === 'bank' && account.swiftBic && (
                     <div>
                       <label style={{
                         display: 'block',
@@ -292,7 +317,7 @@ export function AccountsSection({ entityType, entityId }: AccountsSectionProps) 
                       </p>
                     </div>
                   )}
-                  {account.routingNumber && (
+                  {account.accountType === 'bank' && account.routingNumber && (
                     <div>
                       <label style={{
                         display: 'block',

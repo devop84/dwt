@@ -618,23 +618,33 @@ export function AccountsList() {
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
                       <div>
-                        {account.bankName}
-                        {account.isOnlineService && (
-                          <span style={{
-                            marginLeft: '0.5rem',
-                            fontSize: '0.75rem',
-                            color: '#6b7280'
-                          }}>
-                            (Online)
-                          </span>
+                        {account.accountType === 'cash' ? (
+                          <span style={{ fontWeight: '500' }}>💵 Cash</span>
+                        ) : account.bankName ? (
+                          <>
+                            {account.bankName}
+                            {account.accountType === 'online' && (
+                              <span style={{
+                                marginLeft: '0.5rem',
+                                fontSize: '0.75rem',
+                                color: '#6b7280'
+                              }}>
+                                (Online)
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          '-'
                         )}
                       </div>
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {account.isOnlineService && account.serviceName ? (
+                      {account.accountType === 'online' && account.serviceName ? (
                         <span style={{ fontFamily: 'monospace' }}>{account.serviceName}</span>
-                      ) : account.accountNumber ? (
+                      ) : account.accountType === 'bank' && account.accountNumber ? (
                         <span style={{ fontFamily: 'monospace' }}>{account.accountNumber}</span>
+                      ) : account.accountType === 'cash' ? (
+                        <span style={{ color: '#6b7280', fontStyle: 'italic' }}>N/A</span>
                       ) : (
                         '-'
                       )}

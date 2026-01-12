@@ -87,18 +87,19 @@ CREATE TABLE IF NOT EXISTS accounts (
   id UUID PRIMARY KEY,
   "entityType" VARCHAR(50) NOT NULL,
   "entityId" UUID NOT NULL,
+  "accountType" VARCHAR(50) NOT NULL DEFAULT 'bank',
   "accountHolderName" VARCHAR(255) NOT NULL,
-  "bankName" VARCHAR(255) NOT NULL,
+  "bankName" VARCHAR(255),
   "accountNumber" VARCHAR(100),
   iban VARCHAR(100),
   "swiftBic" VARCHAR(50),
   "routingNumber" VARCHAR(50),
   currency VARCHAR(10),
-  "isOnlineService" BOOLEAN DEFAULT FALSE,
   "serviceName" VARCHAR(100),
   "isPrimary" BOOLEAN DEFAULT FALSE,
   note TEXT,
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW(),
-  CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver'))
+  CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver')),
+  CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online'))
 );

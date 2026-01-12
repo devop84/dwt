@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react'
 import { accountsApi } from '../lib/api'
-import type { Account, EntityType } from '../types'
+import type { Account, AccountType, EntityType } from '../types'
 
 interface AccountFormProps {
   account?: Account | null
@@ -12,6 +12,7 @@ interface AccountFormProps {
 
 export function AccountForm({ account, entityType, entityId, onClose, onSave }: AccountFormProps) {
   const [formData, setFormData] = useState({
+    accountType: 'bank' as AccountType,
     accountHolderName: '',
     bankName: '',
     accountNumber: '',
@@ -19,7 +20,6 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
     swiftBic: '',
     routingNumber: '',
     currency: '',
-    isOnlineService: false,
     serviceName: '',
     isPrimary: false,
     note: '',
@@ -30,6 +30,7 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
   useEffect(() => {
     if (account) {
       setFormData({
+        accountType: account.accountType || 'bank',
         accountHolderName: account.accountHolderName || '',
         bankName: account.bankName || '',
         accountNumber: account.accountNumber || '',
@@ -37,7 +38,6 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
         swiftBic: account.swiftBic || '',
         routingNumber: account.routingNumber || '',
         currency: account.currency || '',
-        isOnlineService: account.isOnlineService || false,
         serviceName: account.serviceName || '',
         isPrimary: account.isPrimary || false,
         note: account.note || '',
@@ -54,8 +54,13 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
       return
     }
 
-    if (!formData.bankName.trim()) {
-      setError('Bank name is required')
+    if (formData.accountType === 'bank' && !formData.bankName.trim()) {
+      setError('Bank name is required for bank accounts')
+      return
+    }
+
+    if (formData.accountType === 'online' && !formData.serviceName.trim()) {
+      setError('Service name/tag is required for online accounts')
       return
     }
 
@@ -67,15 +72,16 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
           entityId,
           accountHolderName: formData.accountHolderName.trim(),
           bankName: formData.bankName.trim(),
+          accountType: formData.accountType,
           accountNumber: formData.accountNumber.trim() || null,
           iban: formData.iban.trim() || null,
           swiftBic: formData.swiftBic.trim() || null,
           routingNumber: formData.routingNumber.trim() || null,
           currency: formData.currency.trim() || null,
-          isOnlineService: formData.isOnlineService,
           serviceName: formData.serviceName.trim() || null,
           isPrimary: formData.isPrimary,
           note: formData.note.trim() || null,
+          bankName: formData.accountType === 'cash' ? null : (formData.bankName.trim() || null),
         })
       } else {
         await accountsApi.create({
@@ -83,15 +89,16 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
           entityId,
           accountHolderName: formData.accountHolderName.trim(),
           bankName: formData.bankName.trim(),
+          accountType: formData.accountType,
           accountNumber: formData.accountNumber.trim() || null,
           iban: formData.iban.trim() || null,
           swiftBic: formData.swiftBic.trim() || null,
           routingNumber: formData.routingNumber.trim() || null,
           currency: formData.currency.trim() || null,
-          isOnlineService: formData.isOnlineService,
           serviceName: formData.serviceName.trim() || null,
           isPrimary: formData.isPrimary,
           note: formData.note.trim() || null,
+          bankName: formData.accountType === 'cash' ? null : (formData.bankName.trim() || null),
         })
       }
       await onSave()
@@ -222,28 +229,54 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-            <div>
-              <label htmlFor="accountNumber" style={labelStyle}>
-                Account Number
-              </label>
-              <input
-                id="accountNumber"
-                type="text"
-                value={formData.accountNumber}
-                onChange={(e) => handleChange('accountNumber', e.target.value)}
-                style={inputStyle}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#3b82f6'
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db'
-                  e.currentTarget.style.boxShadow = 'none'
-                }}
-              />
+          {formData.accountType !== 'cash' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label htmlFor="accountNumber" style={labelStyle}>
+                  Account Number
+                </label>
+                <input
+                  id="accountNumber"
+                  type="text"
+                  value={formData.accountNumber}
+                  onChange={(e) => handleChange('accountNumber', e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#3b82f6'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#d1d5db'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                />
+              </div>
+              <div>
+                <label htmlFor="currency" style={labelStyle}>
+                  Currency
+                </label>
+                <input
+                  id="currency"
+                  type="text"
+                  value={formData.currency}
+                  onChange={(e) => handleChange('currency', e.target.value)}
+                  placeholder="e.g., BRL, USD, EUR"
+                  style={inputStyle}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#3b82f6'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#d1d5db'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                />
+              </div>
             </div>
-            <div>
+          )}
+
+          {formData.accountType === 'cash' && (
+            <div style={{ marginBottom: '1rem' }}>
               <label htmlFor="currency" style={labelStyle}>
                 Currency
               </label>
@@ -264,7 +297,10 @@ export function AccountForm({ account, entityType, entityId, onClose, onSave }: 
                 }}
               />
             </div>
-          </div>
+          )}
+
+          {formData.accountType === 'bank' && (
+            <>
 
           <div style={{ marginBottom: '1rem' }}>
             <label htmlFor="iban" style={labelStyle}>

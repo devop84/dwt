@@ -233,31 +233,24 @@ export const initDb = async () => {
         id UUID PRIMARY KEY,
         "entityType" VARCHAR(50) NOT NULL,
         "entityId" UUID NOT NULL,
+        "accountType" VARCHAR(50) NOT NULL DEFAULT 'bank',
         "accountHolderName" VARCHAR(255) NOT NULL,
-        "bankName" VARCHAR(255) NOT NULL,
+        "bankName" VARCHAR(255),
         "accountNumber" VARCHAR(100),
         iban VARCHAR(100),
         "swiftBic" VARCHAR(50),
         "routingNumber" VARCHAR(50),
         currency VARCHAR(10),
-        "isOnlineService" BOOLEAN DEFAULT FALSE,
         "serviceName" VARCHAR(100),
         "isPrimary" BOOLEAN DEFAULT FALSE,
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),
-        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver'))
+        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver')),
+        CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online'))
       )
     `)
     console.log('✅ Accounts table ready')
-    
-    // Add online service columns if they don't exist (migration for existing tables)
-    try {
-      await query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "isOnlineService" BOOLEAN DEFAULT FALSE`)
-      await query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
-    } catch (migrationError) {
-      console.log('Migration note:', migrationError)
-    }
     
     // Migrate bank_accounts table to accounts if it exists
     try {
@@ -269,6 +262,39 @@ export const initDb = async () => {
           END IF;
         END $$;
       `)
+    } catch (migrationError) {
+      console.log('Migration note:', migrationError)
+    }
+    
+    // Add accountType column if it doesn't exist (migration for existing tables)
+    try {
+      await query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "accountType" VARCHAR(50) DEFAULT 'bank'`)
+      // Migrate isOnlineService to accountType
+      await query(`
+        UPDATE accounts 
+        SET "accountType" = CASE 
+          WHEN "isOnlineService" = TRUE THEN 'online'
+          ELSE 'bank'
+        END
+        WHERE "accountType" IS NULL OR "accountType" = 'bank'
+      `)
+      // Make accountType NOT NULL after migration
+      await query(`ALTER TABLE accounts ALTER COLUMN "accountType" SET NOT NULL`)
+      await query(`ALTER TABLE accounts ALTER COLUMN "accountType" SET DEFAULT 'bank'`)
+    } catch (migrationError) {
+      console.log('Migration note:', migrationError)
+    }
+    
+    // Make bankName nullable (for cash accounts)
+    try {
+      await query(`ALTER TABLE accounts ALTER COLUMN "bankName" DROP NOT NULL`)
+    } catch (migrationError) {
+      // Column might already be nullable, that's fine
+    }
+    
+    // Add serviceName column if it doesn't exist
+    try {
+      await query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS "serviceName" VARCHAR(100)`)
     } catch (migrationError) {
       console.log('Migration note:', migrationError)
     }
