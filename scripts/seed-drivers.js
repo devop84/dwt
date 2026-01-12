@@ -15,6 +15,7 @@ const driversToSeed = [
     contactNumber: '+55 85 99999-2001',
     email: 'antonio.ferreira@driver.com',
     languages: 'pt, en',
+    vehicle: '4x4',
     note: 'Experienced driver with 10+ years in the region. Knows all routes from Cumbuco to Atins. Safe and reliable.'
   },
   {
@@ -22,6 +23,7 @@ const driversToSeed = [
     contactNumber: '+55 85 98888-3002',
     email: 'luiz.rodrigues@driver.com',
     languages: 'pt, en, es',
+    vehicle: 'boat',
     note: 'Professional driver specializing in downwinder support. Excellent knowledge of beaches and access points.'
   },
   {
@@ -29,6 +31,7 @@ const driversToSeed = [
     contactNumber: '+55 85 97777-4003',
     email: 'francisco.santos@driver.com',
     languages: 'pt, en',
+    vehicle: '4x4',
     note: 'Local driver with great knowledge of hidden spots. Can navigate 4x4 tracks with ease.'
   },
   {
@@ -36,6 +39,7 @@ const driversToSeed = [
     contactNumber: '+55 85 96666-5004',
     email: 'jose.costa@driver.com',
     languages: 'pt, en, fr',
+    vehicle: 'sedan',
     note: 'Reliable driver for long-distance transfers. Comfortable vehicles with equipment storage.'
   },
   {
@@ -43,6 +47,7 @@ const driversToSeed = [
     contactNumber: '+55 88 95555-6005',
     email: 'paulo.alves@driver.com',
     languages: 'pt, en, de',
+    vehicle: '4x4',
     note: 'Expert driver in Jericoacoara area. Knows all the access roads and best times to travel.'
   },
   {
@@ -50,6 +55,7 @@ const driversToSeed = [
     contactNumber: '+55 85 94444-7006',
     email: 'marcos.lima@driver.com',
     languages: 'pt, en',
+    vehicle: 'sedan',
     note: 'Professional driver with 8+ years experience. Specializes in group transfers and equipment transport.'
   },
   {
@@ -57,6 +63,7 @@ const driversToSeed = [
     contactNumber: '+55 88 93333-8007',
     email: 'eduardo.souza@driver.com',
     languages: 'pt, en, it',
+    vehicle: 'quadbike',
     note: 'Skilled driver for beach transfers. Can handle sand tracks and difficult terrain. Safe driver.'
   },
   {
@@ -64,6 +71,7 @@ const driversToSeed = [
     contactNumber: '+55 85 92222-9008',
     email: 'roberto.silva@driver.com',
     languages: 'pt, en, es',
+    vehicle: '4x4',
     note: 'Experienced driver with knowledge of all kitesurf spots. Flexible schedule and competitive rates.'
   },
   {
@@ -71,6 +79,7 @@ const driversToSeed = [
     contactNumber: '+55 88 91111-1009',
     email: 'fernando.martins@driver.com',
     languages: 'pt, en',
+    vehicle: 'boat',
     note: 'Local driver with 12+ years experience. Great for early morning transfers and downwinder support.'
   },
   {
@@ -78,6 +87,7 @@ const driversToSeed = [
     contactNumber: '+55 85 90000-2010',
     email: 'carlos.rocha@driver.com',
     languages: 'pt, en, nl',
+    vehicle: 'sedan',
     note: 'Professional driver with international tourist experience. Comfortable vehicles and punctual service.'
   },
 ]
@@ -116,8 +126,8 @@ async function seedDrivers() {
       const driverId = randomUUID()
       
       await pool.query(
-        `INSERT INTO drivers (id, name, "contactNumber", email, "destinationId", languages, note)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        `INSERT INTO drivers (id, name, "contactNumber", email, "destinationId", languages, vehicle, note)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
           driverId,
           driver.name,
@@ -125,6 +135,7 @@ async function seedDrivers() {
           driver.email,
           destination.id,
           driver.languages,
+          driver.vehicle,
           driver.note,
         ]
       )

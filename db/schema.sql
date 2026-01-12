@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS drivers (
   email VARCHAR(255),
   "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
   languages VARCHAR(255),
+  vehicle VARCHAR(50),
   note TEXT,
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW()

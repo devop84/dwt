@@ -345,6 +345,27 @@ export function DriverDetails() {
                 letterSpacing: '0.05em',
                 marginBottom: '0.5rem'
               }}>
+                Vehicle
+              </label>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#111827',
+                margin: 0
+              }}>
+                {driver.vehicle || '-'}
+              </p>
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '0.5rem'
+              }}>
                 Contact Number
               </label>
               <p style={{

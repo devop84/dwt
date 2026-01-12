@@ -16,6 +16,7 @@ export function DriverForm({ driver, destinations, onClose, onSave }: DriverForm
     email: '',
     destinationId: '',
     languages: '',
+    vehicle: '',
     note: '',
   })
   const [loading, setLoading] = useState(false)
@@ -29,6 +30,7 @@ export function DriverForm({ driver, destinations, onClose, onSave }: DriverForm
         email: driver.email || '',
         destinationId: driver.destinationId || '',
         languages: driver.languages || '',
+        vehicle: driver.vehicle || '',
         note: driver.note || '',
       })
     }
@@ -57,6 +59,7 @@ export function DriverForm({ driver, destinations, onClose, onSave }: DriverForm
           email: formData.email.trim() || null,
           destinationId: formData.destinationId,
           languages: formData.languages.trim() || null,
+          vehicle: formData.vehicle.trim() || null,
           note: formData.note.trim() || null,
         })
       } else {
@@ -66,6 +69,7 @@ export function DriverForm({ driver, destinations, onClose, onSave }: DriverForm
           email: formData.email.trim() || null,
           destinationId: formData.destinationId,
           languages: formData.languages.trim() || null,
+          vehicle: formData.vehicle.trim() || null,
           note: formData.note.trim() || null,
         })
       }
@@ -268,6 +272,32 @@ export function DriverForm({ driver, destinations, onClose, onSave }: DriverForm
                 e.currentTarget.style.boxShadow = 'none'
               }}
             />
+          </div>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="vehicle" style={labelStyle}>
+              Vehicle
+            </label>
+            <select
+              id="vehicle"
+              value={formData.vehicle}
+              onChange={(e) => handleChange('vehicle', e.target.value)}
+              style={inputStyle}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#3b82f6'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#d1d5db'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+            >
+              <option value="">Select a vehicle</option>
+              <option value="4x4">4x4</option>
+              <option value="boat">Boat</option>
+              <option value="quadbike">Quadbike</option>
+              <option value="sedan">Sedan (for transfers)</option>
+            </select>
           </div>
 
           <div style={{ marginBottom: '1rem' }}>

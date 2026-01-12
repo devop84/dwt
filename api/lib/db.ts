@@ -212,12 +212,20 @@ export const initDb = async () => {
         email VARCHAR(255),
         "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
         languages VARCHAR(255),
+        vehicle VARCHAR(50),
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
     `)
     console.log('✅ Drivers table ready')
+    
+    // Add vehicle column if it doesn't exist (migration for existing tables)
+    try {
+      await query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS vehicle VARCHAR(50)`)
+    } catch (migrationError) {
+      console.log('Migration note:', migrationError)
+    }
     
     // Add username column if it doesn't exist (migration for existing tables)
     try {

@@ -72,6 +72,7 @@ export interface Driver {
   email: string | null
   destinationId: string
   languages: string | null
+  vehicle: string | null
   note: string | null
   createdAt: string
   updatedAt: string

@@ -142,11 +142,19 @@ async function initDb() {
         email VARCHAR(255),
         "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
         languages VARCHAR(255),
+        vehicle VARCHAR(50),
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
     `)
+    
+    // Add vehicle column if it doesn't exist (migration for existing tables)
+    try {
+      await pool.query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS vehicle VARCHAR(50)`)
+    } catch (migrationError) {
+      // Column might already exist, that's fine
+    }
     
     dbInitialized = true
     console.log('✅ Database initialized')
@@ -1210,6 +1218,7 @@ app.get('/api/drivers', async (req, res) => {
         d.email,
         d."destinationId",
         d.languages,
+        d.vehicle,
         d.note,
         d."createdAt",
         d."updatedAt",
@@ -1243,7 +1252,7 @@ app.post('/api/drivers', async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' })
     }
 
-    const { name, contactNumber, email, destinationId, languages, note } = req.body
+    const { name, contactNumber, email, destinationId, languages, vehicle, note } = req.body
 
     if (!name) {
       return res.status(400).json({ message: 'Name is required' })
@@ -1255,10 +1264,10 @@ app.post('/api/drivers', async (req, res) => {
 
     const driverId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO drivers (id, name, "contactNumber", email, "destinationId", languages, note)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, name, "contactNumber", email, "destinationId", languages, note, "createdAt", "updatedAt"`,
-      [driverId, name, contactNumber || null, email || null, destinationId, languages || null, note || null]
+      `INSERT INTO drivers (id, name, "contactNumber", email, "destinationId", languages, vehicle, note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, name, "contactNumber", email, "destinationId", languages, vehicle, note, "createdAt", "updatedAt"`,
+      [driverId, name, contactNumber || null, email || null, destinationId, languages || null, vehicle || null, note || null]
     )
 
     res.status(201).json(result.rows[0])
@@ -1294,6 +1303,7 @@ app.get('/api/drivers/:id', async (req, res) => {
         d.email,
         d."destinationId",
         d.languages,
+        d.vehicle,
         d.note,
         d."createdAt",
         d."updatedAt",
@@ -1333,7 +1343,7 @@ app.put('/api/drivers/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const { name, contactNumber, email, destinationId, languages, note } = req.body
+    const { name, contactNumber, email, destinationId, languages, vehicle, note } = req.body
 
     if (!name) {
       return res.status(400).json({ message: 'Name is required' })
@@ -1351,10 +1361,10 @@ app.put('/api/drivers/:id', async (req, res) => {
 
     const result = await pool.query(
       `UPDATE drivers 
-       SET name = $1, "contactNumber" = $2, email = $3, "destinationId" = $4, languages = $5, note = $6, "updatedAt" = NOW()
-       WHERE id = $7
-       RETURNING id, name, "contactNumber", email, "destinationId", languages, note, "createdAt", "updatedAt"`,
-      [name, contactNumber || null, email || null, destinationId, languages || null, note || null, id]
+       SET name = $1, "contactNumber" = $2, email = $3, "destinationId" = $4, languages = $5, vehicle = $6, note = $7, "updatedAt" = NOW()
+       WHERE id = $8
+       RETURNING id, name, "contactNumber", email, "destinationId", languages, vehicle, note, "createdAt", "updatedAt"`,
+      [name, contactNumber || null, email || null, destinationId, languages || null, vehicle || null, note || null, id]
     )
 
     res.status(200).json(result.rows[0])

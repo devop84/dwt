@@ -34,16 +34,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         `)
         res.status(200).json(drivers)
       } else if (req.method === 'POST') {
-        const { name, contactNumber, email, destinationId, languages, note } = req.body
+        const { name, contactNumber, email, destinationId, languages, vehicle, note } = req.body
         if (!name || !destinationId) {
           res.status(400).json({ message: 'Name and destination are required' })
           return
         }
         const driverId = randomUUID()
         const result = await query(
-          `INSERT INTO drivers (id, name, "contactNumber", email, "destinationId", languages, note)
-           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-          [driverId, name, contactNumber || null, email || null, destinationId, languages || null, note || null]
+          `INSERT INTO drivers (id, name, "contactNumber", email, "destinationId", languages, vehicle, note)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+          [driverId, name, contactNumber || null, email || null, destinationId, languages || null, vehicle || null, note || null]
         )
         res.status(201).json(result[0])
       } else {
@@ -62,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         }
         res.status(200).json(driver)
       } else if (req.method === 'PUT') {
-        const { name, contactNumber, email, destinationId, languages, note } = req.body
+        const { name, contactNumber, email, destinationId, languages, vehicle, note } = req.body
         if (!name || !destinationId) {
           res.status(400).json({ message: 'Name and destination are required' })
           return
@@ -73,9 +73,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           return
         }
         const result = await query(
-          `UPDATE drivers SET name = $1, "contactNumber" = $2, email = $3, "destinationId" = $4, languages = $5, note = $6, "updatedAt" = NOW()
-           WHERE id = $7 RETURNING *`,
-          [name, contactNumber || null, email || null, destinationId, languages || null, note || null, id]
+          `UPDATE drivers SET name = $1, "contactNumber" = $2, email = $3, "destinationId" = $4, languages = $5, vehicle = $6, note = $7, "updatedAt" = NOW()
+           WHERE id = $8 RETURNING *`,
+          [name, contactNumber || null, email || null, destinationId, languages || null, vehicle || null, note || null, id]
         )
         res.status(200).json(result[0])
       } else if (req.method === 'DELETE') {

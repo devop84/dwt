@@ -4,8 +4,8 @@ import { driversApi, destinationsApi } from '../lib/api'
 import type { Driver, Destination } from '../types'
 import { DriverForm } from '../components/DriverForm'
 
-type FilterColumn = 'all' | 'name' | 'destinationName' | 'languages' | 'contactNumber' | 'email'
-type SortColumn = 'name' | 'destinationName' | 'languages' | 'contactNumber' | 'email'
+type FilterColumn = 'all' | 'name' | 'destinationName' | 'languages' | 'contactNumber' | 'email' | 'vehicle'
+type SortColumn = 'name' | 'destinationName' | 'languages' | 'contactNumber' | 'email' | 'vehicle'
 type SortDirection = 'asc' | 'desc' | null
 
 interface DriverWithDestination extends Driver {
@@ -68,7 +68,8 @@ export function DriversList() {
             (driver.destinationName && driver.destinationName.toLowerCase().includes(search)) ||
             (driver.languages && driver.languages.toLowerCase().includes(search)) ||
             (driver.contactNumber && driver.contactNumber.toLowerCase().includes(search)) ||
-            (driver.email && driver.email.toLowerCase().includes(search))
+            (driver.email && driver.email.toLowerCase().includes(search)) ||
+            (driver.vehicle && driver.vehicle.toLowerCase().includes(search))
           )
         } else {
           switch (filterColumn) {
@@ -82,6 +83,8 @@ export function DriversList() {
               return driver.contactNumber?.toLowerCase().includes(search) ?? false
             case 'email':
               return driver.email?.toLowerCase().includes(search) ?? false
+            case 'vehicle':
+              return driver.vehicle?.toLowerCase().includes(search) ?? false
             default:
               return true
           }
@@ -115,6 +118,10 @@ export function DriversList() {
           case 'email':
             aValue = a.email?.toLowerCase() || ''
             bValue = b.email?.toLowerCase() || ''
+            break
+          case 'vehicle':
+            aValue = a.vehicle?.toLowerCase() || ''
+            bValue = b.vehicle?.toLowerCase() || ''
             break
         }
 
@@ -357,6 +364,7 @@ export function DriversList() {
           <option value="email">Email</option>
           <option value="destinationName">Destination</option>
           <option value="languages">Languages</option>
+          <option value="vehicle">Vehicle</option>
         </select>
         {searchTerm && (
           <button
@@ -569,6 +577,33 @@ export function DriversList() {
                   >
                     Languages{getSortIndicator('languages')}
                   </th>
+                  <th
+                    onClick={() => handleSort('vehicle')}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      textAlign: 'left',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      color: sortColumn === 'vehicle' ? '#3b82f6' : '#6b7280',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      transition: 'color 0.2s, background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (sortColumn !== 'vehicle') {
+                        e.currentTarget.style.backgroundColor = '#f3f4f6'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (sortColumn !== 'vehicle') {
+                        e.currentTarget.style.backgroundColor = '#f9fafb'
+                      }
+                    }}
+                  >
+                    Vehicle{getSortIndicator('vehicle')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -602,6 +637,9 @@ export function DriversList() {
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
                       {driver.languages || '-'}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
+                      {driver.vehicle || '-'}
                     </td>
                   </tr>
                 ))}
