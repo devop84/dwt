@@ -13,8 +13,8 @@ import { HotelsList } from './pages/HotelsList'
 import { HotelDetails } from './pages/HotelDetails'
 import { GuidesList } from './pages/GuidesList'
 import { GuideDetails } from './pages/GuideDetails'
-import { DriversList } from './pages/DriversList'
-import { DriverDetails } from './pages/DriverDetails'
+import { VehiclesList } from './pages/VehiclesList'
+import { VehicleDetails } from './pages/VehicleDetails'
 import { CaterersList } from './pages/CaterersList'
 import { CatererDetails } from './pages/CatererDetails'
 import { AccountsList } from './pages/AccountsList'
@@ -111,18 +111,18 @@ function App() {
               }
             />
             <Route
-              path="/drivers"
+              path="/vehicles"
               element={
                 <Layout>
-                  <DriversList />
+                  <VehiclesList />
                 </Layout>
               }
             />
             <Route
-              path="/drivers/:id"
+              path="/vehicles/:id"
               element={
                 <Layout>
-                  <DriverDetails />
+                  <VehicleDetails />
                 </Layout>
               }
             />

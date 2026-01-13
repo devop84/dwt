@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver, Caterer, Account, EntityType, ThirdParty } from '../types'
+import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver, Vehicle, Caterer, Account, EntityType, ThirdParty } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -137,25 +137,25 @@ export const guidesApi = {
   },
 }
 
-export const driversApi = {
-  getAll: async (): Promise<Driver[]> => {
-    const { data } = await api.get<Driver[]>('/drivers')
+export const vehiclesApi = {
+  getAll: async (): Promise<Vehicle[]> => {
+    const { data } = await api.get<Vehicle[]>('/vehicles')
     return data
   },
-  getById: async (id: string): Promise<Driver> => {
-    const { data } = await api.get<Driver>(`/drivers/${id}`)
+  getById: async (id: string): Promise<Vehicle> => {
+    const { data } = await api.get<Vehicle>(`/vehicles/${id}`)
     return data
   },
-  create: async (driver: Omit<Driver, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Driver> => {
-    const { data } = await api.post<Driver>('/drivers', driver)
+  create: async (vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'destinationName' | 'thirdPartyName'>): Promise<Vehicle> => {
+    const { data } = await api.post<Vehicle>('/vehicles', vehicle)
     return data
   },
-  update: async (id: string, driver: Omit<Driver, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Driver> => {
-    const { data } = await api.put<Driver>(`/drivers/${id}`, driver)
+  update: async (id: string, vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'destinationName' | 'thirdPartyName'>): Promise<Vehicle> => {
+    const { data } = await api.put<Vehicle>(`/vehicles/${id}`, vehicle)
     return data
   },
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/drivers/${id}`)
+    await api.delete(`/vehicles/${id}`)
   },
 }
 

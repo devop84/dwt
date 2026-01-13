@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { accountsApi, clientsApi, hotelsApi, guidesApi, driversApi, caterersApi, thirdPartiesApi } from '../lib/api'
+import { accountsApi, clientsApi, hotelsApi, guidesApi, caterersApi, thirdPartiesApi } from '../lib/api'
 import type { Account, EntityType } from '../types'
 
 type FilterColumn = 'all' | 'accountHolderName' | 'bankName' | 'entityType' | 'serviceName'
@@ -48,10 +48,6 @@ export function AccountsList() {
               case 'guide':
                 const guide = await guidesApi.getById(account.entityId)
                 entityName = guide.name
-                break
-              case 'driver':
-                const driver = await driversApi.getById(account.entityId!)
-                entityName = driver.name
                 break
               case 'caterer':
                 const caterer = await caterersApi.getById(account.entityId!)
@@ -190,7 +186,7 @@ export function AccountsList() {
       client: '/clients',
       hotel: '/hotels',
       guide: '/guides',
-      driver: '/drivers',
+      vehicle: '/vehicles',
       caterer: '/caterers',
       'third-party': '/third-parties',
       company: '/company-accounts'
@@ -373,7 +369,7 @@ export function AccountsList() {
           <option value="client">Clients</option>
           <option value="hotel">Hotels</option>
           <option value="guide">Guides</option>
-          <option value="driver">Drivers</option>
+          <option value="vehicle">Vehicles</option>
           <option value="caterer">Caterers</option>
           <option value="third-party">Third Parties</option>
           <option value="company">Company</option>

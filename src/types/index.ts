@@ -65,18 +65,17 @@ export interface Guide {
   destinationName?: string
 }
 
-export interface Driver {
+export interface Vehicle {
   id: string
-  name: string
-  contactNumber: string | null
-  email: string | null
-  destinationId: string
-  languages: string | null
-  vehicle: string | null
+  type: 'car4x4' | 'boat' | 'quadbike' | 'carSedan' | 'outro'
+  vehicleOwner: 'company' | 'third-party'
+  destinationId: string | null
+  thirdPartyId: string | null
   note: string | null
   createdAt: string
   updatedAt: string
   destinationName?: string
+  thirdPartyName?: string
 }
 
 export interface ThirdParty {
@@ -89,7 +88,7 @@ export interface ThirdParty {
   updatedAt: string
 }
 
-export type EntityType = 'client' | 'hotel' | 'guide' | 'driver' | 'caterer' | 'company' | 'third-party'
+export type EntityType = 'client' | 'hotel' | 'guide' | 'driver' | 'caterer' | 'company' | 'third-party' | 'vehicle'
 
 export type AccountType = 'bank' | 'cash' | 'online' | 'other'
 

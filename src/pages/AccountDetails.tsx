@@ -51,8 +51,8 @@ export function AccountDetails() {
         navigate(`/hotels/${account.entityId}`)
       } else if (account.entityType === 'guide') {
         navigate(`/guides/${account.entityId}`)
-      } else if (account.entityType === 'driver') {
-        navigate(`/drivers/${account.entityId}`)
+      } else if (account.entityType === 'vehicle') {
+        navigate(`/vehicles/${account.entityId}`)
       } else if (account.entityType === 'caterer') {
         navigate(`/caterers/${account.entityId}`)
       } else {
@@ -84,8 +84,8 @@ export function AccountDetails() {
       navigate(`/hotels/${account.entityId}`)
     } else if (account.entityType === 'guide') {
       navigate(`/guides/${account.entityId}`)
-    } else if (account.entityType === 'driver') {
-      navigate(`/drivers/${account.entityId}`)
+    } else if (account.entityType === 'vehicle') {
+      navigate(`/vehicles/${account.entityId}`)
     } else if (account.entityType === 'caterer') {
       navigate(`/caterers/${account.entityId}`)
     } else {

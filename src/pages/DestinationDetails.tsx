@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { destinationsApi, hotelsApi, guidesApi, driversApi, caterersApi } from '../lib/api'
-import type { Destination, Hotel, Guide, Driver, Caterer } from '../types'
+import { destinationsApi, hotelsApi, guidesApi, vehiclesApi, caterersApi } from '../lib/api'
+import type { Destination, Hotel, Guide, Vehicle, Caterer } from '../types'
 import { DestinationForm } from '../components/DestinationForm'
 
-type TabType = 'hotels' | 'drivers' | 'caterers' | 'guides'
+type TabType = 'hotels' | 'vehicles' | 'caterers' | 'guides'
 
 export function DestinationDetails() {
   const { id } = useParams<{ id: string }>()
@@ -12,7 +12,7 @@ export function DestinationDetails() {
   const [destination, setDestination] = useState<Destination | null>(null)
   const [hotels, setHotels] = useState<Hotel[]>([])
   const [guides, setGuides] = useState<Guide[]>([])
-  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [caterers, setCaterers] = useState<Caterer[]>([])
   const [activeTab, setActiveTab] = useState<TabType>('hotels')
   const [loading, setLoading] = useState(true)
@@ -43,24 +43,24 @@ export function DestinationDetails() {
 
   const loadAllEntities = async () => {
     try {
-      const [allHotels, allGuides, allDrivers, allCaterers] = await Promise.all([
+      const [allHotels, allGuides, allVehicles, allCaterers] = await Promise.all([
         hotelsApi.getAll(),
         guidesApi.getAll(),
-        driversApi.getAll(),
+        vehiclesApi.getAll(),
         caterersApi.getAll()
       ])
       
       // Filter entities for this destination, ensuring arrays
       setHotels(Array.isArray(allHotels) ? allHotels.filter(hotel => hotel.destinationId === id) : [])
       setGuides(Array.isArray(allGuides) ? allGuides.filter(guide => guide.destinationId === id) : [])
-      setDrivers(Array.isArray(allDrivers) ? allDrivers.filter(driver => driver.destinationId === id) : [])
+      setVehicles(Array.isArray(allVehicles) ? allVehicles.filter(vehicle => vehicle.destinationId === id) : [])
       setCaterers(Array.isArray(allCaterers) ? allCaterers.filter(caterer => caterer.destinationId === id) : [])
     } catch (err: any) {
       console.error('Error loading entities:', err)
       // Ensure all arrays are set to empty arrays on error
       setHotels([])
       setGuides([])
-      setDrivers([])
+      setVehicles([])
       setCaterers([])
     }
   }
@@ -509,10 +509,10 @@ export function DestinationDetails() {
             marginBottom: '1.5rem',
             gap: '0.5rem'
           }}>
-            {(['hotels', 'drivers', 'caterers', 'guides'] as TabType[]).map((tab) => {
+            {(['hotels', 'vehicles', 'caterers', 'guides'] as TabType[]).map((tab) => {
               const counts = {
                 hotels: hotels.length,
-                drivers: drivers.length,
+                vehicles: vehicles.length,
                 caterers: caterers.length,
                 guides: guides.length
               }
@@ -693,9 +693,9 @@ export function DestinationDetails() {
             </div>
           )}
 
-          {activeTab === 'drivers' && (
+          {activeTab === 'vehicles' && (
             <div>
-              {drivers.length === 0 ? (
+              {vehicles.length === 0 ? (
                 <div style={{
                   padding: '2rem',
                   textAlign: 'center',
@@ -708,7 +708,7 @@ export function DestinationDetails() {
                     margin: 0,
                     fontSize: '0.875rem'
                   }}>
-                    No drivers found for this destination.
+                    No vehicles found for this destination.
                   </p>
                 </div>
               ) : (
@@ -717,90 +717,85 @@ export function DestinationDetails() {
                   gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                   gap: '1rem'
                 }}>
-                  {drivers.map((driver) => (
-                    <div
-                      key={driver.id}
-                      onClick={() => navigate(`/drivers/${driver.id}`)}
-                      style={{
-                        padding: '1.5rem',
-                        backgroundColor: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#3b82f6'
-                        e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)'
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#e5e7eb'
-                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)'
-                        e.currentTarget.style.transform = 'translateY(0)'
-                      }}
-                    >
-                      <h4 style={{
-                        fontSize: '1rem',
-                        fontWeight: '600',
-                        color: '#111827',
-                        margin: '0 0 0.5rem 0'
-                      }}>
-                        {driver.name}
-                      </h4>
-                      {driver.vehicle && (
+                  {vehicles.map((vehicle) => {
+                    const getTypeLabel = (type: string) => {
+                      const labels: Record<string, string> = {
+                        car4x4: 'Car 4x4',
+                        boat: 'Boat',
+                        quadbike: 'Quadbike',
+                        carSedan: 'Car Sedan',
+                        outro: 'Other'
+                      }
+                      return labels[type] || type
+                    }
+                    const getOwnerLabel = (owner: string) => {
+                      return owner === 'company' ? 'Company Vehicle' : 'Third Party Vehicle'
+                    }
+                    return (
+                      <div
+                        key={vehicle.id}
+                        onClick={() => navigate(`/vehicles/${vehicle.id}`)}
+                        style={{
+                          padding: '1.5rem',
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#3b82f6'
+                          e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)'
+                          e.currentTarget.style.transform = 'translateY(-2px)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e5e7eb'
+                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)'
+                          e.currentTarget.style.transform = 'translateY(0)'
+                        }}
+                      >
+                        <h4 style={{
+                          fontSize: '1rem',
+                          fontWeight: '600',
+                          color: '#111827',
+                          margin: '0 0 0.5rem 0'
+                        }}>
+                          {getTypeLabel(vehicle.type)}
+                        </h4>
                         <div style={{
                           fontSize: '0.875rem',
                           color: '#3b82f6',
                           fontWeight: '500',
                           marginBottom: '0.5rem'
                         }}>
-                          🚗 {driver.vehicle}
+                          🚗 {getOwnerLabel(vehicle.vehicleOwner)}
                         </div>
-                      )}
-                      {driver.languages && (
-                        <div style={{
-                          fontSize: '0.75rem',
-                          color: '#6b7280',
-                          marginBottom: '0.5rem'
-                        }}>
-                          🗣️ {driver.languages}
-                        </div>
-                      )}
-                      {driver.contactNumber && (
-                        <div style={{
-                          fontSize: '0.75rem',
-                          color: '#6b7280',
-                          marginBottom: '0.25rem'
-                        }}>
-                          📞 {driver.contactNumber}
-                        </div>
-                      )}
-                      {driver.email && (
-                        <div style={{
-                          fontSize: '0.75rem',
-                          color: '#6b7280',
-                          marginBottom: '0.5rem'
-                        }}>
-                          ✉️ {driver.email}
-                        </div>
-                      )}
-                      {driver.note && (
-                        <p style={{
-                          fontSize: '0.75rem',
-                          color: '#6b7280',
-                          margin: '0.5rem 0 0 0',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
-                        }}>
-                          {driver.note}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                        {vehicle.thirdPartyName && (
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: '#6b7280',
+                            marginBottom: '0.5rem'
+                          }}>
+                            👤 {vehicle.thirdPartyName}
+                          </div>
+                        )}
+                        {vehicle.note && (
+                          <p style={{
+                            fontSize: '0.75rem',
+                            color: '#6b7280',
+                            margin: '0.5rem 0 0 0',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}>
+                            {vehicle.note}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>

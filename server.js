@@ -133,28 +133,21 @@ async function initDb() {
       )
     `)
     
-    // Create drivers table if not exists
+    // Create vehicles table if not exists
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS drivers (
+      CREATE TABLE IF NOT EXISTS vehicles (
         id UUID PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        "contactNumber" VARCHAR(50),
-        email VARCHAR(255),
-        "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
-        languages VARCHAR(255),
-        vehicle VARCHAR(50),
+        type VARCHAR(50) NOT NULL,
+        "vehicleOwner" VARCHAR(50) NOT NULL,
+        "destinationId" UUID REFERENCES destinations(id) ON DELETE SET NULL,
+        "thirdPartyId" UUID REFERENCES third_parties(id) ON DELETE SET NULL,
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
-        "updatedAt" TIMESTAMP DEFAULT NOW()
+        "updatedAt" TIMESTAMP DEFAULT NOW(),
+        CONSTRAINT check_vehicle_type CHECK (type IN ('car4x4', 'boat', 'quadbike', 'carSedan', 'outro')),
+        CONSTRAINT check_vehicle_owner CHECK ("vehicleOwner" IN ('company', 'third-party'))
       )
     `)
-    
-    // Add vehicle column if it doesn't exist (migration for existing tables)
-    try {
-      await pool.query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS vehicle VARCHAR(50)`)
-    } catch (migrationError) {
-      // Column might already exist, that's fine
-    }
 
     // Create caterers table if not exists
     await pool.query(`
