@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { hotelsApi, destinationsApi } from '../lib/api'
-import type { Hotel, Destination } from '../types'
+import { hotelsApi, locationsApi } from '../lib/api'
+import type { Hotel, Location } from '../types'
 import { HotelForm } from '../components/HotelForm'
 import { AccountsCards } from '../components/AccountsCards'
 
-interface HotelWithDestination extends Hotel {
-  destinationName?: string
+interface HotelWithLocation extends Hotel {
+  locationName?: string
 }
 
 export function HotelDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [hotel, setHotel] = useState<HotelWithDestination | null>(null)
-  const [destinations, setDestinations] = useState<Destination[]>([])
+  const [hotel, setHotel] = useState<HotelWithLocation | null>(null)
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditForm, setShowEditForm] = useState(false)
@@ -22,7 +22,7 @@ export function HotelDetails() {
   useEffect(() => {
     if (id) {
       loadHotel()
-      loadDestinations()
+      loadLocations()
     }
   }, [id])
 
@@ -30,7 +30,7 @@ export function HotelDetails() {
     try {
       setLoading(true)
       setError(null)
-      const data = await hotelsApi.getById(id!) as HotelWithDestination
+      const data = await hotelsApi.getById(id!) as HotelWithLocation
       setHotel(data)
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to load hotel')
@@ -40,13 +40,13 @@ export function HotelDetails() {
     }
   }
 
-  const loadDestinations = async () => {
+  const loadLocations = async () => {
     try {
-      const data = await destinationsApi.getAll()
-      setDestinations(Array.isArray(data) ? data : [])
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setDestinations([]) // Ensure destinations is always an array
-      console.error('Error loading destinations:', err)
+      setLocations([]) // Ensure locations is always an array
+      console.error('Error loading locations:', err)
     }
   }
 
@@ -311,14 +311,14 @@ export function HotelDetails() {
                 letterSpacing: '0.05em',
                 marginBottom: '0.5rem'
               }}>
-                Destination
+                Location
               </label>
               <p style={{
                 fontSize: '0.875rem',
                 color: '#111827',
                 margin: 0
               }}>
-                {hotel.destinationName || '-'}
+                {hotel.locationName || '-'}
               </p>
             </div>
 
@@ -570,7 +570,7 @@ export function HotelDetails() {
       {showEditForm && (
         <HotelForm
           hotel={hotel}
-          destinations={destinations}
+          locations={locations}
           onClose={() => setShowEditForm(false)}
           onSave={handleSave}
         />

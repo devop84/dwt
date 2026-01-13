@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS clients (
   "updatedAt" TIMESTAMP DEFAULT NOW()
 );
 
--- Destinations table
-CREATE TABLE IF NOT EXISTS destinations (
+-- Locations table
+CREATE TABLE IF NOT EXISTS locations (
   id UUID PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   coordinates VARCHAR(255),
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS hotels (
   name VARCHAR(255) NOT NULL,
   rating INTEGER,
   "priceRange" VARCHAR(50),
-  "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+  "locationId" UUID REFERENCES locations(id) ON DELETE CASCADE,
   description TEXT,
   "contactNumber" VARCHAR(50),
   email VARCHAR(255),
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS guides (
   name VARCHAR(255) NOT NULL,
   "contactNumber" VARCHAR(50),
   email VARCHAR(255),
-  "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+  "locationId" UUID REFERENCES locations(id) ON DELETE CASCADE,
   languages VARCHAR(255),
   note TEXT,
   "createdAt" TIMESTAMP DEFAULT NOW(),
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   id UUID PRIMARY KEY,
   type VARCHAR(50) NOT NULL,
   "vehicleOwner" VARCHAR(50) NOT NULL,
-  "destinationId" UUID REFERENCES destinations(id) ON DELETE SET NULL,
+  "locationId" UUID REFERENCES locations(id) ON DELETE SET NULL,
   "thirdPartyId" UUID REFERENCES third_parties(id) ON DELETE SET NULL,
   note TEXT,
   "createdAt" TIMESTAMP DEFAULT NOW(),
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS caterers (
   "contactNumber" VARCHAR(50),
   email VARCHAR(255),
   type VARCHAR(50) NOT NULL,
-  "destinationId" UUID REFERENCES destinations(id) ON DELETE SET NULL,
+  "locationId" UUID REFERENCES locations(id) ON DELETE SET NULL,
   note TEXT,
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW(),

@@ -1,21 +1,21 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { caterersApi, destinationsApi } from '../lib/api'
-import type { Caterer, Destination } from '../types'
+import { caterersApi, locationsApi } from '../lib/api'
+import type { Caterer, Location } from '../types'
 import { CatererForm } from '../components/CatererForm'
 
-type FilterColumn = 'all' | 'name' | 'destinationName' | 'type' | 'contactNumber' | 'email'
-type SortColumn = 'name' | 'destinationName' | 'type' | 'contactNumber' | 'email'
+type FilterColumn = 'all' | 'name' | 'locationName' | 'type' | 'contactNumber' | 'email'
+type SortColumn = 'name' | 'locationName' | 'type' | 'contactNumber' | 'email'
 type SortDirection = 'asc' | 'desc' | null
 
-interface CatererWithDestination extends Caterer {
-  destinationName?: string
+interface CatererWithLocation extends Caterer {
+  locationName?: string
 }
 
 export function CaterersList() {
   const navigate = useNavigate()
-  const [caterers, setCaterers] = useState<CatererWithDestination[]>([])
-  const [destinations, setDestinations] = useState<Destination[]>([])
+  const [caterers, setCaterers] = useState<CatererWithLocation[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -23,18 +23,18 @@ export function CaterersList() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingCaterer, setEditingCaterer] = useState<CatererWithDestination | null>(null)
+  const [editingCaterer, setEditingCaterer] = useState<CatererWithLocation | null>(null)
 
   useEffect(() => {
     loadCaterers()
-    loadDestinations()
+    loadLocations()
   }, [])
 
   const loadCaterers = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await caterersApi.getAll() as CatererWithDestination[]
+      const data = await caterersApi.getAll() as CatererWithLocation[]
       setCaterers(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load caterers')
@@ -45,13 +45,13 @@ export function CaterersList() {
     }
   }
 
-  const loadDestinations = async () => {
+  const loadLocations = async () => {
     try {
-      const data = await destinationsApi.getAll()
-      setDestinations(Array.isArray(data) ? data : [])
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setDestinations([]) // Ensure destinations is always an array
-      console.error('Error loading destinations:', err)
+      setLocations([]) // Ensure locations is always an array
+      console.error('Error loading locations:', err)
     }
   }
 
@@ -67,7 +67,7 @@ export function CaterersList() {
         if (filterColumn === 'all') {
           return (
             caterer.name.toLowerCase().includes(search) ||
-            (caterer.destinationName && caterer.destinationName.toLowerCase().includes(search)) ||
+            (caterer.locationName && caterer.locationName.toLowerCase().includes(search)) ||
             (caterer.type && caterer.type.toLowerCase().includes(search)) ||
             (caterer.contactNumber && caterer.contactNumber.toLowerCase().includes(search)) ||
             (caterer.email && caterer.email.toLowerCase().includes(search))
@@ -76,8 +76,8 @@ export function CaterersList() {
           switch (filterColumn) {
             case 'name':
               return caterer.name.toLowerCase().includes(search)
-            case 'destinationName':
-              return caterer.destinationName?.toLowerCase().includes(search) ?? false
+            case 'locationName':
+              return caterer.locationName?.toLowerCase().includes(search) ?? false
             case 'type':
               return caterer.type?.toLowerCase().includes(search) ?? false
             case 'contactNumber':
@@ -102,9 +102,9 @@ export function CaterersList() {
             aValue = a.name.toLowerCase()
             bValue = b.name.toLowerCase()
             break
-          case 'destinationName':
-            aValue = a.destinationName?.toLowerCase() || ''
-            bValue = b.destinationName?.toLowerCase() || ''
+          case 'locationName':
+            aValue = a.locationName?.toLowerCase() || ''
+            bValue = b.locationName?.toLowerCase() || ''
             break
           case 'type':
             aValue = a.type?.toLowerCase() || ''
@@ -370,7 +370,7 @@ export function CaterersList() {
           <option value="name">Name</option>
           <option value="contactNumber">Contact Number</option>
           <option value="email">Email</option>
-          <option value="destinationName">Destination</option>
+          <option value="locationName">Location</option>
           <option value="type">Type</option>
         </select>
         {searchTerm && (
@@ -558,13 +558,13 @@ export function CaterersList() {
                     Type{getSortIndicator('type')}
                   </th>
                   <th
-                    onClick={() => handleSort('destinationName')}
+                    onClick={() => handleSort('locationName')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'destinationName' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'locationName' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -572,17 +572,17 @@ export function CaterersList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'destinationName') {
+                      if (sortColumn !== 'locationName') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'destinationName') {
+                      if (sortColumn !== 'locationName') {
                         e.currentTarget.style.backgroundColor = '#f9fafb'
                       }
                     }}
                   >
-                    Destination{getSortIndicator('destinationName')}
+                    Location{getSortIndicator('locationName')}
                   </th>
                 </tr>
               </thead>
@@ -616,7 +616,7 @@ export function CaterersList() {
                       {getTypeLabel(caterer.type)}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {caterer.destinationName || '-'}
+                      {caterer.locationName || '-'}
                     </td>
                   </tr>
                 ))}
@@ -629,7 +629,7 @@ export function CaterersList() {
       {showForm && (
         <CatererForm
           caterer={editingCaterer}
-          destinations={destinations}
+          locations={locations}
           onClose={() => {
             setShowForm(false)
             setEditingCaterer(null)

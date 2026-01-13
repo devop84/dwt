@@ -1,21 +1,21 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { driversApi, destinationsApi } from '../lib/api'
-import type { Driver, Destination } from '../types'
+import { driversApi, locationsApi } from '../lib/api'
+import type { Driver, Location } from '../types'
 import { DriverForm } from '../components/DriverForm'
 
-type FilterColumn = 'all' | 'name' | 'destinationName' | 'languages' | 'contactNumber' | 'email' | 'vehicle'
-type SortColumn = 'name' | 'destinationName' | 'languages' | 'contactNumber' | 'email' | 'vehicle'
+type FilterColumn = 'all' | 'name' | 'locationName' | 'languages' | 'contactNumber' | 'email' | 'vehicle'
+type SortColumn = 'name' | 'locationName' | 'languages' | 'contactNumber' | 'email' | 'vehicle'
 type SortDirection = 'asc' | 'desc' | null
 
-interface DriverWithDestination extends Driver {
-  destinationName?: string
+interface DriverWithLocation extends Driver {
+  locationName?: string
 }
 
 export function DriversList() {
   const navigate = useNavigate()
-  const [drivers, setDrivers] = useState<DriverWithDestination[]>([])
-  const [destinations, setDestinations] = useState<Destination[]>([])
+  const [drivers, setDrivers] = useState<DriverWithLocation[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -23,18 +23,18 @@ export function DriversList() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingDriver, setEditingDriver] = useState<DriverWithDestination | null>(null)
+  const [editingDriver, setEditingDriver] = useState<DriverWithLocation | null>(null)
 
   useEffect(() => {
     loadDrivers()
-    loadDestinations()
+    loadLocations()
   }, [])
 
   const loadDrivers = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await driversApi.getAll() as DriverWithDestination[]
+      const data = await driversApi.getAll() as DriverWithLocation[]
       setDrivers(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load drivers')
@@ -45,13 +45,13 @@ export function DriversList() {
     }
   }
 
-  const loadDestinations = async () => {
+  const loadLocations = async () => {
     try {
-      const data = await destinationsApi.getAll()
-      setDestinations(Array.isArray(data) ? data : [])
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setDestinations([]) // Ensure destinations is always an array
-      console.error('Error loading destinations:', err)
+      setLocations([]) // Ensure locations is always an array
+      console.error('Error loading locations:', err)
     }
   }
 
@@ -67,7 +67,7 @@ export function DriversList() {
         if (filterColumn === 'all') {
           return (
             driver.name.toLowerCase().includes(search) ||
-            (driver.destinationName && driver.destinationName.toLowerCase().includes(search)) ||
+            (driver.locationName && driver.locationName.toLowerCase().includes(search)) ||
             (driver.languages && driver.languages.toLowerCase().includes(search)) ||
             (driver.contactNumber && driver.contactNumber.toLowerCase().includes(search)) ||
             (driver.email && driver.email.toLowerCase().includes(search)) ||
@@ -77,8 +77,8 @@ export function DriversList() {
           switch (filterColumn) {
             case 'name':
               return driver.name.toLowerCase().includes(search)
-            case 'destinationName':
-              return driver.destinationName?.toLowerCase().includes(search) ?? false
+            case 'locationName':
+              return driver.locationName?.toLowerCase().includes(search) ?? false
             case 'languages':
               return driver.languages?.toLowerCase().includes(search) ?? false
             case 'contactNumber':
@@ -105,9 +105,9 @@ export function DriversList() {
             aValue = a.name.toLowerCase()
             bValue = b.name.toLowerCase()
             break
-          case 'destinationName':
-            aValue = a.destinationName?.toLowerCase() || ''
-            bValue = b.destinationName?.toLowerCase() || ''
+          case 'locationName':
+            aValue = a.locationName?.toLowerCase() || ''
+            bValue = b.locationName?.toLowerCase() || ''
             break
           case 'languages':
             aValue = a.languages?.toLowerCase() || ''
@@ -364,7 +364,7 @@ export function DriversList() {
           <option value="name">Name</option>
           <option value="contactNumber">Contact Number</option>
           <option value="email">Email</option>
-          <option value="destinationName">Destination</option>
+          <option value="locationName">Location</option>
           <option value="languages">Languages</option>
           <option value="vehicle">Vehicle</option>
         </select>
@@ -526,13 +526,13 @@ export function DriversList() {
                     Email{getSortIndicator('email')}
                   </th>
                   <th
-                    onClick={() => handleSort('destinationName')}
+                    onClick={() => handleSort('locationName')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'destinationName' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'locationName' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -540,17 +540,17 @@ export function DriversList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'destinationName') {
+                      if (sortColumn !== 'locationName') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'destinationName') {
+                      if (sortColumn !== 'locationName') {
                         e.currentTarget.style.backgroundColor = '#f9fafb'
                       }
                     }}
                   >
-                    Destination{getSortIndicator('destinationName')}
+                    Location{getSortIndicator('locationName')}
                   </th>
                   <th
                     onClick={() => handleSort('languages')}
@@ -635,7 +635,7 @@ export function DriversList() {
                       {driver.email || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {driver.destinationName || '-'}
+                      {driver.locationName || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
                       {driver.languages || '-'}
@@ -654,7 +654,7 @@ export function DriversList() {
       {showForm && (
         <DriverForm
           driver={editingDriver}
-          destinations={destinations}
+          locations={locations}
           onClose={() => {
             setShowForm(false)
             setEditingDriver(null)

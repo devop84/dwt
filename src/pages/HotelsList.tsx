@@ -1,21 +1,21 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { hotelsApi, destinationsApi } from '../lib/api'
-import type { Hotel, Destination } from '../types'
+import { hotelsApi, locationsApi } from '../lib/api'
+import type { Hotel, Location } from '../types'
 import { HotelForm } from '../components/HotelForm'
 
-type FilterColumn = 'all' | 'name' | 'destinationName' | 'rating' | 'priceRange' | 'description'
-type SortColumn = 'name' | 'destinationName' | 'rating' | 'priceRange' | 'description'
+type FilterColumn = 'all' | 'name' | 'locationName' | 'rating' | 'priceRange' | 'description'
+type SortColumn = 'name' | 'locationName' | 'rating' | 'priceRange' | 'description'
 type SortDirection = 'asc' | 'desc' | null
 
-interface HotelWithDestination extends Hotel {
-  destinationName?: string
+interface HotelWithLocation extends Hotel {
+  locationName?: string
 }
 
 export function HotelsList() {
   const navigate = useNavigate()
-  const [hotels, setHotels] = useState<HotelWithDestination[]>([])
-  const [destinations, setDestinations] = useState<Destination[]>([])
+  const [hotels, setHotels] = useState<HotelWithLocation[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -23,18 +23,18 @@ export function HotelsList() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingHotel, setEditingHotel] = useState<HotelWithDestination | null>(null)
+  const [editingHotel, setEditingHotel] = useState<HotelWithLocation | null>(null)
 
   useEffect(() => {
     loadHotels()
-    loadDestinations()
+    loadLocations()
   }, [])
 
   const loadHotels = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await hotelsApi.getAll() as HotelWithDestination[]
+      const data = await hotelsApi.getAll() as HotelWithLocation[]
       setHotels(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load hotels')
@@ -45,13 +45,13 @@ export function HotelsList() {
     }
   }
 
-  const loadDestinations = async () => {
+  const loadLocations = async () => {
     try {
-      const data = await destinationsApi.getAll()
-      setDestinations(Array.isArray(data) ? data : [])
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setDestinations([]) // Ensure destinations is always an array
-      console.error('Error loading destinations:', err)
+      setLocations([]) // Ensure locations is always an array
+      console.error('Error loading locations:', err)
     }
   }
 
@@ -67,7 +67,7 @@ export function HotelsList() {
         if (filterColumn === 'all') {
           return (
             hotel.name.toLowerCase().includes(search) ||
-            (hotel.destinationName && hotel.destinationName.toLowerCase().includes(search)) ||
+            (hotel.locationName && hotel.locationName.toLowerCase().includes(search)) ||
             (hotel.priceRange && hotel.priceRange.toLowerCase().includes(search)) ||
             (hotel.description && hotel.description.toLowerCase().includes(search))
           )
@@ -75,8 +75,8 @@ export function HotelsList() {
           switch (filterColumn) {
             case 'name':
               return hotel.name.toLowerCase().includes(search)
-            case 'destinationName':
-              return hotel.destinationName?.toLowerCase().includes(search) ?? false
+            case 'locationName':
+              return hotel.locationName?.toLowerCase().includes(search) ?? false
             case 'rating':
               return hotel.rating?.toString().includes(search) ?? false
             case 'priceRange':
@@ -101,9 +101,9 @@ export function HotelsList() {
             aValue = a.name.toLowerCase()
             bValue = b.name.toLowerCase()
             break
-          case 'destinationName':
-            aValue = a.destinationName?.toLowerCase() || ''
-            bValue = b.destinationName?.toLowerCase() || ''
+          case 'locationName':
+            aValue = a.locationName?.toLowerCase() || ''
+            bValue = b.locationName?.toLowerCase() || ''
             break
           case 'rating':
             aValue = a.rating || 0
@@ -368,7 +368,7 @@ export function HotelsList() {
         >
           <option value="all">All Columns</option>
           <option value="name">Name</option>
-          <option value="destinationName">Destination</option>
+          <option value="locationName">Location</option>
           <option value="rating">Rating</option>
           <option value="priceRange">Price Range</option>
           <option value="description">Description</option>
@@ -477,13 +477,13 @@ export function HotelsList() {
                     Name{getSortIndicator('name')}
                   </th>
                   <th
-                    onClick={() => handleSort('destinationName')}
+                    onClick={() => handleSort('locationName')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'destinationName' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'locationName' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -491,17 +491,17 @@ export function HotelsList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'destinationName') {
+                      if (sortColumn !== 'locationName') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'destinationName') {
+                      if (sortColumn !== 'locationName') {
                         e.currentTarget.style.backgroundColor = 'transparent'
                       }
                     }}
                   >
-                    Destination{getSortIndicator('destinationName')}
+                    Location{getSortIndicator('locationName')}
                   </th>
                   <th
                     onClick={() => handleSort('rating')}
@@ -612,7 +612,7 @@ export function HotelsList() {
                       fontSize: '0.875rem',
                       color: '#6b7280'
                     }}>
-                      {hotel.destinationName || '-'}
+                      {hotel.locationName || '-'}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
@@ -649,7 +649,7 @@ export function HotelsList() {
       {showForm && (
         <HotelForm
           hotel={editingHotel}
-          destinations={destinations}
+          locations={locations}
           onClose={handleCloseForm}
           onSave={handleSaveHotel}
         />

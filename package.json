@@ -27,6 +27,9 @@
     "create:third-parties-table": "node scripts/create-third-parties-table.js",
     "update:accounts-constraint": "node scripts/update-accounts-constraint.js",
     "migrate:drivers-to-vehicles": "node scripts/migrate-drivers-to-vehicles.js",
+    "migrate:destinations-to-locations": "node scripts/migrate-destinations-to-locations.js",
+    "transfer:destinations-to-locations": "node scripts/transfer-destinations-to-locations.js",
+    "update:foreign-keys-to-locations": "node scripts/update-foreign-keys-to-locations.js",
     "build": "vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"

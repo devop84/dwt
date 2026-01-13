@@ -53,9 +53,9 @@ async function initDb() {
       )
     `)
     
-    // Create destinations table if not exists
+    // Create locations table if not exists
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS destinations (
+      CREATE TABLE IF NOT EXISTS locations (
         id UUID PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         coordinates VARCHAR(255),
@@ -70,9 +70,9 @@ async function initDb() {
     
     // Add prefeitura, state, and cep columns if they don't exist (migration for existing tables)
     try {
-      await pool.query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS prefeitura VARCHAR(255)`)
-      await pool.query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS state VARCHAR(100)`)
-      await pool.query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS cep VARCHAR(20)`)
+      await pool.query(`ALTER TABLE locations ADD COLUMN IF NOT EXISTS prefeitura VARCHAR(255)`)
+      await pool.query(`ALTER TABLE locations ADD COLUMN IF NOT EXISTS state VARCHAR(100)`)
+      await pool.query(`ALTER TABLE locations ADD COLUMN IF NOT EXISTS cep VARCHAR(20)`)
     } catch (migrationError) {
       console.log('Migration note:', migrationError.message)
     }
@@ -107,7 +107,7 @@ async function initDb() {
         name VARCHAR(255) NOT NULL,
         rating INTEGER,
         "priceRange" VARCHAR(50),
-        "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+        "locationId" UUID REFERENCES locations(id) ON DELETE CASCADE,
         description TEXT,
         "contactNumber" VARCHAR(50),
         email VARCHAR(255),
@@ -125,7 +125,7 @@ async function initDb() {
         name VARCHAR(255) NOT NULL,
         "contactNumber" VARCHAR(50),
         email VARCHAR(255),
-        "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+        "locationId" UUID REFERENCES locations(id) ON DELETE CASCADE,
         languages VARCHAR(255),
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
@@ -139,7 +139,7 @@ async function initDb() {
         id UUID PRIMARY KEY,
         type VARCHAR(50) NOT NULL,
         "vehicleOwner" VARCHAR(50) NOT NULL,
-        "destinationId" UUID REFERENCES destinations(id) ON DELETE SET NULL,
+        "locationId" UUID REFERENCES locations(id) ON DELETE SET NULL,
         "thirdPartyId" UUID REFERENCES third_parties(id) ON DELETE SET NULL,
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
@@ -157,7 +157,7 @@ async function initDb() {
         "contactNumber" VARCHAR(50),
         email VARCHAR(255),
         type VARCHAR(50) NOT NULL,
-        "destinationId" UUID REFERENCES destinations(id) ON DELETE SET NULL,
+        "locationId" UUID REFERENCES locations(id) ON DELETE SET NULL,
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),
@@ -637,8 +637,8 @@ app.delete('/api/clients/:id', async (req, res) => {
   }
 })
 
-// Get all destinations
-app.get('/api/destinations', async (req, res) => {
+// Get all locations
+app.get('/api/locations', async (req, res) => {
   await initDb()
   
   try {
@@ -665,19 +665,19 @@ app.get('/api/destinations', async (req, res) => {
         description,
         "createdAt",
         "updatedAt"
-      FROM destinations
+      FROM locations
       ORDER BY name ASC
     `)
 
     res.json(result.rows)
   } catch (error) {
     console.error('Destinations error:', error)
-    res.status(500).json({ message: error.message || 'Failed to fetch destinations' })
+    res.status(500).json({ message: error.message || 'Failed to fetch locations' })
   }
 })
 
 // Create a new destination
-app.post('/api/destinations', async (req, res) => {
+app.post('/api/locations', async (req, res) => {
   await initDb()
   
   try {
@@ -699,12 +699,12 @@ app.post('/api/destinations', async (req, res) => {
       return res.status(400).json({ message: 'Name is required' })
     }
 
-    const destinationId = randomUUID()
+    const locationId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO destinations (id, name, coordinates, prefeitura, state, cep, description)
+      `INSERT INTO locations (id, name, coordinates, prefeitura, state, cep, description)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, name, coordinates, prefeitura, state, cep, description, "createdAt", "updatedAt"`,
-      [destinationId, name, coordinates || null, prefeitura || null, state || null, cep || null, description || null]
+      [locationId, name, coordinates || null, prefeitura || null, state || null, cep || null, description || null]
     )
 
     res.status(201).json(result.rows[0])
@@ -715,7 +715,7 @@ app.post('/api/destinations', async (req, res) => {
 })
 
 // Get a single destination
-app.get('/api/destinations/:id', async (req, res) => {
+app.get('/api/locations/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -744,7 +744,7 @@ app.get('/api/destinations/:id', async (req, res) => {
         description,
         "createdAt",
         "updatedAt"
-      FROM destinations
+      FROM locations
       WHERE id = $1`,
       [id]
     )
@@ -761,7 +761,7 @@ app.get('/api/destinations/:id', async (req, res) => {
 })
 
 // Update a destination
-app.put('/api/destinations/:id', async (req, res) => {
+app.put('/api/locations/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -785,13 +785,13 @@ app.put('/api/destinations/:id', async (req, res) => {
     }
 
     // Check if destination exists
-    const existing = await pool.query('SELECT id FROM destinations WHERE id = $1', [id])
+    const existing = await pool.query('SELECT id FROM locations WHERE id = $1', [id])
     if (existing.rows.length === 0) {
       return res.status(404).json({ message: 'Destination not found' })
     }
 
     const result = await pool.query(
-      `UPDATE destinations 
+      `UPDATE locations 
        SET name = $1, coordinates = $2, prefeitura = $3, state = $4, cep = $5, description = $6, "updatedAt" = NOW()
        WHERE id = $7
        RETURNING id, name, coordinates, prefeitura, state, cep, description, "createdAt", "updatedAt"`,
@@ -806,7 +806,7 @@ app.put('/api/destinations/:id', async (req, res) => {
 })
 
 // Delete a destination
-app.delete('/api/destinations/:id', async (req, res) => {
+app.delete('/api/locations/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -825,12 +825,12 @@ app.delete('/api/destinations/:id', async (req, res) => {
     const { id } = req.params
 
     // Check if destination exists
-    const existing = await pool.query('SELECT id FROM destinations WHERE id = $1', [id])
+    const existing = await pool.query('SELECT id FROM locations WHERE id = $1', [id])
     if (existing.rows.length === 0) {
       return res.status(404).json({ message: 'Destination not found' })
     }
 
-    await pool.query('DELETE FROM destinations WHERE id = $1', [id])
+    await pool.query('DELETE FROM locations WHERE id = $1', [id])
 
     res.status(200).json({ message: 'Destination deleted successfully' })
   } catch (error) {
@@ -862,7 +862,7 @@ app.get('/api/hotels', async (req, res) => {
         h.name,
         h.rating,
         h."priceRange",
-        h."destinationId",
+        h."locationId",
           h.description,
         h."contactNumber",
         h.email,
@@ -870,9 +870,9 @@ app.get('/api/hotels', async (req, res) => {
         h.coordinates,
         h."createdAt",
         h."updatedAt",
-        d.name as "destinationName"
+        d.name as "locationName"
       FROM hotels h
-      LEFT JOIN destinations d ON h."destinationId" = d.id
+      LEFT JOIN locations d ON h."locationId" = d.id
       ORDER BY h.name ASC
     `)
 
@@ -900,22 +900,22 @@ app.post('/api/hotels', async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' })
     }
 
-    const { name, rating, priceRange, destinationId, description, contactNumber, email, address, coordinates } = req.body
+    const { name, rating, priceRange, locationId, description, contactNumber, email, address, coordinates } = req.body
 
     if (!name) {
       return res.status(400).json({ message: 'Name is required' })
     }
 
-    if (!destinationId) {
+    if (!locationId) {
       return res.status(400).json({ message: 'Destination is required' })
     }
 
     const hotelId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO hotels (id, name, rating, "priceRange", "destinationId", description, "contactNumber", email, address, coordinates)
+      `INSERT INTO hotels (id, name, rating, "priceRange", "locationId", description, "contactNumber", email, address, coordinates)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING id, name, rating, "priceRange", "destinationId", description, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
-      [hotelId, name, rating || null, priceRange || null, destinationId, description || null, contactNumber || null, email || null, address || null, coordinates || null]
+       RETURNING id, name, rating, "priceRange", "locationId", description, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
+      [hotelId, name, rating || null, priceRange || null, locationId, description || null, contactNumber || null, email || null, address || null, coordinates || null]
     )
 
     res.status(201).json(result.rows[0])
@@ -949,7 +949,7 @@ app.get('/api/hotels/:id', async (req, res) => {
         h.name,
         h.rating,
         h."priceRange",
-        h."destinationId",
+        h."locationId",
           h.description,
         h."contactNumber",
         h.email,
@@ -957,9 +957,9 @@ app.get('/api/hotels/:id', async (req, res) => {
         h.coordinates,
         h."createdAt",
         h."updatedAt",
-        d.name as "destinationName"
+        d.name as "locationName"
       FROM hotels h
-      LEFT JOIN destinations d ON h."destinationId" = d.id
+      LEFT JOIN locations d ON h."locationId" = d.id
       WHERE h.id = $1`,
       [id]
     )
@@ -993,13 +993,13 @@ app.put('/api/hotels/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const { name, rating, priceRange, destinationId, description, contactNumber, email, address, coordinates } = req.body
+    const { name, rating, priceRange, locationId, description, contactNumber, email, address, coordinates } = req.body
 
     if (!name) {
       return res.status(400).json({ message: 'Name is required' })
     }
 
-    if (!destinationId) {
+    if (!locationId) {
       return res.status(400).json({ message: 'Destination is required' })
     }
 
@@ -1011,11 +1011,11 @@ app.put('/api/hotels/:id', async (req, res) => {
 
     const result = await pool.query(
       `UPDATE hotels 
-       SET name = $1, rating = $2, "priceRange" = $3, "destinationId" = $4, description = $5, 
+       SET name = $1, rating = $2, "priceRange" = $3, "locationId" = $4, description = $5, 
            "contactNumber" = $6, email = $7, address = $8, coordinates = $9, "updatedAt" = NOW()
        WHERE id = $10
-       RETURNING id, name, rating, "priceRange", "destinationId", description, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
-      [name, rating || null, priceRange || null, destinationId, description || null, contactNumber || null, email || null, address || null, coordinates || null, id]
+       RETURNING id, name, rating, "priceRange", "locationId", description, "contactNumber", email, address, coordinates, "createdAt", "updatedAt"`,
+      [name, rating || null, priceRange || null, locationId, description || null, contactNumber || null, email || null, address || null, coordinates || null, id]
     )
 
     res.status(200).json(result.rows[0])
@@ -1082,14 +1082,14 @@ app.get('/api/guides', async (req, res) => {
         g.name,
         g."contactNumber",
         g.email,
-        g."destinationId",
+        g."locationId",
         g.languages,
         g.note,
         g."createdAt",
         g."updatedAt",
-        d.name as "destinationName"
+        d.name as "locationName"
       FROM guides g
-      LEFT JOIN destinations d ON g."destinationId" = d.id
+      LEFT JOIN locations d ON g."locationId" = d.id
       ORDER BY g.name ASC
     `)
 
@@ -1117,22 +1117,22 @@ app.post('/api/guides', async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' })
     }
 
-    const { name, contactNumber, email, destinationId, languages, note } = req.body
+    const { name, contactNumber, email, locationId, languages, note } = req.body
 
     if (!name) {
       return res.status(400).json({ message: 'Name is required' })
     }
 
-    if (!destinationId) {
+    if (!locationId) {
       return res.status(400).json({ message: 'Destination is required' })
     }
 
     const guideId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO guides (id, name, "contactNumber", email, "destinationId", languages, note)
+      `INSERT INTO guides (id, name, "contactNumber", email, "locationId", languages, note)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, name, "contactNumber", email, "destinationId", languages, note, "createdAt", "updatedAt"`,
-      [guideId, name, contactNumber || null, email || null, destinationId, languages || null, note || null]
+       RETURNING id, name, "contactNumber", email, "locationId", languages, note, "createdAt", "updatedAt"`,
+      [guideId, name, contactNumber || null, email || null, locationId, languages || null, note || null]
     )
 
     res.status(201).json(result.rows[0])
@@ -1166,14 +1166,14 @@ app.get('/api/guides/:id', async (req, res) => {
         g.name,
         g."contactNumber",
         g.email,
-        g."destinationId",
+        g."locationId",
         g.languages,
         g.note,
         g."createdAt",
         g."updatedAt",
-        d.name as "destinationName"
+        d.name as "locationName"
       FROM guides g
-      LEFT JOIN destinations d ON g."destinationId" = d.id
+      LEFT JOIN locations d ON g."locationId" = d.id
       WHERE g.id = $1`,
       [id]
     )
@@ -1207,13 +1207,13 @@ app.put('/api/guides/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const { name, contactNumber, email, destinationId, languages, note } = req.body
+    const { name, contactNumber, email, locationId, languages, note } = req.body
 
     if (!name) {
       return res.status(400).json({ message: 'Name is required' })
     }
 
-    if (!destinationId) {
+    if (!locationId) {
       return res.status(400).json({ message: 'Destination is required' })
     }
 
@@ -1225,10 +1225,10 @@ app.put('/api/guides/:id', async (req, res) => {
 
     const result = await pool.query(
       `UPDATE guides 
-       SET name = $1, "contactNumber" = $2, email = $3, "destinationId" = $4, languages = $5, note = $6, "updatedAt" = NOW()
+       SET name = $1, "contactNumber" = $2, email = $3, "locationId" = $4, languages = $5, note = $6, "updatedAt" = NOW()
        WHERE id = $7
-       RETURNING id, name, "contactNumber", email, "destinationId", languages, note, "createdAt", "updatedAt"`,
-      [name, contactNumber || null, email || null, destinationId, languages || null, note || null, id]
+       RETURNING id, name, "contactNumber", email, "locationId", languages, note, "createdAt", "updatedAt"`,
+      [name, contactNumber || null, email || null, locationId, languages || null, note || null, id]
     )
 
     res.status(200).json(result.rows[0])
@@ -1294,15 +1294,15 @@ app.get('/api/vehicles', async (req, res) => {
         v.id,
         v.type,
         v."vehicleOwner",
-        v."destinationId",
+        v."locationId",
         v."thirdPartyId",
         v.note,
         v."createdAt",
         v."updatedAt",
-        dest.name as "destinationName",
+        dest.name as "locationName",
         tp.name as "thirdPartyName"
       FROM vehicles v
-      LEFT JOIN destinations dest ON v."destinationId" = dest.id
+      LEFT JOIN locations dest ON v."locationId" = dest.id
       LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
       ORDER BY v.type ASC, v."createdAt" DESC
     `)
@@ -1331,7 +1331,7 @@ app.post('/api/vehicles', async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' })
     }
 
-    const { type, vehicleOwner, destinationId, thirdPartyId, note } = req.body
+    const { type, vehicleOwner, locationId, thirdPartyId, note } = req.body
 
     if (!type) {
       return res.status(400).json({ message: 'Type is required' })
@@ -1355,10 +1355,10 @@ app.post('/api/vehicles', async (req, res) => {
 
     const vehicleId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO vehicles (id, type, "vehicleOwner", "destinationId", "thirdPartyId", note)
+      `INSERT INTO vehicles (id, type, "vehicleOwner", "locationId", "thirdPartyId", note)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [vehicleId, type, vehicleOwner, destinationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null]
+      [vehicleId, type, vehicleOwner, locationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null]
     )
 
     res.status(201).json(result.rows[0])
@@ -1391,15 +1391,15 @@ app.get('/api/vehicles/:id', async (req, res) => {
         v.id,
         v.type,
         v."vehicleOwner",
-        v."destinationId",
+        v."locationId",
         v."thirdPartyId",
         v.note,
         v."createdAt",
         v."updatedAt",
-        dest.name as "destinationName",
+        dest.name as "locationName",
         tp.name as "thirdPartyName"
       FROM vehicles v
-      LEFT JOIN destinations dest ON v."destinationId" = dest.id
+      LEFT JOIN locations dest ON v."locationId" = dest.id
       LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
       WHERE v.id = $1`,
       [id]
@@ -1434,7 +1434,7 @@ app.put('/api/vehicles/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const { type, vehicleOwner, destinationId, thirdPartyId, note } = req.body
+    const { type, vehicleOwner, locationId, thirdPartyId, note } = req.body
 
     if (!type) {
       return res.status(400).json({ message: 'Type is required' })
@@ -1464,10 +1464,10 @@ app.put('/api/vehicles/:id', async (req, res) => {
 
     const result = await pool.query(
       `UPDATE vehicles 
-       SET type = $1, "vehicleOwner" = $2, "destinationId" = $3, "thirdPartyId" = $4, note = $5, "updatedAt" = NOW()
+       SET type = $1, "vehicleOwner" = $2, "locationId" = $3, "thirdPartyId" = $4, note = $5, "updatedAt" = NOW()
        WHERE id = $6
        RETURNING *`,
-      [type, vehicleOwner, destinationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null, id]
+      [type, vehicleOwner, locationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null, id]
     )
 
     res.status(200).json(result.rows[0])
@@ -1529,9 +1529,9 @@ app.get('/api/caterers', async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT c.*, d.name as "destinationName"
+      SELECT c.*, d.name as "locationName"
       FROM caterers c
-      LEFT JOIN destinations d ON c."destinationId" = d.id
+      LEFT JOIN locations d ON c."locationId" = d.id
       ORDER BY c.name
     `)
     res.json(result.rows)
@@ -1558,7 +1558,7 @@ app.post('/api/caterers', async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' })
     }
 
-    const { name, contactNumber, email, type, destinationId, note } = req.body
+    const { name, contactNumber, email, type, locationId, note } = req.body
 
     if (!name || !type) {
       return res.status(400).json({ message: 'Name and type are required' })
@@ -1570,9 +1570,9 @@ app.post('/api/caterers', async (req, res) => {
 
     const catererId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO caterers (id, name, "contactNumber", email, type, "destinationId", note)
+      `INSERT INTO caterers (id, name, "contactNumber", email, type, "locationId", note)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [catererId, name, contactNumber || null, email || null, type, destinationId || null, note || null]
+      [catererId, name, contactNumber || null, email || null, type, locationId || null, note || null]
     )
 
     res.status(201).json(result.rows[0])
@@ -1601,9 +1601,9 @@ app.get('/api/caterers/:id', async (req, res) => {
 
     const { id } = req.params
     const result = await pool.query(`
-      SELECT c.*, d.name as "destinationName"
+      SELECT c.*, d.name as "locationName"
       FROM caterers c
-      LEFT JOIN destinations d ON c."destinationId" = d.id
+      LEFT JOIN locations d ON c."locationId" = d.id
       WHERE c.id = $1
     `, [id])
 
@@ -1636,7 +1636,7 @@ app.put('/api/caterers/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const { name, contactNumber, email, type, destinationId, note } = req.body
+    const { name, contactNumber, email, type, locationId, note } = req.body
 
     if (!name || !type) {
       return res.status(400).json({ message: 'Name and type are required' })
@@ -1654,10 +1654,10 @@ app.put('/api/caterers/:id', async (req, res) => {
 
     const result = await pool.query(
       `UPDATE caterers 
-       SET name = $1, "contactNumber" = $2, email = $3, type = $4, "destinationId" = $5, note = $6, "updatedAt" = NOW()
+       SET name = $1, "contactNumber" = $2, email = $3, type = $4, "locationId" = $5, note = $6, "updatedAt" = NOW()
        WHERE id = $7
        RETURNING *`,
-      [name, contactNumber || null, email || null, type, destinationId || null, note || null, id]
+      [name, contactNumber || null, email || null, type, locationId || null, note || null, id]
     )
 
     res.status(200).json(result.rows[0])

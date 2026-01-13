@@ -1,21 +1,22 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { vehiclesApi, destinationsApi, thirdPartiesApi } from '../lib/api'
-import type { Vehicle, Destination, ThirdParty } from '../types'
+import { vehiclesApi, locationsApi, thirdPartiesApi } from '../lib/api'
+import type { Vehicle, Location, ThirdParty } from '../types'
 import { VehicleForm } from '../components/VehicleForm'
 
-type FilterColumn = 'all' | 'type' | 'vehicleOwner' | 'destinationName' | 'thirdPartyName'
-type SortColumn = 'type' | 'vehicleOwner' | 'destinationName' | 'thirdPartyName'
+type FilterColumn = 'all' | 'type' | 'owner' | 'locationName'
+type SortColumn = 'type' | 'owner' | 'locationName'
 
 interface VehicleWithRelations extends Vehicle {
-  destinationName?: string
+  locationName?: string
   thirdPartyName?: string
+  owner?: string // Computed: "Company" or third party name
 }
 
 export function VehiclesList() {
   const navigate = useNavigate()
   const [vehicles, setVehicles] = useState<VehicleWithRelations[]>([])
-  const [destinations, setDestinations] = useState<Destination[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [thirdParties, setThirdParties] = useState<ThirdParty[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -28,7 +29,7 @@ export function VehiclesList() {
 
   useEffect(() => {
     loadVehicles()
-    loadDestinations()
+    loadLocations()
     loadThirdParties()
   }, [])
 
@@ -37,7 +38,12 @@ export function VehiclesList() {
       setLoading(true)
       setError(null)
       const data = await vehiclesApi.getAll() as VehicleWithRelations[]
-      setVehicles(Array.isArray(data) ? data : [])
+      // Compute owner name for each vehicle
+      const vehiclesWithOwner = data.map(vehicle => ({
+        ...vehicle,
+        owner: vehicle.vehicleOwner === 'company' ? 'Company' : vehicle.thirdPartyName || ''
+      }))
+      setVehicles(Array.isArray(vehiclesWithOwner) ? vehiclesWithOwner : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load vehicles')
       setVehicles([])
@@ -47,13 +53,13 @@ export function VehiclesList() {
     }
   }
 
-  const loadDestinations = async () => {
+  const loadLocations = async () => {
     try {
-      const data = await destinationsApi.getAll()
-      setDestinations(Array.isArray(data) ? data : [])
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setDestinations([])
-      console.error('Error loading destinations:', err)
+      setLocations([])
+      console.error('Error loading locations:', err)
     }
   }
 
@@ -77,20 +83,17 @@ export function VehiclesList() {
         if (filterColumn === 'all') {
           return (
             vehicle.type.toLowerCase().includes(search) ||
-            vehicle.vehicleOwner.toLowerCase().includes(search) ||
-            (vehicle.destinationName && vehicle.destinationName.toLowerCase().includes(search)) ||
-            (vehicle.thirdPartyName && vehicle.thirdPartyName.toLowerCase().includes(search))
+            (vehicle.owner && vehicle.owner.toLowerCase().includes(search)) ||
+            (vehicle.locationName && vehicle.locationName.toLowerCase().includes(search))
           )
         } else {
           switch (filterColumn) {
             case 'type':
               return vehicle.type.toLowerCase().includes(search)
-            case 'vehicleOwner':
-              return vehicle.vehicleOwner.toLowerCase().includes(search)
-            case 'destinationName':
-              return vehicle.destinationName?.toLowerCase().includes(search) ?? false
-            case 'thirdPartyName':
-              return vehicle.thirdPartyName?.toLowerCase().includes(search) ?? false
+            case 'owner':
+              return vehicle.owner?.toLowerCase().includes(search) ?? false
+            case 'locationName':
+              return vehicle.locationName?.toLowerCase().includes(search) ?? false
             default:
               return true
           }
@@ -108,17 +111,13 @@ export function VehiclesList() {
             aValue = a.type.toLowerCase()
             bValue = b.type.toLowerCase()
             break
-          case 'vehicleOwner':
-            aValue = a.vehicleOwner.toLowerCase()
-            bValue = b.vehicleOwner.toLowerCase()
+          case 'owner':
+            aValue = a.owner?.toLowerCase() || ''
+            bValue = b.owner?.toLowerCase() || ''
             break
-          case 'destinationName':
-            aValue = a.destinationName?.toLowerCase() || ''
-            bValue = b.destinationName?.toLowerCase() || ''
-            break
-          case 'thirdPartyName':
-            aValue = a.thirdPartyName?.toLowerCase() || ''
-            bValue = b.thirdPartyName?.toLowerCase() || ''
+          case 'locationName':
+            aValue = a.locationName?.toLowerCase() || ''
+            bValue = b.locationName?.toLowerCase() || ''
             break
         }
 
@@ -180,8 +179,10 @@ export function VehiclesList() {
     return labels[type] || type
   }
 
-  const getOwnerLabel = (owner: string) => {
-    return owner === 'company' ? 'Company Vehicle' : 'Third Party Vehicle'
+  const getOwnerDisplay = (vehicle: VehicleWithRelations) => {
+    if (vehicle.owner) return vehicle.owner
+    // Fallback: compute on the fly if owner wasn't set
+    return vehicle.vehicleOwner === 'company' ? 'Company' : (vehicle.thirdPartyName || '-')
   }
 
   if (loading) {
@@ -233,9 +234,8 @@ export function VehiclesList() {
         <select value={filterColumn} onChange={(e) => setFilterColumn(e.target.value as FilterColumn)} style={{ flex: '0 0 auto', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', backgroundColor: 'white' }}>
           <option value="all">All Columns</option>
           <option value="type">Type</option>
-          <option value="vehicleOwner">Owner</option>
-          <option value="destinationName">Destination</option>
-          <option value="thirdPartyName">Third Party</option>
+          <option value="owner">Owner</option>
+          <option value="locationName">Destination</option>
         </select>
         {searchTerm && <button onClick={() => { setSearchTerm(''); setFilterColumn('all') }} style={{ padding: '0.5rem 1rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.875rem', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}>Clear</button>}
       </div>
@@ -255,18 +255,16 @@ export function VehiclesList() {
               <thead>
                 <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
                   <th onClick={() => handleSort('type')} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: sortColumn === 'type' ? '#3b82f6' : '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', userSelect: 'none', transition: 'color 0.2s, background-color 0.2s' }} onMouseEnter={(e) => { if (sortColumn !== 'type') e.currentTarget.style.backgroundColor = '#f3f4f6' }} onMouseLeave={(e) => { if (sortColumn !== 'type') e.currentTarget.style.backgroundColor = '#f9fafb' }}>Type{getSortIndicator('type')}</th>
-                  <th onClick={() => handleSort('vehicleOwner')} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: sortColumn === 'vehicleOwner' ? '#3b82f6' : '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', userSelect: 'none', transition: 'color 0.2s, background-color 0.2s' }} onMouseEnter={(e) => { if (sortColumn !== 'vehicleOwner') e.currentTarget.style.backgroundColor = '#f3f4f6' }} onMouseLeave={(e) => { if (sortColumn !== 'vehicleOwner') e.currentTarget.style.backgroundColor = '#f9fafb' }}>Owner{getSortIndicator('vehicleOwner')}</th>
-                  <th onClick={() => handleSort('destinationName')} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: sortColumn === 'destinationName' ? '#3b82f6' : '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', userSelect: 'none', transition: 'color 0.2s, background-color 0.2s' }} onMouseEnter={(e) => { if (sortColumn !== 'destinationName') e.currentTarget.style.backgroundColor = '#f3f4f6' }} onMouseLeave={(e) => { if (sortColumn !== 'destinationName') e.currentTarget.style.backgroundColor = '#f9fafb' }}>Destination{getSortIndicator('destinationName')}</th>
-                  <th onClick={() => handleSort('thirdPartyName')} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: sortColumn === 'thirdPartyName' ? '#3b82f6' : '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', userSelect: 'none', transition: 'color 0.2s, background-color 0.2s' }} onMouseEnter={(e) => { if (sortColumn !== 'thirdPartyName') e.currentTarget.style.backgroundColor = '#f3f4f6' }} onMouseLeave={(e) => { if (sortColumn !== 'thirdPartyName') e.currentTarget.style.backgroundColor = '#f9fafb' }}>Third Party{getSortIndicator('thirdPartyName')}</th>
+                  <th onClick={() => handleSort('owner')} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: sortColumn === 'owner' ? '#3b82f6' : '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', userSelect: 'none', transition: 'color 0.2s, background-color 0.2s' }} onMouseEnter={(e) => { if (sortColumn !== 'owner') e.currentTarget.style.backgroundColor = '#f3f4f6' }} onMouseLeave={(e) => { if (sortColumn !== 'owner') e.currentTarget.style.backgroundColor = '#f9fafb' }}>Owner{getSortIndicator('owner')}</th>
+                  <th onClick={() => handleSort('locationName')} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: sortColumn === 'locationName' ? '#3b82f6' : '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', userSelect: 'none', transition: 'color 0.2s, background-color 0.2s' }} onMouseEnter={(e) => { if (sortColumn !== 'locationName') e.currentTarget.style.backgroundColor = '#f3f4f6' }} onMouseLeave={(e) => { if (sortColumn !== 'locationName') e.currentTarget.style.backgroundColor = '#f9fafb' }}>Destination{getSortIndicator('locationName')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredVehicles.map((vehicle) => (
                   <tr key={vehicle.id} onClick={() => handleRowClick(vehicle.id)} style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer', transition: 'background-color 0.15s' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb' }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white' }}>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>{getTypeLabel(vehicle.type)}</td>
-                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>{getOwnerLabel(vehicle.vehicleOwner)}</td>
-                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>{vehicle.destinationName || '-'}</td>
-                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>{vehicle.thirdPartyName || '-'}</td>
+                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>{getOwnerDisplay(vehicle)}</td>
+                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>{vehicle.locationName || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -275,7 +273,7 @@ export function VehiclesList() {
         </div>
       )}
 
-      {showForm && <VehicleForm vehicle={editingVehicle} destinations={destinations} thirdParties={thirdParties} onClose={() => { setShowForm(false); setEditingVehicle(null) }} onSave={handleSave} />}
+      {showForm && <VehicleForm vehicle={editingVehicle} locations={locations} thirdParties={thirdParties} onClose={() => { setShowForm(false); setEditingVehicle(null) }} onSave={handleSave} />}
     </div>
   )
 }

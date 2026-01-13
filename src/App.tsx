@@ -7,8 +7,8 @@ import { Signup } from './pages/Signup'
 import { Dashboard } from './pages/Dashboard'
 import { ClientsList } from './pages/ClientsList'
 import { ClientDetails } from './pages/ClientDetails'
-import { DestinationsList } from './pages/DestinationsList'
-import { DestinationDetails } from './pages/DestinationDetails'
+import { LocationsList } from './pages/LocationsList'
+import { LocationDetails } from './pages/LocationDetails'
 import { HotelsList } from './pages/HotelsList'
 import { HotelDetails } from './pages/HotelDetails'
 import { GuidesList } from './pages/GuidesList'
@@ -63,18 +63,18 @@ function App() {
               }
             />
             <Route
-              path="/destinations"
+              path="/locations"
               element={
                 <Layout>
-                  <DestinationsList />
+                  <LocationsList />
                 </Layout>
               }
             />
             <Route
-              path="/destinations/:id"
+              path="/locations/:id"
               element={
                 <Layout>
-                  <DestinationDetails />
+                  <LocationDetails />
                 </Layout>
               }
             />

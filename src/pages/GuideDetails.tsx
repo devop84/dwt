@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { guidesApi, destinationsApi } from '../lib/api'
-import type { Guide, Destination } from '../types'
+import { guidesApi, locationsApi } from '../lib/api'
+import type { Guide, Location } from '../types'
 import { GuideForm } from '../components/GuideForm'
 import { AccountsCards } from '../components/AccountsCards'
 
-interface GuideWithDestination extends Guide {
-  destinationName?: string
+interface GuideWithLocation extends Guide {
+  locationName?: string
 }
 
 export function GuideDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [guide, setGuide] = useState<GuideWithDestination | null>(null)
-  const [destinations, setDestinations] = useState<Destination[]>([])
+  const [guide, setGuide] = useState<GuideWithLocation | null>(null)
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditForm, setShowEditForm] = useState(false)
@@ -22,7 +22,7 @@ export function GuideDetails() {
   useEffect(() => {
     if (id) {
       loadGuide()
-      loadDestinations()
+      loadLocations()
     }
   }, [id])
 
@@ -30,7 +30,7 @@ export function GuideDetails() {
     try {
       setLoading(true)
       setError(null)
-      const data = await guidesApi.getById(id!) as GuideWithDestination
+      const data = await guidesApi.getById(id!) as GuideWithLocation
       setGuide(data)
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to load guide')
@@ -40,13 +40,13 @@ export function GuideDetails() {
     }
   }
 
-  const loadDestinations = async () => {
+  const loadLocations = async () => {
     try {
-      const data = await destinationsApi.getAll()
-      setDestinations(Array.isArray(data) ? data : [])
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setDestinations([]) // Ensure destinations is always an array
-      console.error('Error loading destinations:', err)
+      setLocations([]) // Ensure locations is always an array
+      console.error('Error loading locations:', err)
     }
   }
 
@@ -305,14 +305,14 @@ export function GuideDetails() {
                 letterSpacing: '0.05em',
                 marginBottom: '0.5rem'
               }}>
-                Destination
+                Location
               </label>
               <p style={{
                 fontSize: '0.875rem',
                 color: '#111827',
                 margin: 0
               }}>
-                {guide.destinationName || '-'}
+                {guide.locationName || '-'}
               </p>
             </div>
 
@@ -432,7 +432,7 @@ export function GuideDetails() {
       {showEditForm && (
         <GuideForm
           guide={guide}
-          destinations={destinations}
+          locations={locations}
           onClose={() => setShowEditForm(false)}
           onSave={handleSave}
         />

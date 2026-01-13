@@ -102,9 +102,9 @@ export const initDb = async () => {
     `)
     console.log('✅ Clients table ready')
     
-    // Create destinations table if not exists
+    // Create locations table if not exists
     await query(`
-      CREATE TABLE IF NOT EXISTS destinations (
+      CREATE TABLE IF NOT EXISTS locations (
         id UUID PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         coordinates VARCHAR(255),
@@ -116,25 +116,25 @@ export const initDb = async () => {
         "updatedAt" TIMESTAMP DEFAULT NOW()
       )
     `)
-    console.log('✅ Destinations table ready')
+    console.log('✅ Locations table ready')
     
     // Add prefeitura, state, and cep columns if they don't exist (migration for existing tables)
     try {
-      await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS prefeitura VARCHAR(255)`)
-      await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS state VARCHAR(100)`)
-      await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS cep VARCHAR(20)`)
-      // Migrate note to description for destinations
-      await query(`ALTER TABLE destinations ADD COLUMN IF NOT EXISTS description TEXT`)
+      await query(`ALTER TABLE locations ADD COLUMN IF NOT EXISTS prefeitura VARCHAR(255)`)
+      await query(`ALTER TABLE locations ADD COLUMN IF NOT EXISTS state VARCHAR(100)`)
+      await query(`ALTER TABLE locations ADD COLUMN IF NOT EXISTS cep VARCHAR(20)`)
+      // Migrate note to description for locations
+      await query(`ALTER TABLE locations ADD COLUMN IF NOT EXISTS description TEXT`)
       // Copy data from note to description if note exists and description doesn't
       await query(`
         DO $$ 
         BEGIN 
           IF EXISTS (SELECT 1 FROM information_schema.columns 
-                     WHERE table_name = 'destinations' AND column_name = 'note') THEN
-            UPDATE destinations 
+                     WHERE table_name = 'locations' AND column_name = 'note') THEN
+            UPDATE locations 
             SET description = note 
             WHERE note IS NOT NULL AND (description IS NULL OR description = '');
-            ALTER TABLE destinations DROP COLUMN note;
+            ALTER TABLE locations DROP COLUMN note;
           END IF;
         END $$;
       `)
@@ -149,7 +149,7 @@ export const initDb = async () => {
         name VARCHAR(255) NOT NULL,
         rating INTEGER,
         "priceRange" VARCHAR(50),
-        "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+        "locationId" UUID REFERENCES locations(id) ON DELETE CASCADE,
         description TEXT,
         "contactNumber" VARCHAR(50),
         email VARCHAR(255),
@@ -188,7 +188,7 @@ export const initDb = async () => {
         name VARCHAR(255) NOT NULL,
         "contactNumber" VARCHAR(50),
         email VARCHAR(255),
-        "destinationId" UUID REFERENCES destinations(id) ON DELETE CASCADE,
+        "locationId" UUID REFERENCES locations(id) ON DELETE CASCADE,
         languages VARCHAR(255),
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
@@ -203,7 +203,7 @@ export const initDb = async () => {
         id UUID PRIMARY KEY,
         type VARCHAR(50) NOT NULL,
         "vehicleOwner" VARCHAR(50) NOT NULL,
-        "destinationId" UUID REFERENCES destinations(id) ON DELETE SET NULL,
+        "locationId" UUID REFERENCES locations(id) ON DELETE SET NULL,
         "thirdPartyId" UUID REFERENCES third_parties(id) ON DELETE SET NULL,
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
@@ -222,7 +222,7 @@ export const initDb = async () => {
         "contactNumber" VARCHAR(50),
         email VARCHAR(255),
         type VARCHAR(50) NOT NULL,
-        "destinationId" UUID REFERENCES destinations(id) ON DELETE SET NULL,
+        "locationId" UUID REFERENCES locations(id) ON DELETE SET NULL,
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),

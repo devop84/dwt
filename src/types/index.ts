@@ -25,7 +25,7 @@ export interface Client {
   updatedAt: string
 }
 
-export interface Destination {
+export interface Location {
   id: string
   name: string
   coordinates: string | null
@@ -42,7 +42,7 @@ export interface Hotel {
   name: string
   rating: number | null
   priceRange: string | null
-  destinationId: string
+  locationId: string
   description: string | null
   contactNumber: string | null
   email: string | null
@@ -57,24 +57,24 @@ export interface Guide {
   name: string
   contactNumber: string | null
   email: string | null
-  destinationId: string
+  locationId: string
   languages: string | null
   note: string | null
   createdAt: string
   updatedAt: string
-  destinationName?: string
+  locationName?: string
 }
 
 export interface Vehicle {
   id: string
   type: 'car4x4' | 'boat' | 'quadbike' | 'carSedan' | 'outro'
   vehicleOwner: 'company' | 'third-party'
-  destinationId: string | null
+  locationId: string | null
   thirdPartyId: string | null
   note: string | null
   createdAt: string
   updatedAt: string
-  destinationName?: string
+  locationName?: string
   thirdPartyName?: string
 }
 

@@ -1,20 +1,20 @@
 import { useState, useEffect, FormEvent } from 'react'
 import { vehiclesApi } from '../lib/api'
-import type { Vehicle, Destination, ThirdParty } from '../types'
+import type { Vehicle, Location, ThirdParty } from '../types'
 
 interface VehicleFormProps {
   vehicle?: Vehicle | null
-  destinations: Destination[]
+  locations: Location[]
   thirdParties: ThirdParty[]
   onClose: () => void
   onSave: () => Promise<void>
 }
 
-export function VehicleForm({ vehicle, destinations, thirdParties, onClose, onSave }: VehicleFormProps) {
+export function VehicleForm({ vehicle, locations, thirdParties, onClose, onSave }: VehicleFormProps) {
   const [formData, setFormData] = useState({
     type: '' as Vehicle['type'] | '',
     vehicleOwner: '' as Vehicle['vehicleOwner'] | '',
-    destinationId: '',
+    locationId: '',
     thirdPartyId: '',
     note: '',
   })
@@ -26,7 +26,7 @@ export function VehicleForm({ vehicle, destinations, thirdParties, onClose, onSa
       setFormData({
         type: vehicle.type || '',
         vehicleOwner: vehicle.vehicleOwner || '',
-        destinationId: vehicle.destinationId || '',
+        locationId: vehicle.locationId || '',
         thirdPartyId: vehicle.thirdPartyId || '',
         note: vehicle.note || '',
       })
@@ -58,7 +58,7 @@ export function VehicleForm({ vehicle, destinations, thirdParties, onClose, onSa
         await vehiclesApi.update(vehicle.id, {
           type: formData.type as Vehicle['type'],
           vehicleOwner: formData.vehicleOwner as Vehicle['vehicleOwner'],
-          destinationId: formData.destinationId || null,
+          locationId: formData.locationId || null,
           thirdPartyId: formData.vehicleOwner === 'third-party' ? formData.thirdPartyId : null,
           note: formData.note.trim() || null,
         })
@@ -66,7 +66,7 @@ export function VehicleForm({ vehicle, destinations, thirdParties, onClose, onSa
         await vehiclesApi.create({
           type: formData.type as Vehicle['type'],
           vehicleOwner: formData.vehicleOwner as Vehicle['vehicleOwner'],
-          destinationId: formData.destinationId || null,
+          locationId: formData.locationId || null,
           thirdPartyId: formData.vehicleOwner === 'third-party' ? formData.thirdPartyId : null,
           note: formData.note.trim() || null,
         })
@@ -165,12 +165,12 @@ export function VehicleForm({ vehicle, destinations, thirdParties, onClose, onSa
           )}
 
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="destinationId" style={labelStyle}>
-              Destination
+            <label htmlFor="locationId" style={labelStyle}>
+              Location
             </label>
-            <select id="destinationId" value={formData.destinationId} onChange={(e) => handleChange('destinationId', e.target.value)} style={inputStyle} onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)' }} onBlur={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.boxShadow = 'none' }}>
-              <option value="">Select a destination (optional)</option>
-              {destinations.map((dest) => (
+            <select id="locationId" value={formData.locationId} onChange={(e) => handleChange('locationId', e.target.value)} style={inputStyle} onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)' }} onBlur={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.boxShadow = 'none' }}>
+              <option value="">Select a location (optional)</option>
+              {locations.map((loc) => (
                 <option key={dest.id} value={dest.id}>
                   {dest.name}
                 </option>

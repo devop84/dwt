@@ -1,16 +1,16 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { destinationsApi } from '../lib/api'
-import type { Destination } from '../types'
-import { DestinationForm } from '../components/DestinationForm'
+import { locationsApi } from '../lib/api'
+import type { Location } from '../types'
+import { LocationForm } from '../components/LocationForm'
 
 type FilterColumn = 'all' | 'name' | 'prefeitura' | 'state' | 'cep' | 'note'
 type SortColumn = 'name' | 'prefeitura' | 'state' | 'cep' | 'note'
 type SortDirection = 'asc' | 'desc' | null
 
-export function DestinationsList() {
+export function LocationsList() {
   const navigate = useNavigate()
-  const [destinations, setDestinations] = useState<Destination[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -18,56 +18,56 @@ export function DestinationsList() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingDestination, setEditingDestination] = useState<Destination | null>(null)
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null)
 
   useEffect(() => {
-    loadDestinations()
+    loadLocations()
   }, [])
 
-  const loadDestinations = async () => {
+  const loadLocations = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await destinationsApi.getAll()
-      setDestinations(Array.isArray(data) ? data : [])
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setError(err.message || 'Failed to load destinations')
-      setDestinations([]) // Ensure destinations is always an array
-      console.error('Error loading destinations:', err)
+      setError(err.message || 'Failed to load locations')
+      setLocations([]) // Ensure locations is always an array
+      console.error('Error loading locations:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  // Filter and sort destinations
-  const filteredDestinations = useMemo(() => {
-    let result = [...destinations]
+  // Filter and sort locations
+  const filteredLocations = useMemo(() => {
+    let result = [...locations]
 
     // Apply search filter
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase().trim()
 
-      result = result.filter((destination) => {
+      result = result.filter((location) => {
         if (filterColumn === 'all') {
           return (
-            destination.name.toLowerCase().includes(search) ||
-            (destination.prefeitura && destination.prefeitura.toLowerCase().includes(search)) ||
-            (destination.state && destination.state.toLowerCase().includes(search)) ||
-            (destination.cep && destination.cep.toLowerCase().includes(search)) ||
-            (destination.note && destination.note.toLowerCase().includes(search))
+            location.name.toLowerCase().includes(search) ||
+            (location.prefeitura && location.prefeitura.toLowerCase().includes(search)) ||
+            (location.state && location.state.toLowerCase().includes(search)) ||
+            (location.cep && location.cep.toLowerCase().includes(search)) ||
+            (location.note && location.note.toLowerCase().includes(search))
           )
         } else {
           switch (filterColumn) {
             case 'name':
-              return destination.name.toLowerCase().includes(search)
+              return location.name.toLowerCase().includes(search)
             case 'prefeitura':
-              return destination.prefeitura?.toLowerCase().includes(search) ?? false
+              return location.prefeitura?.toLowerCase().includes(search) ?? false
             case 'state':
-              return destination.state?.toLowerCase().includes(search) ?? false
+              return location.state?.toLowerCase().includes(search) ?? false
             case 'cep':
-              return destination.cep?.toLowerCase().includes(search) ?? false
+              return location.cep?.toLowerCase().includes(search) ?? false
             case 'note':
-              return destination.note?.toLowerCase().includes(search) ?? false
+              return location.note?.toLowerCase().includes(search) ?? false
             default:
               return true
           }
@@ -111,7 +111,7 @@ export function DestinationsList() {
     }
 
     return result
-  }, [destinations, searchTerm, filterColumn, sortColumn, sortDirection])
+  }, [locations, searchTerm, filterColumn, sortColumn, sortDirection])
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -134,32 +134,32 @@ export function DestinationsList() {
     return null
   }
 
-  const handleAddDestination = () => {
-    setEditingDestination(null)
+  const handleAddLocation = () => {
+    setEditingLocation(null)
     setShowForm(true)
   }
 
-  const handleEditDestination = (destination: Destination) => {
-    setEditingDestination(destination)
+  const handleEditLocation = (location: Location) => {
+    setEditingLocation(location)
     setShowForm(true)
   }
 
-  const handleRowClick = (destinationId: string) => {
-    navigate(`/destinations/${destinationId}`)
+  const handleRowClick = (locationId: string) => {
+    navigate(`/locations/${locationId}`)
   }
 
-  const handleSaveDestination = async (destinationData: Omit<Destination, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (editingDestination) {
-      await destinationsApi.update(editingDestination.id, destinationData)
+  const handleSaveLocation = async (locationData: Omit<Location, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (editingLocation) {
+      await locationsApi.update(editingLocation.id, locationData)
     } else {
-      await destinationsApi.create(destinationData)
+      await locationsApi.create(locationData)
     }
-    await loadDestinations()
+    await loadLocations()
   }
 
   const handleCloseForm = () => {
     setShowForm(false)
-    setEditingDestination(null)
+    setEditingLocation(null)
   }
 
   if (loading) {
@@ -180,7 +180,7 @@ export function DestinationsList() {
             color: '#111827',
             margin: 0
           }}>
-            Destinations
+            Locations
           </h1>
         </div>
         <div style={{
@@ -190,7 +190,7 @@ export function DestinationsList() {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#6b7280', margin: 0 }}>Loading destinations...</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading locations...</p>
         </div>
       </div>
     )
@@ -214,7 +214,7 @@ export function DestinationsList() {
             color: '#111827',
             margin: 0
           }}>
-            Destinations
+            Locations
           </h1>
         </div>
         <div style={{
@@ -233,7 +233,7 @@ export function DestinationsList() {
             <p style={{ margin: 0 }}>Error: {error}</p>
           </div>
           <button
-            onClick={loadDestinations}
+            onClick={loadLocations}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: '#3b82f6',
@@ -271,7 +271,7 @@ export function DestinationsList() {
           color: '#111827',
           margin: 0
         }}>
-          Destinations
+          Locations
         </h1>
         <div style={{
           display: 'flex',
@@ -282,13 +282,13 @@ export function DestinationsList() {
             color: '#6b7280',
             fontSize: '0.875rem'
           }}>
-            {searchTerm ? filteredDestinations.length : destinations.length} {filteredDestinations.length === 1 ? 'destination' : 'destinations'}
-            {searchTerm && filteredDestinations.length !== destinations.length && (
-              <span style={{ color: '#9ca3af' }}> of {destinations.length}</span>
+            {searchTerm ? filteredLocations.length : locations.length} {filteredLocations.length === 1 ? 'location' : 'locations'}
+            {searchTerm && filteredLocations.length !== locations.length && (
+              <span style={{ color: '#9ca3af' }}> of {locations.length}</span>
             )}
           </div>
           <button
-            onClick={handleAddDestination}
+            onClick={handleAddLocation}
             style={{
               padding: '0.625rem 1.25rem',
               backgroundColor: '#3b82f6',
@@ -306,7 +306,7 @@ export function DestinationsList() {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
           >
-            <span>+</span> Add Destination
+            <span>+</span> Add Location
           </button>
         </div>
       </div>
@@ -325,7 +325,7 @@ export function DestinationsList() {
       }}>
         <input
           type="text"
-          placeholder="Search destinations..."
+          placeholder="Search locations..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
@@ -380,7 +380,7 @@ export function DestinationsList() {
       </div>
 
       {/* Content Card */}
-      {filteredDestinations.length === 0 && searchTerm ? (
+      {filteredLocations.length === 0 && searchTerm ? (
         <div style={{
           backgroundColor: 'white',
           padding: '3rem',
@@ -393,10 +393,10 @@ export function DestinationsList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No destinations match your search criteria.
+            No locations match your search criteria.
           </p>
         </div>
-      ) : filteredDestinations.length === 0 ? (
+      ) : filteredLocations.length === 0 ? (
         <div style={{
           backgroundColor: 'white',
           padding: '3rem',
@@ -409,7 +409,7 @@ export function DestinationsList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No destinations found. Destinations will appear here once added.
+            No locations found. Locations will appear here once added.
           </p>
         </div>
       ) : (
@@ -569,12 +569,12 @@ export function DestinationsList() {
                 </tr>
               </thead>
               <tbody>
-                {filteredDestinations.map((destination, index) => (
+                {filteredLocations.map((location, index) => (
                   <tr
-                    key={destination.id}
-                    onClick={() => handleRowClick(destination.id)}
+                    key={location.id}
+                    onClick={() => handleRowClick(location.id)}
                     style={{
-                      borderBottom: index < filteredDestinations.length - 1 ? '1px solid #e5e7eb' : 'none',
+                      borderBottom: index < filteredLocations.length - 1 ? '1px solid #e5e7eb' : 'none',
                       transition: 'background-color 0.15s',
                       cursor: 'pointer'
                     }}
@@ -587,28 +587,28 @@ export function DestinationsList() {
                       color: '#111827',
                       fontWeight: '500'
                     }}>
-                      {destination.name}
+                      {location.name}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
                       fontSize: '0.875rem',
                       color: '#6b7280'
                     }}>
-                      {destination.prefeitura || '-'}
+                      {location.prefeitura || '-'}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
                       fontSize: '0.875rem',
                       color: '#6b7280'
                     }}>
-                      {destination.state || '-'}
+                      {location.state || '-'}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
                       fontSize: '0.875rem',
                       color: '#6b7280'
                     }}>
-                      {destination.cep || '-'}
+                      {location.cep || '-'}
                     </td>
                     <td style={{
                       padding: '0.75rem 1rem',
@@ -619,7 +619,7 @@ export function DestinationsList() {
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
                     }}>
-                      {destination.note || '-'}
+                      {location.note || '-'}
                     </td>
                   </tr>
                 ))}
@@ -629,10 +629,10 @@ export function DestinationsList() {
         </div>
       )}
       {showForm && (
-        <DestinationForm
-          destination={editingDestination}
+        <LocationForm
+          location={editingLocation}
           onClose={handleCloseForm}
-          onSave={handleSaveDestination}
+          onSave={handleSaveLocation}
         />
       )}
     </div>

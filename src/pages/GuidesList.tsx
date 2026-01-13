@@ -1,21 +1,21 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { guidesApi, destinationsApi } from '../lib/api'
-import type { Guide, Destination } from '../types'
+import { guidesApi, locationsApi } from '../lib/api'
+import type { Guide, Location } from '../types'
 import { GuideForm } from '../components/GuideForm'
 
-type FilterColumn = 'all' | 'name' | 'destinationName' | 'languages' | 'contactNumber' | 'email'
-type SortColumn = 'name' | 'destinationName' | 'languages' | 'contactNumber' | 'email'
+type FilterColumn = 'all' | 'name' | 'locationName' | 'languages' | 'contactNumber' | 'email'
+type SortColumn = 'name' | 'locationName' | 'languages' | 'contactNumber' | 'email'
 type SortDirection = 'asc' | 'desc' | null
 
-interface GuideWithDestination extends Guide {
-  destinationName?: string
+interface GuideWithLocation extends Guide {
+  locationName?: string
 }
 
 export function GuidesList() {
   const navigate = useNavigate()
-  const [guides, setGuides] = useState<GuideWithDestination[]>([])
-  const [destinations, setDestinations] = useState<Destination[]>([])
+  const [guides, setGuides] = useState<GuideWithLocation[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -23,18 +23,18 @@ export function GuidesList() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingGuide, setEditingGuide] = useState<GuideWithDestination | null>(null)
+  const [editingGuide, setEditingGuide] = useState<GuideWithLocation | null>(null)
 
   useEffect(() => {
     loadGuides()
-    loadDestinations()
+    loadLocations()
   }, [])
 
   const loadGuides = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await guidesApi.getAll() as GuideWithDestination[]
+      const data = await guidesApi.getAll() as GuideWithLocation[]
       setGuides(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load guides')
@@ -45,13 +45,13 @@ export function GuidesList() {
     }
   }
 
-  const loadDestinations = async () => {
+  const loadLocations = async () => {
     try {
-      const data = await destinationsApi.getAll()
-      setDestinations(Array.isArray(data) ? data : [])
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setDestinations([]) // Ensure destinations is always an array
-      console.error('Error loading destinations:', err)
+      setLocations([]) // Ensure locations is always an array
+      console.error('Error loading locations:', err)
     }
   }
 
@@ -67,7 +67,7 @@ export function GuidesList() {
         if (filterColumn === 'all') {
           return (
             guide.name.toLowerCase().includes(search) ||
-            (guide.destinationName && guide.destinationName.toLowerCase().includes(search)) ||
+            (guide.locationName && guide.locationName.toLowerCase().includes(search)) ||
             (guide.languages && guide.languages.toLowerCase().includes(search)) ||
             (guide.contactNumber && guide.contactNumber.toLowerCase().includes(search)) ||
             (guide.email && guide.email.toLowerCase().includes(search))
@@ -76,8 +76,8 @@ export function GuidesList() {
           switch (filterColumn) {
             case 'name':
               return guide.name.toLowerCase().includes(search)
-            case 'destinationName':
-              return guide.destinationName?.toLowerCase().includes(search) ?? false
+            case 'locationName':
+              return guide.locationName?.toLowerCase().includes(search) ?? false
             case 'languages':
               return guide.languages?.toLowerCase().includes(search) ?? false
             case 'contactNumber':
@@ -102,9 +102,9 @@ export function GuidesList() {
             aValue = a.name.toLowerCase()
             bValue = b.name.toLowerCase()
             break
-          case 'destinationName':
-            aValue = a.destinationName?.toLowerCase() || ''
-            bValue = b.destinationName?.toLowerCase() || ''
+          case 'locationName':
+            aValue = a.locationName?.toLowerCase() || ''
+            bValue = b.locationName?.toLowerCase() || ''
             break
           case 'languages':
             aValue = a.languages?.toLowerCase() || ''
@@ -156,7 +156,7 @@ export function GuidesList() {
     navigate(`/guides/${guideId}`)
   }
 
-  const handleEdit = (e: React.MouseEvent, guide: GuideWithDestination) => {
+  const handleEdit = (e: React.MouseEvent, guide: GuideWithLocation) => {
     e.stopPropagation()
     setEditingGuide(guide)
     setShowForm(true)
@@ -363,7 +363,7 @@ export function GuidesList() {
           <option value="name">Name</option>
           <option value="contactNumber">Contact Number</option>
           <option value="email">Email</option>
-          <option value="destinationName">Destination</option>
+          <option value="locationName">Location</option>
           <option value="languages">Languages</option>
         </select>
         {searchTerm && (
@@ -524,13 +524,13 @@ export function GuidesList() {
                     Email{getSortIndicator('email')}
                   </th>
                   <th
-                    onClick={() => handleSort('destinationName')}
+                    onClick={() => handleSort('locationName')}
                     style={{
                       padding: '0.75rem 1rem',
                       textAlign: 'left',
                       fontSize: '0.75rem',
                       fontWeight: '600',
-                      color: sortColumn === 'destinationName' ? '#3b82f6' : '#6b7280',
+                      color: sortColumn === 'locationName' ? '#3b82f6' : '#6b7280',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       cursor: 'pointer',
@@ -538,17 +538,17 @@ export function GuidesList() {
                       transition: 'color 0.2s, background-color 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      if (sortColumn !== 'destinationName') {
+                      if (sortColumn !== 'locationName') {
                         e.currentTarget.style.backgroundColor = '#f3f4f6'
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (sortColumn !== 'destinationName') {
+                      if (sortColumn !== 'locationName') {
                         e.currentTarget.style.backgroundColor = '#f9fafb'
                       }
                     }}
                   >
-                    Destination{getSortIndicator('destinationName')}
+                    Location{getSortIndicator('locationName')}
                   </th>
                   <th
                     onClick={() => handleSort('languages')}
@@ -606,7 +606,7 @@ export function GuidesList() {
                       {guide.email || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {guide.destinationName || '-'}
+                      {guide.locationName || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
                       {guide.languages || '-'}
@@ -622,7 +622,7 @@ export function GuidesList() {
       {showForm && (
         <GuideForm
           guide={editingGuide}
-          destinations={destinations}
+          locations={locations}
           onClose={() => {
             setShowForm(false)
             setEditingGuide(null)

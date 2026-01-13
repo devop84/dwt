@@ -1,19 +1,19 @@
 import { useState, useEffect, FormEvent } from 'react'
-import type { Hotel, Destination } from '../types'
+import type { Hotel, Location } from '../types'
 
 interface HotelFormProps {
   hotel?: Hotel | null
-  destinations: Destination[]
+  locations: Location[]
   onClose: () => void
   onSave: (hotel: Omit<Hotel, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
 }
 
-export function HotelForm({ hotel, destinations, onClose, onSave }: HotelFormProps) {
+export function HotelForm({ hotel, locations, onClose, onSave }: HotelFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     rating: '',
     priceRange: '',
-    destinationId: '',
+    locationId: '',
     description: '',
     contactNumber: '',
     email: '',
@@ -29,7 +29,7 @@ export function HotelForm({ hotel, destinations, onClose, onSave }: HotelFormPro
         name: hotel.name || '',
         rating: hotel.rating?.toString() || '',
         priceRange: hotel.priceRange || '',
-        destinationId: hotel.destinationId || '',
+        locationId: hotel.locationId || '',
         description: hotel.description || '',
         contactNumber: hotel.contactNumber || '',
         email: hotel.email || '',
@@ -48,8 +48,8 @@ export function HotelForm({ hotel, destinations, onClose, onSave }: HotelFormPro
       return
     }
 
-    if (!formData.destinationId) {
-      setError('Destination is required')
+    if (!formData.locationId) {
+      setError('Location is required')
       return
     }
 
@@ -59,7 +59,7 @@ export function HotelForm({ hotel, destinations, onClose, onSave }: HotelFormPro
         name: formData.name.trim(),
         rating: formData.rating ? parseInt(formData.rating) : null,
         priceRange: formData.priceRange.trim() || null,
-        destinationId: formData.destinationId,
+        locationId: formData.locationId,
         description: formData.description.trim() || null,
         contactNumber: formData.contactNumber.trim() || null,
         email: formData.email.trim() || null,
@@ -206,13 +206,13 @@ export function HotelForm({ hotel, destinations, onClose, onSave }: HotelFormPro
           </div>
 
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="destinationId" style={labelStyle}>
-              Destination <span style={{ color: '#ef4444' }}>*</span>
+            <label htmlFor="locationId" style={labelStyle}>
+              Location <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <select
-              id="destinationId"
-              value={formData.destinationId}
-              onChange={(e) => handleChange('destinationId', e.target.value)}
+              id="locationId"
+              value={formData.locationId}
+              onChange={(e) => handleChange('locationId', e.target.value)}
               required
               style={inputStyle}
               onFocus={(e) => {
@@ -224,8 +224,8 @@ export function HotelForm({ hotel, destinations, onClose, onSave }: HotelFormPro
                 e.currentTarget.style.boxShadow = 'none'
               }}
             >
-              <option value="">Select a destination</option>
-              {destinations.map((dest) => (
+              <option value="">Select a location</option>
+              {locations.map((dest) => (
                 <option key={dest.id} value={dest.id}>
                   {dest.name}
                 </option>

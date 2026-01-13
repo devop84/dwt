@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { vehiclesApi, destinationsApi, thirdPartiesApi } from '../lib/api'
-import type { Vehicle, Destination, ThirdParty } from '../types'
+import { vehiclesApi, locationsApi, thirdPartiesApi } from '../lib/api'
+import type { Vehicle, Location, ThirdParty } from '../types'
 import { VehicleForm } from '../components/VehicleForm'
 
 interface VehicleWithRelations extends Vehicle {
-  destinationName?: string
+  locationName?: string
   thirdPartyName?: string
 }
 
@@ -13,7 +13,7 @@ export function VehicleDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [vehicle, setVehicle] = useState<VehicleWithRelations | null>(null)
-  const [destinations, setDestinations] = useState<Destination[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [thirdParties, setThirdParties] = useState<ThirdParty[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +23,7 @@ export function VehicleDetails() {
   useEffect(() => {
     if (id) {
       loadVehicle()
-      loadDestinations()
+      loadLocations()
       loadThirdParties()
     }
   }, [id])
@@ -42,13 +42,13 @@ export function VehicleDetails() {
     }
   }
 
-  const loadDestinations = async () => {
+  const loadLocations = async () => {
     try {
-      const data = await destinationsApi.getAll()
-      setDestinations(Array.isArray(data) ? data : [])
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setDestinations([])
-      console.error('Error loading destinations:', err)
+      setLocations([])
+      console.error('Error loading locations:', err)
     }
   }
 
@@ -174,8 +174,8 @@ export function VehicleDetails() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Destination</label>
-              <p style={{ fontSize: '0.875rem', color: '#111827', margin: 0 }}>{vehicle.destinationName || '-'}</p>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Location</label>
+              <p style={{ fontSize: '0.875rem', color: '#111827', margin: 0 }}>{vehicle.locationName || '-'}</p>
             </div>
 
             {vehicle.vehicleOwner === 'third-party' && (
@@ -203,7 +203,7 @@ export function VehicleDetails() {
       {showEditForm && (
         <VehicleForm
           vehicle={vehicle}
-          destinations={destinations}
+          locations={locations}
           thirdParties={thirdParties}
           onClose={() => setShowEditForm(false)}
           onSave={handleSave}

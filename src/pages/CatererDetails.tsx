@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { caterersApi, destinationsApi } from '../lib/api'
-import type { Caterer, Destination } from '../types'
+import { caterersApi, locationsApi } from '../lib/api'
+import type { Caterer, Location } from '../types'
 import { CatererForm } from '../components/CatererForm'
 import { AccountsCards } from '../components/AccountsCards'
 
-interface CatererWithDestination extends Caterer {
-  destinationName?: string
+interface CatererWithLocation extends Caterer {
+  locationName?: string
 }
 
 export function CatererDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [caterer, setCaterer] = useState<CatererWithDestination | null>(null)
-  const [destinations, setDestinations] = useState<Destination[]>([])
+  const [caterer, setCaterer] = useState<CatererWithLocation | null>(null)
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditForm, setShowEditForm] = useState(false)
@@ -22,7 +22,7 @@ export function CatererDetails() {
   useEffect(() => {
     if (id) {
       loadCaterer()
-      loadDestinations()
+      loadLocations()
     }
   }, [id])
 
@@ -30,7 +30,7 @@ export function CatererDetails() {
     try {
       setLoading(true)
       setError(null)
-      const data = await caterersApi.getById(id!) as CatererWithDestination
+      const data = await caterersApi.getById(id!) as CatererWithLocation
       setCaterer(data)
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to load caterer')
@@ -40,13 +40,13 @@ export function CatererDetails() {
     }
   }
 
-  const loadDestinations = async () => {
+  const loadLocations = async () => {
     try {
-      const data = await destinationsApi.getAll()
-      setDestinations(Array.isArray(data) ? data : [])
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setDestinations([]) // Ensure destinations is always an array
-      console.error('Error loading destinations:', err)
+      setLocations([]) // Ensure locations is always an array
+      console.error('Error loading locations:', err)
     }
   }
 
@@ -373,7 +373,7 @@ export function CatererDetails() {
               </div>
             )}
 
-            {caterer.destinationName && (
+            {caterer.locationName && (
               <div>
                 <label style={{
                   display: 'block',
@@ -384,14 +384,14 @@ export function CatererDetails() {
                   letterSpacing: '0.05em',
                   marginBottom: '0.5rem'
                 }}>
-                  Destination
+                  Location
                 </label>
                 <p style={{
                   fontSize: '0.875rem',
                   color: '#111827',
                   margin: 0
                 }}>
-                  {caterer.destinationName}
+                  {caterer.locationName}
                 </p>
               </div>
             )}
@@ -449,7 +449,7 @@ export function CatererDetails() {
       {showEditForm && (
         <CatererForm
           caterer={caterer}
-          destinations={destinations}
+          locations={locations}
           onClose={() => setShowEditForm(false)}
           onSave={handleSave}
         />

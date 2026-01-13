@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { driversApi, destinationsApi } from '../lib/api'
-import type { Driver, Destination } from '../types'
+import { driversApi, locationsApi } from '../lib/api'
+import type { Driver, Location } from '../types'
 import { DriverForm } from '../components/DriverForm'
 import { AccountsCards } from '../components/AccountsCards'
 
-interface DriverWithDestination extends Driver {
-  destinationName?: string
+interface DriverWithLocation extends Driver {
+  locationName?: string
 }
 
 export function DriverDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [driver, setDriver] = useState<DriverWithDestination | null>(null)
-  const [destinations, setDestinations] = useState<Destination[]>([])
+  const [driver, setDriver] = useState<DriverWithLocation | null>(null)
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditForm, setShowEditForm] = useState(false)
@@ -22,7 +22,7 @@ export function DriverDetails() {
   useEffect(() => {
     if (id) {
       loadDriver()
-      loadDestinations()
+      loadLocations()
     }
   }, [id])
 
@@ -30,7 +30,7 @@ export function DriverDetails() {
     try {
       setLoading(true)
       setError(null)
-      const data = await driversApi.getById(id!) as DriverWithDestination
+      const data = await driversApi.getById(id!) as DriverWithLocation
       setDriver(data)
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to load driver')
@@ -40,13 +40,13 @@ export function DriverDetails() {
     }
   }
 
-  const loadDestinations = async () => {
+  const loadLocations = async () => {
     try {
-      const data = await destinationsApi.getAll()
-      setDestinations(Array.isArray(data) ? data : [])
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setDestinations([]) // Ensure destinations is always an array
-      console.error('Error loading destinations:', err)
+      setLocations([]) // Ensure locations is always an array
+      console.error('Error loading locations:', err)
     }
   }
 
@@ -305,14 +305,14 @@ export function DriverDetails() {
                 letterSpacing: '0.05em',
                 marginBottom: '0.5rem'
               }}>
-                Destination
+                Location
               </label>
               <p style={{
                 fontSize: '0.875rem',
                 color: '#111827',
                 margin: 0
               }}>
-                {driver.destinationName || '-'}
+                {driver.locationName || '-'}
               </p>
             </div>
 
@@ -453,7 +453,7 @@ export function DriverDetails() {
       {showEditForm && (
         <DriverForm
           driver={driver}
-          destinations={destinations}
+          locations={locations}
           onClose={() => setShowEditForm(false)}
           onSave={handleSave}
         />

@@ -254,23 +254,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       if (!id) {
         if (req.method === 'GET') {
           const hotels = await query(`
-            SELECT h.*, d.name as "destinationName"
+            SELECT h.*, l.name as "locationName"
             FROM hotels h
-            LEFT JOIN destinations d ON h."destinationId" = d.id
+            LEFT JOIN locations l ON h."locationId" = l.id
             ORDER BY h.name ASC
           `)
           res.status(200).json(hotels)
         } else if (req.method === 'POST') {
-          const { name, rating, priceRange, destinationId, description, contactNumber, email, address, coordinates } = req.body
-          if (!name || !destinationId) {
-            res.status(400).json({ message: 'Name and destination are required' })
+          const { name, rating, priceRange, locationId, description, contactNumber, email, address, coordinates } = req.body
+          if (!name || !locationId) {
+            res.status(400).json({ message: 'Name and location are required' })
             return
           }
           const hotelId = randomUUID()
           const result = await query(
-            `INSERT INTO hotels (id, name, rating, "priceRange", "destinationId", description, "contactNumber", email, address, coordinates)
+            `INSERT INTO hotels (id, name, rating, "priceRange", "locationId", description, "contactNumber", email, address, coordinates)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-            [hotelId, name, rating || null, priceRange || null, destinationId, description || null, contactNumber || null, email || null, address || null, coordinates || null]
+            [hotelId, name, rating || null, priceRange || null, locationId, description || null, contactNumber || null, email || null, address || null, coordinates || null]
           )
           res.status(201).json(result[0])
         } else {
@@ -279,8 +279,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       } else {
         if (req.method === 'GET') {
           const hotel = await queryOne(
-            `SELECT h.*, d.name as "destinationName" FROM hotels h
-             LEFT JOIN destinations d ON h."destinationId" = d.id WHERE h.id = $1`,
+            `SELECT h.*, l.name as "locationName" FROM hotels h
+             LEFT JOIN locations l ON h."locationId" = l.id WHERE h.id = $1`,
             [id]
           )
           if (!hotel) {
@@ -289,9 +289,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           }
           res.status(200).json(hotel)
         } else if (req.method === 'PUT') {
-          const { name, rating, priceRange, destinationId, description, contactNumber, email, address, coordinates } = req.body
-          if (!name || !destinationId) {
-            res.status(400).json({ message: 'Name and destination are required' })
+          const { name, rating, priceRange, locationId, description, contactNumber, email, address, coordinates } = req.body
+          if (!name || !locationId) {
+            res.status(400).json({ message: 'Name and location are required' })
             return
           }
           const existing = await queryOne('SELECT id FROM hotels WHERE id = $1', [id])
@@ -300,10 +300,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             return
           }
           const result = await query(
-            `UPDATE hotels SET name = $1, rating = $2, "priceRange" = $3, "destinationId" = $4, description = $5,
+            `UPDATE hotels SET name = $1, rating = $2, "priceRange" = $3, "locationId" = $4, description = $5,
              "contactNumber" = $6, email = $7, address = $8, coordinates = $9, "updatedAt" = NOW()
              WHERE id = $10 RETURNING *`,
-            [name, rating || null, priceRange || null, destinationId, description || null, contactNumber || null, email || null, address || null, coordinates || null, id]
+            [name, rating || null, priceRange || null, locationId, description || null, contactNumber || null, email || null, address || null, coordinates || null, id]
           )
           res.status(200).json(result[0])
         } else if (req.method === 'DELETE') {
@@ -321,24 +321,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return
     }
 
-    // Destinations
-    if (route === 'destinations') {
+    // Locations
+    if (route === 'locations') {
       if (!id) {
         if (req.method === 'GET') {
-          const destinations = await query('SELECT * FROM destinations ORDER BY name ASC')
-          res.status(200).json(destinations)
+          const locations = await query('SELECT * FROM locations ORDER BY name ASC')
+          res.status(200).json(locations)
         } else if (req.method === 'POST') {
           const { name, coordinates, prefeitura, state, cep, description } = req.body
           if (!name) {
             res.status(400).json({ message: 'Name is required' })
             return
           }
-          const destinationId = randomUUID()
+          const locationId = randomUUID()
           const result = await query(
-            `INSERT INTO destinations (id, name, coordinates, prefeitura, state, cep, description)
+            `INSERT INTO locations (id, name, coordinates, prefeitura, state, cep, description)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
              RETURNING *`,
-            [destinationId, name, coordinates || null, prefeitura || null, state || null, cep || null, description || null]
+            [locationId, name, coordinates || null, prefeitura || null, state || null, cep || null, description || null]
           )
           res.status(201).json(result[0])
         } else {
@@ -346,37 +346,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         }
       } else {
         if (req.method === 'GET') {
-          const destination = await queryOne('SELECT * FROM destinations WHERE id = $1', [id])
-          if (!destination) {
-            res.status(404).json({ message: 'Destination not found' })
+          const location = await queryOne('SELECT * FROM locations WHERE id = $1', [id])
+          if (!location) {
+            res.status(404).json({ message: 'Location not found' })
             return
           }
-          res.status(200).json(destination)
+          res.status(200).json(location)
         } else if (req.method === 'PUT') {
           const { name, coordinates, prefeitura, state, cep, description } = req.body
           if (!name) {
             res.status(400).json({ message: 'Name is required' })
             return
           }
-          const existing = await queryOne('SELECT id FROM destinations WHERE id = $1', [id])
+          const existing = await queryOne('SELECT id FROM locations WHERE id = $1', [id])
           if (!existing) {
-            res.status(404).json({ message: 'Destination not found' })
+            res.status(404).json({ message: 'Location not found' })
             return
           }
           const result = await query(
-            `UPDATE destinations SET name = $1, coordinates = $2, prefeitura = $3, state = $4, cep = $5, description = $6, "updatedAt" = NOW()
+            `UPDATE locations SET name = $1, coordinates = $2, prefeitura = $3, state = $4, cep = $5, description = $6, "updatedAt" = NOW()
              WHERE id = $7 RETURNING *`,
             [name, coordinates || null, prefeitura || null, state || null, cep || null, description || null, id]
           )
           res.status(200).json(result[0])
         } else if (req.method === 'DELETE') {
-          const existing = await queryOne('SELECT id FROM destinations WHERE id = $1', [id])
+          const existing = await queryOne('SELECT id FROM locations WHERE id = $1', [id])
           if (!existing) {
-            res.status(404).json({ message: 'Destination not found' })
+            res.status(404).json({ message: 'Location not found' })
             return
           }
-          await query('DELETE FROM destinations WHERE id = $1', [id])
-          res.status(200).json({ message: 'Destination deleted successfully' })
+          await query('DELETE FROM locations WHERE id = $1', [id])
+          res.status(200).json({ message: 'Location deleted successfully' })
         } else {
           res.status(405).json({ message: 'Method not allowed' })
         }
@@ -389,23 +389,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       if (!id) {
         if (req.method === 'GET') {
           const guides = await query(`
-            SELECT g.*, d.name as "destinationName"
+            SELECT g.*, l.name as "locationName"
             FROM guides g
-            LEFT JOIN destinations d ON g."destinationId" = d.id
+            LEFT JOIN locations l ON g."locationId" = l.id
             ORDER BY g.name ASC
           `)
           res.status(200).json(guides)
         } else if (req.method === 'POST') {
-          const { name, contactNumber, email, destinationId, languages, note } = req.body
-          if (!name || !destinationId) {
-            res.status(400).json({ message: 'Name and destination are required' })
+          const { name, contactNumber, email, locationId, languages, note } = req.body
+          if (!name || !locationId) {
+            res.status(400).json({ message: 'Name and location are required' })
             return
           }
           const guideId = randomUUID()
           const result = await query(
-            `INSERT INTO guides (id, name, "contactNumber", email, "destinationId", languages, note)
+            `INSERT INTO guides (id, name, "contactNumber", email, "locationId", languages, note)
              VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-            [guideId, name, contactNumber || null, email || null, destinationId, languages || null, note || null]
+            [guideId, name, contactNumber || null, email || null, locationId, languages || null, note || null]
           )
           res.status(201).json(result[0])
         } else {
@@ -414,8 +414,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       } else {
         if (req.method === 'GET') {
           const guide = await queryOne(
-            `SELECT g.*, d.name as "destinationName" FROM guides g
-             LEFT JOIN destinations d ON g."destinationId" = d.id WHERE g.id = $1`,
+            `SELECT g.*, l.name as "locationName" FROM guides g
+             LEFT JOIN locations l ON g."locationId" = l.id WHERE g.id = $1`,
             [id]
           )
           if (!guide) {
@@ -424,9 +424,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           }
           res.status(200).json(guide)
         } else if (req.method === 'PUT') {
-          const { name, contactNumber, email, destinationId, languages, note } = req.body
-          if (!name || !destinationId) {
-            res.status(400).json({ message: 'Name and destination are required' })
+          const { name, contactNumber, email, locationId, languages, note } = req.body
+          if (!name || !locationId) {
+            res.status(400).json({ message: 'Name and location are required' })
             return
           }
           const existing = await queryOne('SELECT id FROM guides WHERE id = $1', [id])
@@ -435,9 +435,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             return
           }
           const result = await query(
-            `UPDATE guides SET name = $1, "contactNumber" = $2, email = $3, "destinationId" = $4, languages = $5, note = $6, "updatedAt" = NOW()
+            `UPDATE guides SET name = $1, "contactNumber" = $2, email = $3, "locationId" = $4, languages = $5, note = $6, "updatedAt" = NOW()
              WHERE id = $7 RETURNING *`,
-            [name, contactNumber || null, email || null, destinationId, languages || null, note || null, id]
+            [name, contactNumber || null, email || null, locationId, languages || null, note || null, id]
           )
           res.status(200).json(result[0])
         } else if (req.method === 'DELETE') {
@@ -462,9 +462,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         if (req.method === 'GET') {
           console.log('📋 Fetching all vehicles...')
           const vehicles = await query(`
-            SELECT v.*, dest.name as "destinationName", tp.name as "thirdPartyName"
+            SELECT v.*, loc.name as "locationName", tp.name as "thirdPartyName"
             FROM vehicles v
-            LEFT JOIN destinations dest ON v."destinationId" = dest.id
+            LEFT JOIN locations loc ON v."locationId" = loc.id
             LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
             ORDER BY v.type ASC, v."createdAt" DESC
           `)
@@ -472,7 +472,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           res.status(200).json(vehicles)
           return
         } else if (req.method === 'POST') {
-          const { type, vehicleOwner, destinationId, thirdPartyId, note } = req.body
+          const { type, vehicleOwner, locationId, thirdPartyId, note } = req.body
           if (!type || !vehicleOwner) {
             res.status(400).json({ message: 'Type and vehicle owner are required' })
             return
@@ -491,9 +491,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           }
           const vehicleId = randomUUID()
           const result = await query(
-            `INSERT INTO vehicles (id, type, "vehicleOwner", "destinationId", "thirdPartyId", note)
+            `INSERT INTO vehicles (id, type, "vehicleOwner", "locationId", "thirdPartyId", note)
              VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-            [vehicleId, type, vehicleOwner, destinationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null]
+            [vehicleId, type, vehicleOwner, locationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null]
           )
           res.status(201).json(result[0])
           return
@@ -504,9 +504,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       } else {
         if (req.method === 'GET') {
           const vehicle = await queryOne(
-            `SELECT v.*, dest.name as "destinationName", tp.name as "thirdPartyName" 
+            `SELECT v.*, loc.name as "locationName", tp.name as "thirdPartyName" 
              FROM vehicles v
-             LEFT JOIN destinations dest ON v."destinationId" = dest.id
+             LEFT JOIN locations loc ON v."locationId" = loc.id
              LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
              WHERE v.id = $1`,
             [id]
@@ -518,7 +518,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           res.status(200).json(vehicle)
           return
         } else if (req.method === 'PUT') {
-          const { type, vehicleOwner, destinationId, thirdPartyId, note } = req.body
+          const { type, vehicleOwner, locationId, thirdPartyId, note } = req.body
           if (!type || !vehicleOwner) {
             res.status(400).json({ message: 'Type and vehicle owner are required' })
             return
@@ -541,9 +541,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             return
           }
           const result = await query(
-            `UPDATE vehicles SET type = $1, "vehicleOwner" = $2, "destinationId" = $3, "thirdPartyId" = $4, note = $5, "updatedAt" = NOW()
+            `UPDATE vehicles SET type = $1, "vehicleOwner" = $2, "locationId" = $3, "thirdPartyId" = $4, note = $5, "updatedAt" = NOW()
              WHERE id = $6 RETURNING *`,
-            [type, vehicleOwner, destinationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null, id]
+            [type, vehicleOwner, locationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null, id]
           )
           res.status(200).json(result[0])
           return
@@ -569,14 +569,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       if (!id) {
         if (req.method === 'GET') {
           const result = await query(`
-            SELECT c.*, d.name as "destinationName"
+            SELECT c.*, l.name as "locationName"
             FROM caterers c
-            LEFT JOIN destinations d ON c."destinationId" = d.id
+            LEFT JOIN locations l ON c."locationId" = l.id
             ORDER BY c.name
           `)
           res.json(result)
         } else if (req.method === 'POST') {
-          const { name, contactNumber, email, type, destinationId, note } = req.body
+          const { name, contactNumber, email, type, locationId, note } = req.body
 
           if (!name || !type) {
             res.status(400).json({ message: 'Name and type are required' })
@@ -590,9 +590,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
           const catererId = randomUUID()
           const result = await query(
-            `INSERT INTO caterers (id, name, "contactNumber", email, type, "destinationId", note)
+            `INSERT INTO caterers (id, name, "contactNumber", email, type, "locationId", note)
              VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-            [catererId, name, contactNumber || null, email || null, type, destinationId || null, note || null]
+            [catererId, name, contactNumber || null, email || null, type, locationId || null, note || null]
           )
           res.status(201).json(result[0])
         } else {
@@ -601,9 +601,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       } else {
         if (req.method === 'GET') {
           const result = await queryOne(
-            `SELECT c.*, d.name as "destinationName"
+            `SELECT c.*, l.name as "locationName"
              FROM caterers c
-             LEFT JOIN destinations d ON c."destinationId" = d.id
+             LEFT JOIN locations l ON c."locationId" = l.id
              WHERE c.id = $1`,
             [id]
           )
@@ -613,7 +613,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           }
           res.json(result)
         } else if (req.method === 'PUT') {
-          const { name, contactNumber, email, type, destinationId, note } = req.body
+          const { name, contactNumber, email, type, locationId, note } = req.body
 
           if (!name || !type) {
             res.status(400).json({ message: 'Name and type are required' })
@@ -627,9 +627,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
           const result = await query(
             `UPDATE caterers 
-             SET name = $1, "contactNumber" = $2, email = $3, type = $4, "destinationId" = $5, note = $6, "updatedAt" = NOW()
+             SET name = $1, "contactNumber" = $2, email = $3, type = $4, "locationId" = $5, note = $6, "updatedAt" = NOW()
              WHERE id = $7 RETURNING *`,
-            [name, contactNumber || null, email || null, type, destinationId || null, note || null, id]
+            [name, contactNumber || null, email || null, type, locationId || null, note || null, id]
           )
           res.status(200).json(result[0])
         } else if (req.method === 'DELETE') {

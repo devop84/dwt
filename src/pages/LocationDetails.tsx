@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { destinationsApi, hotelsApi, guidesApi, vehiclesApi, caterersApi } from '../lib/api'
-import type { Destination, Hotel, Guide, Vehicle, Caterer } from '../types'
-import { DestinationForm } from '../components/DestinationForm'
+import { locationsApi, hotelsApi, guidesApi, vehiclesApi, caterersApi } from '../lib/api'
+import type { Location, Hotel, Guide, Vehicle, Caterer } from '../types'
+import { LocationForm } from '../components/LocationForm'
 
 type TabType = 'hotels' | 'vehicles' | 'caterers' | 'guides'
 
-export function DestinationDetails() {
+export function LocationDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [destination, setDestination] = useState<Destination | null>(null)
+  const [location, setLocation] = useState<Location | null>(null)
   const [hotels, setHotels] = useState<Hotel[]>([])
   const [guides, setGuides] = useState<Guide[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -22,20 +22,20 @@ export function DestinationDetails() {
 
   useEffect(() => {
     if (id) {
-      loadDestination()
+      loadLocation()
       loadAllEntities()
     }
   }, [id])
 
-  const loadDestination = async () => {
+  const loadLocation = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await destinationsApi.getById(id!)
-      setDestination(data)
+      const data = await locationsApi.getById(id!)
+      setLocation(data)
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to load destination')
-      console.error('Error loading destination:', err)
+      setError(err.response?.data?.message || err.message || 'Failed to load location')
+      console.error('Error loading location:', err)
     } finally {
       setLoading(false)
     }
@@ -50,11 +50,11 @@ export function DestinationDetails() {
         caterersApi.getAll()
       ])
       
-      // Filter entities for this destination, ensuring arrays
-      setHotels(Array.isArray(allHotels) ? allHotels.filter(hotel => hotel.destinationId === id) : [])
-      setGuides(Array.isArray(allGuides) ? allGuides.filter(guide => guide.destinationId === id) : [])
-      setVehicles(Array.isArray(allVehicles) ? allVehicles.filter(vehicle => vehicle.destinationId === id) : [])
-      setCaterers(Array.isArray(allCaterers) ? allCaterers.filter(caterer => caterer.destinationId === id) : [])
+      // Filter entities for this location, ensuring arrays
+      setHotels(Array.isArray(allHotels) ? allHotels.filter(hotel => hotel.locationId === id) : [])
+      setGuides(Array.isArray(allGuides) ? allGuides.filter(guide => guide.locationId === id) : [])
+      setVehicles(Array.isArray(allVehicles) ? allVehicles.filter(vehicle => vehicle.locationId === id) : [])
+      setCaterers(Array.isArray(allCaterers) ? allCaterers.filter(caterer => caterer.locationId === id) : [])
     } catch (err: any) {
       console.error('Error loading entities:', err)
       // Ensure all arrays are set to empty arrays on error
@@ -66,27 +66,27 @@ export function DestinationDetails() {
   }
 
   const handleDelete = async () => {
-    if (!destination) return
+    if (!location) return
     
-    if (!confirm('Are you sure you want to delete this destination? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete this location? This action cannot be undone.')) {
       return
     }
 
     try {
       setDeleting(true)
-      await destinationsApi.delete(destination.id)
-      navigate('/destinations')
+      await locationsApi.delete(location.id)
+      navigate('/locations')
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to delete destination')
+      alert(err.response?.data?.message || err.message || 'Failed to delete location')
     } finally {
       setDeleting(false)
     }
   }
 
-  const handleSave = async (destinationData: Omit<Destination, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!destination) return
-    await destinationsApi.update(destination.id, destinationData)
-    await loadDestination()
+  const handleSave = async (locationData: Omit<Location, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!location) return
+    await locationsApi.update(location.id, locationData)
+    await loadLocation()
     setShowEditForm(false)
   }
 
@@ -123,7 +123,7 @@ export function DestinationDetails() {
             color: '#111827',
             margin: 0
           }}>
-            Destination Details
+            Location Details
           </h1>
         </div>
         <div style={{
@@ -133,13 +133,13 @@ export function DestinationDetails() {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#6b7280', margin: 0 }}>Loading destination details...</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading location details...</p>
         </div>
       </div>
     )
   }
 
-  if (error || !destination) {
+  if (error || !location) {
     return (
       <div style={{
         maxWidth: '1200px',
@@ -157,7 +157,7 @@ export function DestinationDetails() {
             color: '#111827',
             margin: 0
           }}>
-            Destination Details
+            Location Details
           </h1>
         </div>
         <div style={{
@@ -173,10 +173,10 @@ export function DestinationDetails() {
             borderRadius: '0.5rem',
             marginBottom: '1rem'
           }}>
-            <p style={{ margin: 0 }}>Error: {error || 'Destination not found'}</p>
+            <p style={{ margin: 0 }}>Error: {error || 'Location not found'}</p>
           </div>
           <button
-            onClick={() => navigate('/destinations')}
+            onClick={() => navigate('/locations')}
             style={{
               padding: '0.625rem 1.25rem',
               backgroundColor: '#3b82f6',
@@ -191,7 +191,7 @@ export function DestinationDetails() {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
           >
-            Back to Destinations
+            Back to Locations
           </button>
         </div>
       </div>
@@ -215,14 +215,14 @@ export function DestinationDetails() {
           color: '#111827',
           margin: 0
         }}>
-          Destination Details
+          Location Details
         </h1>
         <div style={{
           display: 'flex',
           gap: '0.75rem'
         }}>
           <button
-            onClick={() => navigate('/destinations')}
+            onClick={() => navigate('/locations')}
             style={{
               padding: '0.625rem 1.25rem',
               backgroundColor: 'white',
@@ -301,7 +301,7 @@ export function DestinationDetails() {
           padding: '2rem',
           borderBottom: '1px solid #e5e7eb'
         }}>
-          {/* Left column: Destination Details */}
+          {/* Left column: Location Details */}
           <div>
             <h2 style={{
               fontSize: '1.5rem',
@@ -309,7 +309,7 @@ export function DestinationDetails() {
               color: '#111827',
               margin: '0 0 1.5rem 0'
             }}>
-              {destination.name}
+              {location.name}
             </h2>
             
             <div style={{
@@ -334,7 +334,7 @@ export function DestinationDetails() {
                   color: '#111827',
                   margin: 0
                 }}>
-                  {destination.prefeitura || '-'}
+                  {location.prefeitura || '-'}
                 </p>
               </div>
 
@@ -355,7 +355,7 @@ export function DestinationDetails() {
                   color: '#111827',
                   margin: 0
                 }}>
-                  {destination.state || '-'}
+                  {location.state || '-'}
                 </p>
               </div>
 
@@ -376,13 +376,13 @@ export function DestinationDetails() {
                   color: '#111827',
                   margin: 0
                 }}>
-                  {destination.cep || '-'}
+                  {location.cep || '-'}
                 </p>
               </div>
             </div>
 
             {/* Description */}
-            {destination.description && (
+            {location.description && (
               <div style={{
                 marginTop: '1.5rem',
                 padding: '1.5rem',
@@ -408,16 +408,16 @@ export function DestinationDetails() {
                   whiteSpace: 'pre-wrap',
                   lineHeight: '1.6'
                 }}>
-                  {destination.description}
+                  {location.description}
                 </p>
               </div>
             )}
           </div>
 
           {/* Right column: Map */}
-          {destination.coordinates && (() => {
+          {location.coordinates && (() => {
             // Parse coordinates (format: "lat, lng" or "lat,lng")
-            const coords = destination.coordinates.replace(/\s+/g, '').split(',')
+            const coords = location.coordinates.replace(/\s+/g, '').split(',')
             const lat = coords[0]
             const lng = coords[1]
             
@@ -454,7 +454,7 @@ export function DestinationDetails() {
                       allowFullScreen
                       referrerPolicy="no-referrer-when-downgrade"
                       src={`https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=14&output=embed`}
-                      title={`Map showing ${destination.name}`}
+                      title={`Map showing ${location.name}`}
                     />
                   </div>
                   <div style={{
@@ -581,7 +581,7 @@ export function DestinationDetails() {
                     margin: 0,
                     fontSize: '0.875rem'
                   }}>
-                    No hotels found for this destination.
+                    No hotels found for this location.
                   </p>
                 </div>
               ) : (
@@ -708,7 +708,7 @@ export function DestinationDetails() {
                     margin: 0,
                     fontSize: '0.875rem'
                   }}>
-                    No vehicles found for this destination.
+                    No vehicles found for this location.
                   </p>
                 </div>
               ) : (
@@ -816,7 +816,7 @@ export function DestinationDetails() {
                     margin: 0,
                     fontSize: '0.875rem'
                   }}>
-                    No caterers found for this destination.
+                    No caterers found for this location.
                   </p>
                 </div>
               ) : (
@@ -929,7 +929,7 @@ export function DestinationDetails() {
                     margin: 0,
                     fontSize: '0.875rem'
                   }}>
-                    No guides found for this destination.
+                    No guides found for this location.
                   </p>
                 </div>
               ) : (
@@ -1028,17 +1028,17 @@ export function DestinationDetails() {
           color: '#6b7280'
         }}>
           <div>
-            <span style={{ fontWeight: '600' }}>Created:</span> {formatDateTime(destination.createdAt)}
+            <span style={{ fontWeight: '600' }}>Created:</span> {formatDateTime(location.createdAt)}
           </div>
           <div>
-            <span style={{ fontWeight: '600' }}>Last Updated:</span> {formatDateTime(destination.updatedAt)}
+            <span style={{ fontWeight: '600' }}>Last Updated:</span> {formatDateTime(location.updatedAt)}
           </div>
         </div>
       </div>
 
       {showEditForm && (
-        <DestinationForm
-          destination={destination}
+        <LocationForm
+          location={location}
           onClose={() => setShowEditForm(false)}
           onSave={handleSave}
         />

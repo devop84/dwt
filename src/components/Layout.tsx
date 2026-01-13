@@ -139,32 +139,32 @@ export function Layout({ children }: LayoutProps) {
             Clients
           </Link>
           <Link
-            to="/destinations"
+            to="/locations"
             style={{
               display: 'block',
               padding: '0.75rem 1.5rem',
-              color: isActive('/destinations') ? '#3b82f6' : '#6b7280',
+              color: isActive('/locations') ? '#3b82f6' : '#6b7280',
               textDecoration: 'none',
               fontSize: '0.875rem',
-              fontWeight: isActive('/destinations') ? '600' : '500',
-              backgroundColor: isActive('/destinations') ? '#eff6ff' : 'transparent',
-              borderLeft: isActive('/destinations') ? '3px solid #3b82f6' : '3px solid transparent',
+              fontWeight: isActive('/locations') ? '600' : '500',
+              backgroundColor: isActive('/locations') ? '#eff6ff' : 'transparent',
+              borderLeft: isActive('/locations') ? '3px solid #3b82f6' : '3px solid transparent',
               transition: 'all 0.2s'
             }}
             onMouseOver={(e) => {
-              if (!isActive('/destinations')) {
+              if (!isActive('/locations')) {
                 e.currentTarget.style.backgroundColor = '#f9fafb'
                 e.currentTarget.style.color = '#111827'
               }
             }}
             onMouseOut={(e) => {
-              if (!isActive('/destinations')) {
+              if (!isActive('/locations')) {
                 e.currentTarget.style.backgroundColor = 'transparent'
                 e.currentTarget.style.color = '#6b7280'
               }
             }}
           >
-            Destinations
+            Locations
           </Link>
           <Link
             to="/hotels"

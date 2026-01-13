@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver, Vehicle, Caterer, Account, EntityType, ThirdParty } from '../types'
+import type { AuthResponse, User, Client, Location, Hotel, Guide, Driver, Vehicle, Caterer, Account, EntityType, ThirdParty } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -71,25 +71,25 @@ export const clientsApi = {
   },
 }
 
-export const destinationsApi = {
-  getAll: async (): Promise<Destination[]> => {
-    const { data } = await api.get<Destination[]>('/destinations')
+export const locationsApi = {
+  getAll: async (): Promise<Location[]> => {
+    const { data } = await api.get<Location[]>('/locations')
     return data
   },
-  getById: async (id: string): Promise<Destination> => {
-    const { data } = await api.get<Destination>(`/destinations/${id}`)
+  getById: async (id: string): Promise<Location> => {
+    const { data } = await api.get<Location>(`/locations/${id}`)
     return data
   },
-  create: async (destination: Omit<Destination, 'id' | 'createdAt' | 'updatedAt'>): Promise<Destination> => {
-    const { data } = await api.post<Destination>('/destinations', destination)
+  create: async (location: Omit<Location, 'id' | 'createdAt' | 'updatedAt'>): Promise<Location> => {
+    const { data } = await api.post<Location>('/locations', location)
     return data
   },
-  update: async (id: string, destination: Omit<Destination, 'id' | 'createdAt' | 'updatedAt'>): Promise<Destination> => {
-    const { data } = await api.put<Destination>(`/destinations/${id}`, destination)
+  update: async (id: string, location: Omit<Location, 'id' | 'createdAt' | 'updatedAt'>): Promise<Location> => {
+    const { data } = await api.put<Location>(`/locations/${id}`, location)
     return data
   },
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/destinations/${id}`)
+    await api.delete(`/locations/${id}`)
   },
 }
 
@@ -124,11 +124,11 @@ export const guidesApi = {
     const { data } = await api.get<Guide>(`/guides/${id}`)
     return data
   },
-  create: async (guide: Omit<Guide, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Guide> => {
+  create: async (guide: Omit<Guide, 'id' | 'createdAt' | 'updatedAt' | 'locationName'>): Promise<Guide> => {
     const { data } = await api.post<Guide>('/guides', guide)
     return data
   },
-  update: async (id: string, guide: Omit<Guide, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Guide> => {
+  update: async (id: string, guide: Omit<Guide, 'id' | 'createdAt' | 'updatedAt' | 'locationName'>): Promise<Guide> => {
     const { data } = await api.put<Guide>(`/guides/${id}`, guide)
     return data
   },
@@ -146,11 +146,11 @@ export const vehiclesApi = {
     const { data } = await api.get<Vehicle>(`/vehicles/${id}`)
     return data
   },
-  create: async (vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'destinationName' | 'thirdPartyName'>): Promise<Vehicle> => {
+  create: async (vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'locationName' | 'thirdPartyName'>): Promise<Vehicle> => {
     const { data } = await api.post<Vehicle>('/vehicles', vehicle)
     return data
   },
-  update: async (id: string, vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'destinationName' | 'thirdPartyName'>): Promise<Vehicle> => {
+  update: async (id: string, vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'locationName' | 'thirdPartyName'>): Promise<Vehicle> => {
     const { data } = await api.put<Vehicle>(`/vehicles/${id}`, vehicle)
     return data
   },
@@ -168,11 +168,11 @@ export const caterersApi = {
     const { data } = await api.get<Caterer>(`/caterers/${id}`)
     return data
   },
-  create: async (caterer: Omit<Caterer, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Caterer> => {
+  create: async (caterer: Omit<Caterer, 'id' | 'createdAt' | 'updatedAt' | 'locationName'>): Promise<Caterer> => {
     const { data } = await api.post<Caterer>('/caterers', caterer)
     return data
   },
-  update: async (id: string, caterer: Omit<Caterer, 'id' | 'createdAt' | 'updatedAt' | 'destinationName'>): Promise<Caterer> => {
+  update: async (id: string, caterer: Omit<Caterer, 'id' | 'createdAt' | 'updatedAt' | 'locationName'>): Promise<Caterer> => {
     const { data } = await api.put<Caterer>(`/caterers/${id}`, caterer)
     return data
   },

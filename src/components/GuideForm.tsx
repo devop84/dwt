@@ -1,20 +1,20 @@
 import { useState, useEffect, FormEvent } from 'react'
 import { guidesApi } from '../lib/api'
-import type { Guide, Destination } from '../types'
+import type { Guide, Location } from '../types'
 
 interface GuideFormProps {
   guide?: Guide | null
-  destinations: Destination[]
+  locations: Location[]
   onClose: () => void
   onSave: () => Promise<void>
 }
 
-export function GuideForm({ guide, destinations, onClose, onSave }: GuideFormProps) {
+export function GuideForm({ guide, locations, onClose, onSave }: GuideFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     contactNumber: '',
     email: '',
-    destinationId: '',
+    locationId: '',
     languages: '',
     note: '',
   })
@@ -27,7 +27,7 @@ export function GuideForm({ guide, destinations, onClose, onSave }: GuideFormPro
         name: guide.name || '',
         contactNumber: guide.contactNumber || '',
         email: guide.email || '',
-        destinationId: guide.destinationId || '',
+        locationId: guide.locationId || '',
         languages: guide.languages || '',
         note: guide.note || '',
       })
@@ -43,8 +43,8 @@ export function GuideForm({ guide, destinations, onClose, onSave }: GuideFormPro
       return
     }
 
-    if (!formData.destinationId) {
-      setError('Destination is required')
+    if (!formData.locationId) {
+      setError('Location is required')
       return
     }
 
@@ -55,7 +55,7 @@ export function GuideForm({ guide, destinations, onClose, onSave }: GuideFormPro
           name: formData.name.trim(),
           contactNumber: formData.contactNumber.trim() || null,
           email: formData.email.trim() || null,
-          destinationId: formData.destinationId,
+          locationId: formData.locationId,
           languages: formData.languages.trim() || null,
           note: formData.note.trim() || null,
         })
@@ -64,7 +64,7 @@ export function GuideForm({ guide, destinations, onClose, onSave }: GuideFormPro
           name: formData.name.trim(),
           contactNumber: formData.contactNumber.trim() || null,
           email: formData.email.trim() || null,
-          destinationId: formData.destinationId,
+          locationId: formData.locationId,
           languages: formData.languages.trim() || null,
           note: formData.note.trim() || null,
         })
@@ -176,13 +176,13 @@ export function GuideForm({ guide, destinations, onClose, onSave }: GuideFormPro
           </div>
 
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="destinationId" style={labelStyle}>
-              Destination <span style={{ color: '#ef4444' }}>*</span>
+            <label htmlFor="locationId" style={labelStyle}>
+              Location <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <select
-              id="destinationId"
-              value={formData.destinationId}
-              onChange={(e) => handleChange('destinationId', e.target.value)}
+              id="locationId"
+              value={formData.locationId}
+              onChange={(e) => handleChange('locationId', e.target.value)}
               required
               style={inputStyle}
               onFocus={(e) => {
@@ -194,8 +194,8 @@ export function GuideForm({ guide, destinations, onClose, onSave }: GuideFormPro
                 e.currentTarget.style.boxShadow = 'none'
               }}
             >
-              <option value="">Select a destination</option>
-              {destinations.map((dest) => (
+              <option value="">Select a location</option>
+              {locations.map((dest) => (
                 <option key={dest.id} value={dest.id}>
                   {dest.name}
                 </option>

@@ -1,21 +1,21 @@
 import { useState, useEffect, FormEvent } from 'react'
 import { caterersApi } from '../lib/api'
-import type { Caterer, Destination, CatererType } from '../types'
+import type { Caterer, Location, CatererType } from '../types'
 
 interface CatererFormProps {
   caterer?: Caterer | null
-  destinations: Destination[]
+  locations: Location[]
   onClose: () => void
   onSave: () => Promise<void>
 }
 
-export function CatererForm({ caterer, destinations, onClose, onSave }: CatererFormProps) {
+export function CatererForm({ caterer, locations, onClose, onSave }: CatererFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     contactNumber: '',
     email: '',
     type: 'restaurant' as CatererType,
-    destinationId: '',
+    locationId: '',
     note: '',
   })
   const [loading, setLoading] = useState(false)
@@ -28,7 +28,7 @@ export function CatererForm({ caterer, destinations, onClose, onSave }: CatererF
         contactNumber: caterer.contactNumber || '',
         email: caterer.email || '',
         type: caterer.type || 'restaurant',
-        destinationId: caterer.destinationId || '',
+        locationId: caterer.locationId || '',
         note: caterer.note || '',
       })
     }
@@ -56,7 +56,7 @@ export function CatererForm({ caterer, destinations, onClose, onSave }: CatererF
           contactNumber: formData.contactNumber.trim() || null,
           email: formData.email.trim() || null,
           type: formData.type,
-          destinationId: formData.destinationId || null,
+          locationId: formData.locationId || null,
           note: formData.note.trim() || null,
         })
       } else {
@@ -65,7 +65,7 @@ export function CatererForm({ caterer, destinations, onClose, onSave }: CatererF
           contactNumber: formData.contactNumber.trim() || null,
           email: formData.email.trim() || null,
           type: formData.type,
-          destinationId: formData.destinationId || null,
+          locationId: formData.locationId || null,
           note: formData.note.trim() || null,
         })
       }
@@ -201,13 +201,13 @@ export function CatererForm({ caterer, destinations, onClose, onSave }: CatererF
           </div>
 
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="destinationId" style={labelStyle}>
-              Destination
+            <label htmlFor="locationId" style={labelStyle}>
+              Location
             </label>
             <select
-              id="destinationId"
-              value={formData.destinationId}
-              onChange={(e) => handleChange('destinationId', e.target.value)}
+              id="locationId"
+              value={formData.locationId}
+              onChange={(e) => handleChange('locationId', e.target.value)}
               style={inputStyle}
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = '#3b82f6'
@@ -218,8 +218,8 @@ export function CatererForm({ caterer, destinations, onClose, onSave }: CatererF
                 e.currentTarget.style.boxShadow = 'none'
               }}
             >
-              <option value="">Select a destination (optional)</option>
-              {destinations.map((dest) => (
+              <option value="">Select a location (optional)</option>
+              {locations.map((dest) => (
                 <option key={dest.id} value={dest.id}>
                   {dest.name}
                 </option>

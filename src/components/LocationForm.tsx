@@ -1,13 +1,13 @@
 import { useState, useEffect, FormEvent } from 'react'
-import type { Destination } from '../types'
+import type { Location } from '../types'
 
-interface DestinationFormProps {
-  destination?: Destination | null
+interface LocationFormProps {
+  location?: Location | null
   onClose: () => void
-  onSave: (destination: Omit<Destination, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
+  onSave: (location: Omit<Location, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
 }
 
-export function DestinationForm({ destination, onClose, onSave }: DestinationFormProps) {
+export function LocationForm({ location, onClose, onSave }: LocationFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     coordinates: '',
@@ -20,17 +20,17 @@ export function DestinationForm({ destination, onClose, onSave }: DestinationFor
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (destination) {
+    if (location) {
       setFormData({
-        name: destination.name || '',
-        coordinates: destination.coordinates || '',
-        prefeitura: destination.prefeitura || '',
-        state: destination.state || '',
-        cep: destination.cep || '',
-        description: destination.description || '',
+        name: location.name || '',
+        coordinates: location.coordinates || '',
+        prefeitura: location.prefeitura || '',
+        state: location.state || '',
+        cep: location.cep || '',
+        description: location.description || '',
       })
     }
-  }, [destination])
+  }, [location])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -53,7 +53,7 @@ export function DestinationForm({ destination, onClose, onSave }: DestinationFor
       })
       onClose()
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to save destination')
+      setError(err.response?.data?.message || err.message || 'Failed to save location')
     } finally {
       setLoading(false)
     }
@@ -109,7 +109,7 @@ export function DestinationForm({ destination, onClose, onSave }: DestinationFor
             color: '#111827',
             margin: 0
           }}>
-            {destination ? 'Edit Destination' : 'Add New Destination'}
+            {location ? 'Edit Location' : 'Add New Location'}
           </h2>
           <button
             onClick={onClose}
@@ -411,7 +411,7 @@ export function DestinationForm({ destination, onClose, onSave }: DestinationFor
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
               rows={4}
-              placeholder="Description of this destination..."
+              placeholder="Description of this location..."
               style={{
                 width: '100%',
                 padding: '0.625rem 0.875rem',
@@ -492,7 +492,7 @@ export function DestinationForm({ destination, onClose, onSave }: DestinationFor
                 }
               }}
             >
-              {loading ? 'Saving...' : (destination ? 'Update Destination' : 'Add Destination')}
+              {loading ? 'Saving...' : (location ? 'Update Location' : 'Add Location')}
             </button>
           </div>
         </form>
