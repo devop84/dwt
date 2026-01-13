@@ -641,6 +641,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return
     }
 
+    // Third Parties
+    if (route === 'third-parties') {
+      if (!id) {
+        if (req.method === 'GET') {
+          const thirdParties = await query(`
+            SELECT id, name, "contactNumber", email, note, "createdAt", "updatedAt"
+            FROM third_parties
+            ORDER BY "createdAt" DESC
+          `)
+          res.status(200).json(thirdParties)
+        } else if (req.method === 'POST') {
+          const { name, contactNumber, email, note } = req.body
+          if (!name) {
+            res.status(400).json({ message: 'Name is required' })
+            return
+          }
+          const thirdPartyId = randomUUID()
+          const result = await query(
+            `INSERT INTO third_parties (id, name, "contactNumber", email, note)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id, name, "contactNumber", email, note, "createdAt", "updatedAt"`,
+            [thirdPartyId, name, contactNumber || null, email || null, note || null]
+          )
+          res.status(201).json(result[0])
+        } else {
+          res.status(405).json({ message: 'Method not allowed' })
+        }
+      } else {
+        if (req.method === 'GET') {
+          const thirdParty = await queryOne('SELECT * FROM third_parties WHERE id = $1', [id])
+          if (!thirdParty) {
+            res.status(404).json({ message: 'Third party not found' })
+            return
+          }
+          res.status(200).json(thirdParty)
+        } else if (req.method === 'PUT') {
+          const { name, contactNumber, email, note } = req.body
+          if (!name) {
+            res.status(400).json({ message: 'Name is required' })
+            return
+          }
+          const existing = await queryOne('SELECT id FROM third_parties WHERE id = $1', [id])
+          if (!existing) {
+            res.status(404).json({ message: 'Third party not found' })
+            return
+          }
+          const result = await query(
+            `UPDATE third_parties SET name = $1, "contactNumber" = $2, email = $3, note = $4, "updatedAt" = NOW()
+             WHERE id = $5 RETURNING *`,
+            [name, contactNumber || null, email || null, note || null, id]
+          )
+          res.status(200).json(result[0])
+        } else if (req.method === 'DELETE') {
+          const existing = await queryOne('SELECT id FROM third_parties WHERE id = $1', [id])
+          if (!existing) {
+            res.status(404).json({ message: 'Third party not found' })
+            return
+          }
+          await query('DELETE FROM third_parties WHERE id = $1', [id])
+          res.status(200).json({ message: 'Third party deleted successfully' })
+        } else {
+          res.status(405).json({ message: 'Method not allowed' })
+        }
+      }
+      return
+    }
+
     // Accounts
     if (route === 'accounts') {
       if (!id) {

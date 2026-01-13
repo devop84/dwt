@@ -96,6 +96,17 @@ CREATE TABLE IF NOT EXISTS caterers (
   CONSTRAINT check_caterer_type CHECK (type IN ('restaurant', 'hotel', 'particular'))
 );
 
+-- Third Parties table
+CREATE TABLE IF NOT EXISTS third_parties (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  "contactNumber" VARCHAR(50),
+  email VARCHAR(255),
+  note TEXT,
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW()
+);
+
 -- Accounts table (polymorphic relationship - supports bank accounts, online services, and cash)
 CREATE TABLE IF NOT EXISTS accounts (
   id UUID PRIMARY KEY,

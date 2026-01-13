@@ -21,6 +21,8 @@ import { AccountsList } from './pages/AccountsList'
 import { AccountDetails } from './pages/AccountDetails'
 import { CompanyAccountsList } from './pages/CompanyAccountsList'
 import { CompanyAccountDetails } from './pages/CompanyAccountDetails'
+import { ThirdPartiesList } from './pages/ThirdPartiesList'
+import { ThirdPartyDetails } from './pages/ThirdPartyDetails'
 
 function App() {
   return (
@@ -169,6 +171,22 @@ function App() {
               element={
                 <Layout>
                   <CompanyAccountDetails />
+                </Layout>
+              }
+            />
+            <Route
+              path="/third-parties"
+              element={
+                <Layout>
+                  <ThirdPartiesList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/third-parties/:id"
+              element={
+                <Layout>
+                  <ThirdPartyDetails />
                 </Layout>
               }
             />

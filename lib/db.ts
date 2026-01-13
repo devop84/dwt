@@ -238,6 +238,20 @@ export const initDb = async () => {
     `)
     console.log('✅ Caterers table ready')
     
+    // Create third_parties table if not exists
+    await query(`
+      CREATE TABLE IF NOT EXISTS third_parties (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        "contactNumber" VARCHAR(50),
+        email VARCHAR(255),
+        note TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    console.log('✅ Third Parties table ready')
+    
     // Create accounts table if not exists
     await query(`
       CREATE TABLE IF NOT EXISTS accounts (

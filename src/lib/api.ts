@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver, Caterer, Account, EntityType } from '../types'
+import type { AuthResponse, User, Client, Destination, Hotel, Guide, Driver, Caterer, Account, EntityType, ThirdParty } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -204,5 +204,27 @@ export const accountsApi = {
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/accounts/${id}`)
+  },
+}
+
+export const thirdPartiesApi = {
+  getAll: async (): Promise<ThirdParty[]> => {
+    const { data } = await api.get<ThirdParty[]>('/third-parties')
+    return data
+  },
+  getById: async (id: string): Promise<ThirdParty> => {
+    const { data } = await api.get<ThirdParty>(`/third-parties/${id}`)
+    return data
+  },
+  create: async (thirdParty: Omit<ThirdParty, 'id' | 'createdAt' | 'updatedAt'>): Promise<ThirdParty> => {
+    const { data } = await api.post<ThirdParty>('/third-parties', thirdParty)
+    return data
+  },
+  update: async (id: string, thirdParty: Omit<ThirdParty, 'id' | 'createdAt' | 'updatedAt'>): Promise<ThirdParty> => {
+    const { data } = await api.put<ThirdParty>(`/third-parties/${id}`, thirdParty)
+    return data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/third-parties/${id}`)
   },
 }

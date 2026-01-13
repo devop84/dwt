@@ -79,6 +79,16 @@ export interface Driver {
   destinationName?: string
 }
 
+export interface ThirdParty {
+  id: string
+  name: string
+  contactNumber: string | null
+  email: string | null
+  note: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export type EntityType = 'client' | 'hotel' | 'guide' | 'driver' | 'caterer' | 'company'
 
 export type AccountType = 'bank' | 'cash' | 'online' | 'other'
