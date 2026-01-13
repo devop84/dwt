@@ -2650,9 +2650,12 @@ app.post('/api/routes/:routeId/segments', async (req, res) => {
     // Get route start_date to calculate segment_date
     const routeResult = await pool.query('SELECT start_date FROM routes WHERE id = $1', [routeId])
     const startDate = routeResult.rows[0]?.start_date
-    const segmentDate = startDate ? new Date(startDate)
-    segmentDate.setDate(segmentDate.getDate() + dayNum - 1)
-    const segmentDateStr = startDate ? segmentDate.toISOString().split('T')[0] : null
+    let segmentDateStr = null
+    if (startDate) {
+      const segmentDate = new Date(startDate)
+      segmentDate.setDate(segmentDate.getDate() + dayNum - 1)
+      segmentDateStr = segmentDate.toISOString().split('T')[0]
+    }
     
     const segmentId = randomUUID()
     const result = await pool.query(
