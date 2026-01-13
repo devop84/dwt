@@ -19,6 +19,7 @@
     "seed:caterers": "node scripts/seed-caterers.js",
     "seed:accounts": "node scripts/seed-bank-accounts.js",
     "seed:company-accounts": "node scripts/seed-company-accounts.js",
+    "seed:third-parties": "node scripts/seed-third-parties.js",
     "drop:company-accounts-table": "node scripts/drop-company-accounts-table.js",
     "migrate:description": "node scripts/migrate-note-to-description.js",
     "create:guides-table": "node scripts/create-guides-table.js",
