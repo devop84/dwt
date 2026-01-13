@@ -1932,6 +1932,8 @@ app.post('/api/accounts', async (req, res) => {
 
     const { entityType, entityId, accountType, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, serviceName, isPrimary, note } = req.body
 
+    console.log('📝 Creating account:', { entityType, entityId, accountType, accountHolderName })
+
     if (!entityType || !accountHolderName) {
       return res.status(400).json({ message: 'Entity type and account holder name are required' })
     }
@@ -1941,8 +1943,10 @@ app.post('/api/accounts', async (req, res) => {
       return res.status(400).json({ message: 'Entity ID is required for non-company accounts' })
     }
 
-    if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party'].includes(entityType)) {
-      return res.status(400).json({ message: 'Invalid entity type' })
+    const validEntityTypes = ['client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party']
+    if (!validEntityTypes.includes(entityType)) {
+      console.log('❌ Invalid entity type:', { entityType, validTypes: validEntityTypes, receivedType: typeof entityType })
+      return res.status(400).json({ message: 'Invalid entity type', received: entityType, valid: validEntityTypes })
     }
 
     if (!accountType || !['bank', 'cash', 'online', 'other'].includes(accountType)) {

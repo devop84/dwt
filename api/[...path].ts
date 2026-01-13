@@ -754,6 +754,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         } else if (req.method === 'POST') {
           const { entityType, entityId, accountType, accountHolderName, bankName, accountNumber, iban, swiftBic, routingNumber, currency, serviceName, isPrimary, note } = req.body
           
+          console.log('📝 Creating account:', { entityType, entityId, accountType, accountHolderName })
+          
           if (!entityType || !accountHolderName) {
             res.status(400).json({ message: 'Entity type and account holder name are required' })
             return
@@ -764,8 +766,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             return
           }
 
-          if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party'].includes(entityType)) {
-            res.status(400).json({ message: 'Invalid entity type' })
+          const validEntityTypes = ['client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party']
+          if (!validEntityTypes.includes(entityType)) {
+            console.log('❌ Invalid entity type:', { entityType, validTypes: validEntityTypes, receivedType: typeof entityType })
+            res.status(400).json({ message: 'Invalid entity type', received: entityType, valid: validEntityTypes })
             return
           }
 
