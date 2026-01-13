@@ -655,8 +655,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     // Third Parties
-    if (route === 'third-parties') {
-      console.log('🔍 Third parties route matched:', { route, id, pathArray, method: req.method })
+    // Use more robust comparison to handle any encoding/whitespace issues
+    const isThirdPartiesRoute = route === 'third-parties' || 
+                                 route === 'thirdParties' || 
+                                 (typeof route === 'string' && route.trim().toLowerCase() === 'third-parties') ||
+                                 (typeof route === 'string' && route.replace(/\s+/g, '-') === 'third-parties')
+    
+    console.log('🔍 Checking third-parties route:', { route, isThirdPartiesRoute, routeType: typeof route, routeValue: JSON.stringify(route), pathArray })
+    
+    if (isThirdPartiesRoute) {
+      console.log('✅ Third parties route matched:', { route, id, pathArray, method: req.method })
       if (!id) {
         if (req.method === 'GET') {
           console.log('📋 Fetching all third parties...')
