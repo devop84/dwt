@@ -177,13 +177,22 @@ export function AccountsList() {
   }
 
   const handleRowClick = (account: AccountWithEntity) => {
+    navigate(`/accounts/${account.id}`)
+  }
+
+  const handleEntityClick = (e: React.MouseEvent, account: AccountWithEntity) => {
+    e.stopPropagation() // Prevent row click from firing
     const routes: Record<EntityType, string> = {
       client: '/clients',
       hotel: '/hotels',
       guide: '/guides',
-      driver: '/drivers'
+      driver: '/drivers',
+      caterer: '/caterers',
+      company: '/company-accounts'
     }
-    navigate(`${routes[account.entityType]}/${account.entityId}`)
+    if (routes[account.entityType]) {
+      navigate(`${routes[account.entityType]}/${account.entityId}`)
+    }
   }
 
   const getEntityTypeLabel = (type: EntityType) => {
@@ -360,6 +369,8 @@ export function AccountsList() {
           <option value="hotel">Hotels</option>
           <option value="guide">Guides</option>
           <option value="driver">Drivers</option>
+          <option value="caterer">Caterers</option>
+          <option value="company">Company</option>
         </select>
         <select
           value={filterColumn}
@@ -664,9 +675,11 @@ export function AccountsList() {
                           {getEntityTypeLabel(account.entityType)}
                         </span>
                         <span
+                          onClick={(e) => handleEntityClick(e, account)}
                           style={{
                             color: '#3b82f6',
-                            textDecoration: 'none'
+                            textDecoration: 'none',
+                            cursor: 'pointer'
                           }}
                           onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
                           onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
