@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User, Client, Location, Hotel, Guide, Driver, Vehicle, Caterer, Account, EntityType, ThirdParty } from '../types'
+import type { AuthResponse, User, Client, Location, Hotel, Guide, Driver, Vehicle, Caterer, Account, EntityType, ThirdParty, Route, RouteSegment, RouteLogistics, RouteParticipant, RouteTransaction } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -226,5 +226,100 @@ export const thirdPartiesApi = {
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/third-parties/${id}`)
+  },
+}
+
+export const routesApi = {
+  getAll: async (params?: { status?: string; startDate?: string; endDate?: string }): Promise<Route[]> => {
+    const queryParams = new URLSearchParams()
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.startDate) queryParams.append('startDate', params.startDate)
+    if (params?.endDate) queryParams.append('endDate', params.endDate)
+    const queryString = queryParams.toString()
+    const { data } = await api.get<Route[]>(`/routes${queryString ? `?${queryString}` : ''}`)
+    return data
+  },
+  getById: async (id: string): Promise<Route & { segments: RouteSegment[]; logistics: RouteLogistics[]; participants: RouteParticipant[]; transactions: RouteTransaction[] }> => {
+    const { data } = await api.get(`/routes/${id}`)
+    return data
+  },
+  create: async (route: Omit<Route, 'id' | 'endDate' | 'duration' | 'totalDistance' | 'createdAt' | 'updatedAt'>): Promise<Route> => {
+    const { data } = await api.post<Route>('/routes', route)
+    return data
+  },
+  update: async (id: string, route: Partial<Omit<Route, 'id' | 'endDate' | 'duration' | 'createdAt' | 'updatedAt'>>): Promise<Route> => {
+    const { data } = await api.put<Route>(`/routes/${id}`, route)
+    return data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/routes/${id}`)
+  },
+  duplicate: async (id: string, name?: string): Promise<Route> => {
+    const { data } = await api.post<Route>(`/routes/${id}/duplicate`, { name })
+    return data
+  },
+}
+
+export const routeSegmentsApi = {
+  getAll: async (routeId: string): Promise<RouteSegment[]> => {
+    const { data } = await api.get<RouteSegment[]>(`/routes/${routeId}/segments`)
+    return data
+  },
+  create: async (routeId: string, segment: Omit<RouteSegment, 'id' | 'routeId' | 'segmentDate' | 'createdAt' | 'updatedAt' | 'fromDestinationName' | 'toDestinationName' | 'overnightLocationName'>): Promise<RouteSegment> => {
+    const { data } = await api.post<RouteSegment>(`/routes/${routeId}/segments`, segment)
+    return data
+  },
+  update: async (routeId: string, id: string, segment: Partial<Omit<RouteSegment, 'id' | 'routeId' | 'createdAt' | 'updatedAt' | 'fromDestinationName' | 'toDestinationName' | 'overnightLocationName'>>): Promise<RouteSegment> => {
+    const { data } = await api.put<RouteSegment>(`/routes/${routeId}/segments/${id}`, segment)
+    return data
+  },
+  delete: async (routeId: string, id: string): Promise<void> => {
+    await api.delete(`/routes/${routeId}/segments/${id}`)
+  },
+  reorder: async (routeId: string, segmentOrders: Array<{ id: string; segmentOrder: number; dayNumber: number }>): Promise<void> => {
+    await api.put(`/routes/${routeId}/segments/reorder`, { segmentOrders })
+  },
+}
+
+export const routeLogisticsApi = {
+  getAll: async (routeId: string): Promise<RouteLogistics[]> => {
+    const { data } = await api.get<RouteLogistics[]>(`/routes/${routeId}/logistics`)
+    return data
+  },
+  create: async (routeId: string, logistics: Omit<RouteLogistics, 'id' | 'routeId' | 'createdAt' | 'updatedAt' | 'entityName'>): Promise<RouteLogistics> => {
+    const { data } = await api.post<RouteLogistics>(`/routes/${routeId}/logistics`, logistics)
+    return data
+  },
+  update: async (routeId: string, id: string, logistics: Partial<Omit<RouteLogistics, 'id' | 'routeId' | 'createdAt' | 'updatedAt' | 'entityName'>>): Promise<RouteLogistics> => {
+    const { data } = await api.put<RouteLogistics>(`/routes/${routeId}/logistics/${id}`, logistics)
+    return data
+  },
+  delete: async (routeId: string, id: string): Promise<void> => {
+    await api.delete(`/routes/${routeId}/logistics/${id}`)
+  },
+}
+
+export const routeParticipantsApi = {
+  getAll: async (routeId: string): Promise<RouteParticipant[]> => {
+    const { data } = await api.get<RouteParticipant[]>(`/routes/${routeId}/participants`)
+    return data
+  },
+  create: async (routeId: string, participant: Omit<RouteParticipant, 'id' | 'routeId' | 'createdAt' | 'updatedAt' | 'clientName' | 'guideName'>): Promise<RouteParticipant> => {
+    const { data } = await api.post<RouteParticipant>(`/routes/${routeId}/participants`, participant)
+    return data
+  },
+  delete: async (routeId: string, id: string): Promise<void> => {
+    await api.delete(`/routes/${routeId}/participants/${id}`)
+  },
+}
+
+export const routeTransactionsApi = {
+  getAll: async (routeId: string): Promise<RouteTransaction[]> => {
+    const { data } = await api.get<RouteTransaction[]>(`/routes/${routeId}/transactions`)
+    return data
+  },
+  create: async (routeId: string, transaction: Omit<RouteTransaction, 'id' | 'routeId' | 'createdAt' | 'fromAccountName' | 'toAccountName'>): Promise<RouteTransaction> => {
+    const { data } = await api.post<RouteTransaction>(`/routes/${routeId}/transactions`, transaction)
+    return data
   },
 }

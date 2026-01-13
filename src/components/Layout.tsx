@@ -139,6 +139,34 @@ export function Layout({ children }: LayoutProps) {
             Clients
           </Link>
           <Link
+            to="/routes"
+            style={{
+              display: 'block',
+              padding: '0.75rem 1.5rem',
+              color: isActive('/routes') ? '#3b82f6' : '#6b7280',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: isActive('/routes') ? '600' : '500',
+              backgroundColor: isActive('/routes') ? '#eff6ff' : 'transparent',
+              borderLeft: isActive('/routes') ? '3px solid #3b82f6' : '3px solid transparent',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              if (!isActive('/routes')) {
+                e.currentTarget.style.backgroundColor = '#f9fafb'
+                e.currentTarget.style.color = '#111827'
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!isActive('/routes')) {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = '#6b7280'
+              }
+            }}
+          >
+            Routes
+          </Link>
+          <Link
             to="/locations"
             style={{
               display: 'block',

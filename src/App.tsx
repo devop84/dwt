@@ -23,6 +23,9 @@ import { CompanyAccountsList } from './pages/CompanyAccountsList'
 import { CompanyAccountDetails } from './pages/CompanyAccountDetails'
 import { ThirdPartiesList } from './pages/ThirdPartiesList'
 import { ThirdPartyDetails } from './pages/ThirdPartyDetails'
+import { RoutesList } from './pages/RoutesList'
+import { RouteBuilder } from './pages/RouteBuilder'
+import { RouteDetails } from './pages/RouteDetails'
 
 function App() {
   return (
@@ -187,6 +190,38 @@ function App() {
               element={
                 <Layout>
                   <ThirdPartyDetails />
+                </Layout>
+              }
+            />
+            <Route
+              path="/routes"
+              element={
+                <Layout>
+                  <RoutesList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/routes/new"
+              element={
+                <Layout>
+                  <RouteBuilder />
+                </Layout>
+              }
+            />
+            <Route
+              path="/routes/:id"
+              element={
+                <Layout>
+                  <RouteDetails />
+                </Layout>
+              }
+            />
+            <Route
+              path="/routes/:id/edit"
+              element={
+                <Layout>
+                  <RouteBuilder />
                 </Layout>
               }
             />

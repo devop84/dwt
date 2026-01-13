@@ -110,3 +110,100 @@ export interface Account {
   createdAt: string
   updatedAt: string
 }
+
+// Route types
+export type RouteStatus = 'draft' | 'confirmed' | 'in-progress' | 'completed' | 'cancelled'
+export type SegmentType = 'travel' | 'transfer-only' | 'free-day'
+export type LogisticsType = 'airport-transfer' | 'support-vehicle' | 'hotel-client' | 'hotel-staff' | 'lunch' | 'third-party' | 'extra-cost'
+export type EntityTypeForLogistics = 'vehicle' | 'hotel' | 'caterer' | 'third-party' | 'location'
+export type ParticipantRole = 'client' | 'guide-captain' | 'guide-tail' | 'staff'
+export type TransactionType = 'payment' | 'expense' | 'refund'
+export type TransactionCategory = 'hotel' | 'transport' | 'food' | 'third-party' | 'vehicle' | 'other'
+
+export interface Route {
+  id: string
+  name: string
+  description: string | null
+  startDate: string | null
+  endDate: string | null
+  duration: number | null
+  status: RouteStatus
+  totalDistance: number | null
+  estimatedCost: number
+  actualCost: number
+  currency: string
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RouteSegment {
+  id: string
+  routeId: string
+  dayNumber: number
+  segmentDate: string | null
+  fromDestinationId: string | null
+  toDestinationId: string | null
+  overnightLocationId: string | null
+  distance: number
+  estimatedDuration: number | null
+  segmentType: SegmentType
+  segmentOrder: number
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  fromDestinationName?: string
+  toDestinationName?: string
+  overnightLocationName?: string
+}
+
+export interface RouteLogistics {
+  id: string
+  routeId: string
+  segmentId: string | null
+  logisticsType: LogisticsType
+  entityId: string
+  entityType: EntityTypeForLogistics
+  quantity: number
+  cost: number
+  date: string | null
+  driverPilotName: string | null
+  isOwnVehicle: boolean
+  vehicleType: Vehicle['type'] | null
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  entityName?: string
+}
+
+export interface RouteParticipant {
+  id: string
+  routeId: string
+  clientId: string | null
+  guideId: string | null
+  role: ParticipantRole
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  clientName?: string
+  guideName?: string
+}
+
+export interface RouteTransaction {
+  id: string
+  routeId: string
+  segmentId: string | null
+  transactionType: TransactionType
+  category: TransactionCategory
+  amount: number
+  currency: string
+  fromAccountId: string | null
+  toAccountId: string | null
+  description: string | null
+  snapshotData: Record<string, any>
+  transactionDate: string
+  notes: string | null
+  createdAt: string
+  fromAccountName?: string
+  toAccountName?: string
+}

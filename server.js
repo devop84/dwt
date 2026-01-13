@@ -2204,6 +2204,1002 @@ app.delete('/api/accounts/:id', async (req, res) => {
   }
 })
 
+// ============================================
+// ROUTES API ENDPOINTS
+// ============================================
+
+// Helper function to verify auth
+function verifyAuth(req) {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('Unauthorized')
+  }
+  const token = authHeader.substring(7)
+  const decoded = verifyToken(token)
+  if (!decoded) {
+    throw new Error('Invalid token')
+  }
+  return decoded
+}
+
+// Get all routes
+app.get('/api/routes', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { status, startDate, endDate } = req.query
+    
+    let query = `
+      SELECT 
+        id, name, description, start_date, end_date, duration, status,
+        total_distance, estimated_cost, actual_cost, currency, notes,
+        "createdAt", "updatedAt"
+      FROM routes
+      WHERE 1=1
+    `
+    const params = []
+    let paramCount = 1
+    
+    if (status) {
+      query += ` AND status = $${paramCount++}`
+      params.push(status)
+    }
+    if (startDate) {
+      query += ` AND start_date >= $${paramCount++}`
+      params.push(startDate)
+    }
+    if (endDate) {
+      query += ` AND end_date <= $${paramCount++}`
+      params.push(endDate)
+    }
+    
+    query += ` ORDER BY "createdAt" DESC`
+    
+    const result = await pool.query(query, params)
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Routes error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch routes' })
+  }
+})
+
+// Get a single route with all related data
+app.get('/api/routes/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { id } = req.params
+    
+    // Get route
+    const routeResult = await pool.query(
+      `SELECT * FROM routes WHERE id = $1`,
+      [id]
+    )
+    if (routeResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Route not found' })
+    }
+    const route = routeResult.rows[0]
+    
+    // Get segments with location names
+    const segmentsResult = await pool.query(
+      `SELECT 
+        rs.*,
+        l1.name as from_destination_name,
+        l2.name as to_destination_name,
+        l3.name as overnight_location_name
+      FROM route_segments rs
+      LEFT JOIN locations l1 ON rs.from_destination_id = l1.id
+      LEFT JOIN locations l2 ON rs.to_destination_id = l2.id
+      LEFT JOIN locations l3 ON rs.overnight_location_id = l3.id
+      WHERE rs.route_id = $1
+      ORDER BY rs.segment_order, rs.day_number`,
+      [id]
+    )
+    
+    // Get logistics with entity names
+    const logisticsResult = await pool.query(
+      `SELECT 
+        rl.*,
+        CASE 
+          WHEN rl.entity_type = 'hotel' THEN h.name
+          WHEN rl.entity_type = 'caterer' THEN c.name
+          WHEN rl.entity_type = 'third-party' THEN tp.name
+          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE WHEN v."vehicleOwner" = 'company' THEN 'Company' ELSE 'Third Party' END
+          WHEN rl.entity_type = 'location' THEN l.name
+          ELSE NULL
+        END as entity_name
+      FROM route_logistics rl
+      LEFT JOIN hotels h ON rl.entity_type = 'hotel' AND rl.entity_id = h.id
+      LEFT JOIN caterers c ON rl.entity_type = 'caterer' AND rl.entity_id = c.id
+      LEFT JOIN third_parties tp ON rl.entity_type = 'third-party' AND rl.entity_id = tp.id
+      LEFT JOIN vehicles v ON rl.entity_type = 'vehicle' AND rl.entity_id = v.id
+      LEFT JOIN locations l ON rl.entity_type = 'location' AND rl.entity_id = l.id
+      WHERE rl.route_id = $1`,
+      [id]
+    )
+    
+    // Get participants with names
+    const participantsResult = await pool.query(
+      `SELECT 
+        rp.*,
+        c.name as client_name,
+        g.name as guide_name
+      FROM route_participants rp
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN guides g ON rp.guide_id = g.id
+      WHERE rp.route_id = $1`,
+      [id]
+    )
+    
+    // Get transactions
+    const transactionsResult = await pool.query(
+      `SELECT 
+        rt.*,
+        a1."accountHolderName" as from_account_name,
+        a2."accountHolderName" as to_account_name
+      FROM route_transactions rt
+      LEFT JOIN accounts a1 ON rt.from_account_id = a1.id
+      LEFT JOIN accounts a2 ON rt.to_account_id = a2.id
+      WHERE rt.route_id = $1
+      ORDER BY rt.transaction_date DESC, rt."createdAt" DESC`,
+      [id]
+    )
+    
+    res.json({
+      ...route,
+      segments: segmentsResult.rows,
+      logistics: logisticsResult.rows,
+      participants: participantsResult.rows,
+      transactions: transactionsResult.rows
+    })
+  } catch (error) {
+    console.error('Get route error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch route' })
+  }
+})
+
+// Create a new route
+app.post('/api/routes', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { name, description, startDate, status, currency, notes } = req.body
+    
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+    
+    const routeId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO routes (id, name, description, start_date, status, currency, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        routeId,
+        name,
+        description || null,
+        startDate || null,
+        status || 'draft',
+        currency || 'BRL',
+        notes || null
+      ]
+    )
+    
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create route error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to create route' })
+  }
+})
+
+// Update a route
+app.put('/api/routes/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { id } = req.params
+    const { name, description, startDate, status, currency, notes } = req.body
+    
+    const existing = await pool.query('SELECT id, status FROM routes WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Route not found' })
+    }
+    
+    // If route is confirmed and trying to change start_date, validate
+    if (existing.rows[0].status !== 'draft' && startDate && startDate !== existing.rows[0].start_date) {
+      return res.status(400).json({ message: 'Cannot change start date of confirmed route' })
+    }
+    
+    const result = await pool.query(
+      `UPDATE routes 
+       SET name = $1, description = $2, start_date = $3, status = $4, currency = $5, notes = $6, "updatedAt" = NOW()
+       WHERE id = $7
+       RETURNING *`,
+      [
+        name,
+        description || null,
+        startDate || null,
+        status || existing.rows[0].status,
+        currency || 'BRL',
+        notes || null,
+        id
+      ]
+    )
+    
+    res.json(result.rows[0])
+  } catch (error) {
+    console.error('Update route error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to update route' })
+  }
+})
+
+// Delete a route
+app.delete('/api/routes/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { id } = req.params
+    
+    // Check if route has transactions (immutable records)
+    const transactionsCheck = await pool.query(
+      'SELECT id FROM route_transactions WHERE route_id = $1 LIMIT 1',
+      [id]
+    )
+    if (transactionsCheck.rows.length > 0) {
+      return res.status(400).json({ message: 'Cannot delete route with transactions. Cancel the route instead.' })
+    }
+    
+    const existing = await pool.query('SELECT id FROM routes WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Route not found' })
+    }
+    
+    await pool.query('DELETE FROM routes WHERE id = $1', [id])
+    
+    res.json({ message: 'Route deleted successfully' })
+  } catch (error) {
+    console.error('Delete route error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to delete route' })
+  }
+})
+
+// Duplicate a route
+app.post('/api/routes/:id/duplicate', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { id } = req.params
+    const { name } = req.body
+    
+    // Get original route
+    const routeResult = await pool.query('SELECT * FROM routes WHERE id = $1', [id])
+    if (routeResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Route not found' })
+    }
+    const originalRoute = routeResult.rows[0]
+    
+    // Create new route
+    const newRouteId = randomUUID()
+    const newRouteResult = await pool.query(
+      `INSERT INTO routes (id, name, description, start_date, status, currency, notes)
+       VALUES ($1, $2, $3, NULL, 'draft', $4, $5)
+       RETURNING *`,
+      [
+        newRouteId,
+        name || `${originalRoute.name} (Copy)`,
+        originalRoute.description,
+        originalRoute.currency,
+        originalRoute.notes
+      ]
+    )
+    
+    // Copy segments
+    const segmentsResult = await pool.query(
+      'SELECT * FROM route_segments WHERE route_id = $1 ORDER BY segment_order, day_number',
+      [id]
+    )
+    for (const segment of segmentsResult.rows) {
+      await pool.query(
+        `INSERT INTO route_segments (id, route_id, day_number, segment_date, from_destination_id, to_destination_id, overnight_location_id, distance, estimated_duration, segment_type, segment_order, notes)
+         VALUES (gen_random_uuid(), $1, $2, NULL, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
+          newRouteId,
+          segment.day_number,
+          segment.from_destination_id,
+          segment.to_destination_id,
+          segment.overnight_location_id,
+          segment.distance,
+          segment.estimated_duration,
+          segment.segment_type,
+          segment.segment_order,
+          segment.notes
+        ]
+      )
+    }
+    
+    // Copy logistics
+    const logisticsResult = await pool.query(
+      'SELECT * FROM route_logistics WHERE route_id = $1',
+      [id]
+    )
+    for (const logistics of logisticsResult.rows) {
+      const newSegmentId = logistics.segment_id ? (
+        await pool.query(
+          'SELECT id FROM route_segments WHERE route_id = $1 AND day_number = $2',
+          [newRouteId, (await pool.query('SELECT day_number FROM route_segments WHERE id = $1', [logistics.segment_id])).rows[0]?.day_number]
+        )
+      ).rows[0]?.id : null
+      
+      await pool.query(
+        `INSERT INTO route_logistics (id, route_id, segment_id, logistics_type, entity_id, entity_type, quantity, cost, date, driver_pilot_name, is_own_vehicle, vehicle_type, notes)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, NULL, $8, $9, $10, $11)`,
+        [
+          newRouteId,
+          newSegmentId,
+          logistics.logistics_type,
+          logistics.entity_id,
+          logistics.entity_type,
+          logistics.quantity,
+          logistics.cost,
+          logistics.driver_pilot_name,
+          logistics.is_own_vehicle,
+          logistics.vehicle_type,
+          logistics.notes
+        ]
+      )
+    }
+    
+    // Copy participants
+    const participantsResult = await pool.query(
+      'SELECT * FROM route_participants WHERE route_id = $1',
+      [id]
+    )
+    for (const participant of participantsResult.rows) {
+      await pool.query(
+        `INSERT INTO route_participants (id, route_id, client_id, guide_id, role, notes)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)`,
+        [
+          newRouteId,
+          participant.client_id,
+          participant.guide_id,
+          participant.role,
+          participant.notes
+        ]
+      )
+    }
+    
+    res.status(201).json(newRouteResult.rows[0])
+  } catch (error) {
+    console.error('Duplicate route error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to duplicate route' })
+  }
+})
+
+// ============================================
+// ROUTE SEGMENTS API ENDPOINTS
+// ============================================
+
+// Get all segments for a route
+app.get('/api/routes/:routeId/segments', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId } = req.params
+    
+    const result = await pool.query(
+      `SELECT 
+        rs.*,
+        l1.name as from_destination_name,
+        l2.name as to_destination_name,
+        l3.name as overnight_location_name
+      FROM route_segments rs
+      LEFT JOIN locations l1 ON rs.from_destination_id = l1.id
+      LEFT JOIN locations l2 ON rs.to_destination_id = l2.id
+      LEFT JOIN locations l3 ON rs.overnight_location_id = l3.id
+      WHERE rs.route_id = $1
+      ORDER BY rs.segment_order, rs.day_number`,
+      [routeId]
+    )
+    
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Get segments error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch segments' })
+  }
+})
+
+// Create a segment
+app.post('/api/routes/:routeId/segments', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId } = req.params
+    const { dayNumber, fromDestinationId, toDestinationId, overnightLocationId, distance, estimatedDuration, segmentType, segmentOrder, notes } = req.body
+    
+    // Get max day_number to set default
+    const maxDayResult = await pool.query(
+      'SELECT COALESCE(MAX(day_number), 0) as max_day FROM route_segments WHERE route_id = $1',
+      [routeId]
+    )
+    const maxDay = parseInt(maxDayResult.rows[0].max_day) || 0
+    
+    const dayNum = dayNumber || maxDay + 1
+    const segOrder = segmentOrder !== undefined ? segmentOrder : maxDay
+    
+    // Get route start_date to calculate segment_date
+    const routeResult = await pool.query('SELECT start_date FROM routes WHERE id = $1', [routeId])
+    const startDate = routeResult.rows[0]?.start_date
+    const segmentDate = startDate ? new Date(startDate)
+    segmentDate.setDate(segmentDate.getDate() + dayNum - 1)
+    const segmentDateStr = startDate ? segmentDate.toISOString().split('T')[0] : null
+    
+    const segmentId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO route_segments (id, route_id, day_number, segment_date, from_destination_id, to_destination_id, overnight_location_id, distance, estimated_duration, segment_type, segment_order, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING *`,
+      [
+        segmentId,
+        routeId,
+        dayNum,
+        segmentDateStr,
+        fromDestinationId || null,
+        toDestinationId || null,
+        overnightLocationId || null,
+        distance || 0,
+        estimatedDuration || null,
+        segmentType || 'travel',
+        segOrder,
+        notes || null
+      ]
+    )
+    
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create segment error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to create segment' })
+  }
+})
+
+// Update a segment
+app.put('/api/routes/:routeId/segments/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, id } = req.params
+    const { dayNumber, fromDestinationId, toDestinationId, overnightLocationId, distance, estimatedDuration, segmentType, segmentOrder, notes } = req.body
+    
+    const existing = await pool.query('SELECT id FROM route_segments WHERE id = $1 AND route_id = $2', [id, routeId])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Segment not found' })
+    }
+    
+    // Recalculate segment_date if day_number changed
+    let segmentDate = null
+    if (dayNumber !== undefined) {
+      const routeResult = await pool.query('SELECT start_date FROM routes WHERE id = $1', [routeId])
+      const startDate = routeResult.rows[0]?.start_date
+      if (startDate) {
+        const date = new Date(startDate)
+        date.setDate(date.getDate() + dayNumber - 1)
+        segmentDate = date.toISOString().split('T')[0]
+      }
+    }
+    
+    const result = await pool.query(
+      `UPDATE route_segments 
+       SET day_number = COALESCE($1, day_number),
+           segment_date = COALESCE($2, segment_date),
+           from_destination_id = $3,
+           to_destination_id = $4,
+           overnight_location_id = $5,
+           distance = $6,
+           estimated_duration = $7,
+           segment_type = $8,
+           segment_order = COALESCE($9, segment_order),
+           notes = $10,
+           "updatedAt" = NOW()
+       WHERE id = $11
+       RETURNING *`,
+      [
+        dayNumber,
+        segmentDate,
+        fromDestinationId || null,
+        toDestinationId || null,
+        overnightLocationId || null,
+        distance || 0,
+        estimatedDuration || null,
+        segmentType || 'travel',
+        segmentOrder,
+        notes || null,
+        id
+      ]
+    )
+    
+    res.json(result.rows[0])
+  } catch (error) {
+    console.error('Update segment error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to update segment' })
+  }
+})
+
+// Delete a segment
+app.delete('/api/routes/:routeId/segments/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, id } = req.params
+    
+    const existing = await pool.query('SELECT id FROM route_segments WHERE id = $1 AND route_id = $2', [id, routeId])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Segment not found' })
+    }
+    
+    await pool.query('DELETE FROM route_segments WHERE id = $1', [id])
+    
+    res.json({ message: 'Segment deleted successfully' })
+  } catch (error) {
+    console.error('Delete segment error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to delete segment' })
+  }
+})
+
+// Reorder segments
+app.put('/api/routes/:routeId/segments/reorder', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId } = req.params
+    const { segmentOrders } = req.body // Array of { id, segmentOrder, dayNumber }
+    
+    if (!Array.isArray(segmentOrders)) {
+      return res.status(400).json({ message: 'segmentOrders must be an array' })
+    }
+    
+    // Update each segment
+    for (const { id, segmentOrder, dayNumber } of segmentOrders) {
+      let segmentDate = null
+      if (dayNumber !== undefined) {
+        const routeResult = await pool.query('SELECT start_date FROM routes WHERE id = $1', [routeId])
+        const startDate = routeResult.rows[0]?.start_date
+        if (startDate) {
+          const date = new Date(startDate)
+          date.setDate(date.getDate() + dayNumber - 1)
+          segmentDate = date.toISOString().split('T')[0]
+        }
+      }
+      
+      await pool.query(
+        `UPDATE route_segments 
+         SET segment_order = $1, day_number = $2, segment_date = COALESCE($3, segment_date), "updatedAt" = NOW()
+         WHERE id = $4 AND route_id = $5`,
+        [segmentOrder, dayNumber, segmentDate, id, routeId]
+      )
+    }
+    
+    res.json({ message: 'Segments reordered successfully' })
+  } catch (error) {
+    console.error('Reorder segments error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to reorder segments' })
+  }
+})
+
+// ============================================
+// ROUTE LOGISTICS API ENDPOINTS
+// ============================================
+
+// Get all logistics for a route
+app.get('/api/routes/:routeId/logistics', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId } = req.params
+    
+    const result = await pool.query(
+      `SELECT 
+        rl.*,
+        CASE 
+          WHEN rl.entity_type = 'hotel' THEN h.name
+          WHEN rl.entity_type = 'caterer' THEN c.name
+          WHEN rl.entity_type = 'third-party' THEN tp.name
+          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE WHEN v."vehicleOwner" = 'company' THEN 'Company' ELSE 'Third Party' END
+          WHEN rl.entity_type = 'location' THEN l.name
+          ELSE NULL
+        END as entity_name
+      FROM route_logistics rl
+      LEFT JOIN hotels h ON rl.entity_type = 'hotel' AND rl.entity_id = h.id
+      LEFT JOIN caterers c ON rl.entity_type = 'caterer' AND rl.entity_id = c.id
+      LEFT JOIN third_parties tp ON rl.entity_type = 'third-party' AND rl.entity_id = tp.id
+      LEFT JOIN vehicles v ON rl.entity_type = 'vehicle' AND rl.entity_id = v.id
+      LEFT JOIN locations l ON rl.entity_type = 'location' AND rl.entity_id = l.id
+      WHERE rl.route_id = $1
+      ORDER BY rl.segment_id, rl.logistics_type`,
+      [routeId]
+    )
+    
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Get logistics error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch logistics' })
+  }
+})
+
+// Create logistics
+app.post('/api/routes/:routeId/logistics', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId } = req.params
+    const { segmentId, logisticsType, entityId, entityType, quantity, cost, date, driverPilotName, isOwnVehicle, vehicleType, notes } = req.body
+    
+    if (!logisticsType || !entityId || !entityType) {
+      return res.status(400).json({ message: 'logisticsType, entityId, and entityType are required' })
+    }
+    
+    const logisticsId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO route_logistics (id, route_id, segment_id, logistics_type, entity_id, entity_type, quantity, cost, date, driver_pilot_name, is_own_vehicle, vehicle_type, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING *`,
+      [
+        logisticsId,
+        routeId,
+        segmentId || null,
+        logisticsType,
+        entityId,
+        entityType,
+        quantity || 1,
+        cost || 0,
+        date || null,
+        driverPilotName || null,
+        isOwnVehicle || false,
+        vehicleType || null,
+        notes || null
+      ]
+    )
+    
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create logistics error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to create logistics' })
+  }
+})
+
+// Update logistics
+app.put('/api/routes/:routeId/logistics/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, id } = req.params
+    const { segmentId, logisticsType, entityId, entityType, quantity, cost, date, driverPilotName, isOwnVehicle, vehicleType, notes } = req.body
+    
+    const existing = await pool.query('SELECT id FROM route_logistics WHERE id = $1 AND route_id = $2', [id, routeId])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Logistics not found' })
+    }
+    
+    const result = await pool.query(
+      `UPDATE route_logistics 
+       SET segment_id = $1,
+           logistics_type = $2,
+           entity_id = $3,
+           entity_type = $4,
+           quantity = $5,
+           cost = $6,
+           date = $7,
+           driver_pilot_name = $8,
+           is_own_vehicle = $9,
+           vehicle_type = $10,
+           notes = $11,
+           "updatedAt" = NOW()
+       WHERE id = $12
+       RETURNING *`,
+      [
+        segmentId !== undefined ? segmentId : null,
+        logisticsType,
+        entityId,
+        entityType,
+        quantity || 1,
+        cost || 0,
+        date || null,
+        driverPilotName || null,
+        isOwnVehicle || false,
+        vehicleType || null,
+        notes || null,
+        id
+      ]
+    )
+    
+    res.json(result.rows[0])
+  } catch (error) {
+    console.error('Update logistics error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to update logistics' })
+  }
+})
+
+// Delete logistics
+app.delete('/api/routes/:routeId/logistics/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, id } = req.params
+    
+    const existing = await pool.query('SELECT id FROM route_logistics WHERE id = $1 AND route_id = $2', [id, routeId])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Logistics not found' })
+    }
+    
+    await pool.query('DELETE FROM route_logistics WHERE id = $1', [id])
+    
+    res.json({ message: 'Logistics deleted successfully' })
+  } catch (error) {
+    console.error('Delete logistics error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to delete logistics' })
+  }
+})
+
+// ============================================
+// ROUTE PARTICIPANTS API ENDPOINTS
+// ============================================
+
+// Get all participants for a route
+app.get('/api/routes/:routeId/participants', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId } = req.params
+    
+    const result = await pool.query(
+      `SELECT 
+        rp.*,
+        c.name as client_name,
+        g.name as guide_name
+      FROM route_participants rp
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN guides g ON rp.guide_id = g.id
+      WHERE rp.route_id = $1
+      ORDER BY rp.role, rp."createdAt"`,
+      [routeId]
+    )
+    
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Get participants error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch participants' })
+  }
+})
+
+// Create participant
+app.post('/api/routes/:routeId/participants', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId } = req.params
+    const { clientId, guideId, role, notes } = req.body
+    
+    if (!role) {
+      return res.status(400).json({ message: 'Role is required' })
+    }
+    
+    // Validate role requirements
+    if (role === 'client' && !clientId) {
+      return res.status(400).json({ message: 'clientId is required for client role' })
+    }
+    if ((role === 'guide-captain' || role === 'guide-tail') && !guideId) {
+      return res.status(400).json({ message: 'guideId is required for guide roles' })
+    }
+    
+    const participantId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO route_participants (id, route_id, client_id, guide_id, role, notes)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        participantId,
+        routeId,
+        clientId || null,
+        guideId || null,
+        role,
+        notes || null
+      ]
+    )
+    
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create participant error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to create participant' })
+  }
+})
+
+// Delete participant
+app.delete('/api/routes/:routeId/participants/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, id } = req.params
+    
+    const existing = await pool.query('SELECT id FROM route_participants WHERE id = $1 AND route_id = $2', [id, routeId])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Participant not found' })
+    }
+    
+    await pool.query('DELETE FROM route_participants WHERE id = $1', [id])
+    
+    res.json({ message: 'Participant deleted successfully' })
+  } catch (error) {
+    console.error('Delete participant error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to delete participant' })
+  }
+})
+
+// ============================================
+// ROUTE TRANSACTIONS API ENDPOINTS
+// ============================================
+
+// Get all transactions for a route
+app.get('/api/routes/:routeId/transactions', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId } = req.params
+    
+    const result = await pool.query(
+      `SELECT 
+        rt.*,
+        a1."accountHolderName" as from_account_name,
+        a2."accountHolderName" as to_account_name
+      FROM route_transactions rt
+      LEFT JOIN accounts a1 ON rt.from_account_id = a1.id
+      LEFT JOIN accounts a2 ON rt.to_account_id = a2.id
+      WHERE rt.route_id = $1
+      ORDER BY rt.transaction_date DESC, rt."createdAt" DESC`,
+      [routeId]
+    )
+    
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Get transactions error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch transactions' })
+  }
+})
+
+// Create transaction (immutable)
+app.post('/api/routes/:routeId/transactions', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId } = req.params
+    const { segmentId, transactionType, category, amount, currency, fromAccountId, toAccountId, description, snapshotData, transactionDate, notes } = req.body
+    
+    if (!transactionType || !category || !amount || !transactionDate) {
+      return res.status(400).json({ message: 'transactionType, category, amount, and transactionDate are required' })
+    }
+    
+    // Build snapshot data if not provided
+    let snapshot = snapshotData || {}
+    if (!snapshotData) {
+      // Get route info
+      const routeResult = await pool.query('SELECT name FROM routes WHERE id = $1', [routeId])
+      snapshot.routeName = routeResult.rows[0]?.name
+      snapshot.routeId = routeId
+      
+      if (segmentId) {
+        const segmentResult = await pool.query('SELECT day_number, segment_date FROM route_segments WHERE id = $1', [segmentId])
+        if (segmentResult.rows[0]) {
+          snapshot.segmentDay = segmentResult.rows[0].day_number
+          snapshot.segmentDate = segmentResult.rows[0].segment_date
+        }
+      }
+      
+      snapshot.snapshotDate = new Date().toISOString()
+    }
+    
+    const transactionId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO route_transactions (id, route_id, segment_id, transaction_type, category, amount, currency, from_account_id, to_account_id, description, snapshot_data, transaction_date, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING *`,
+      [
+        transactionId,
+        routeId,
+        segmentId || null,
+        transactionType,
+        category,
+        amount,
+        currency || 'BRL',
+        fromAccountId || null,
+        toAccountId || null,
+        description || null,
+        JSON.stringify(snapshot),
+        transactionDate,
+        notes || null
+      ]
+    )
+    
+    // Update route actual_cost
+    const costResult = await pool.query(
+      `SELECT COALESCE(SUM(
+        CASE 
+          WHEN transaction_type = 'expense' THEN -amount
+          WHEN transaction_type = 'payment' THEN amount
+          WHEN transaction_type = 'refund' THEN -amount
+          ELSE 0
+        END
+      ), 0) as total FROM route_transactions WHERE route_id = $1`,
+      [routeId]
+    )
+    await pool.query(
+      'UPDATE routes SET actual_cost = $1, "updatedAt" = NOW() WHERE id = $2',
+      [Math.abs(parseFloat(costResult.rows[0].total)), routeId]
+    )
+    
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create transaction error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to create transaction' })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`🚀 API server running on http://localhost:${PORT}`)
 })
