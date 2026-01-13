@@ -457,8 +457,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     // Vehicles
     if (route === 'vehicles') {
+      console.log('🚗 Vehicles route matched:', { route, id, method: req.method, pathArray })
       if (!id) {
         if (req.method === 'GET') {
+          console.log('📋 Fetching all vehicles...')
           const vehicles = await query(`
             SELECT v.*, dest.name as "destinationName", tp.name as "thirdPartyName"
             FROM vehicles v
@@ -466,7 +468,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
             ORDER BY v.type ASC, v."createdAt" DESC
           `)
+          console.log(`✅ Found ${vehicles.length} vehicles`)
           res.status(200).json(vehicles)
+          return
         } else if (req.method === 'POST') {
           const { type, vehicleOwner, destinationId, thirdPartyId, note } = req.body
           if (!type || !vehicleOwner) {
@@ -492,8 +496,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             [vehicleId, type, vehicleOwner, destinationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null]
           )
           res.status(201).json(result[0])
+          return
         } else {
           res.status(405).json({ message: 'Method not allowed' })
+          return
         }
       } else {
         if (req.method === 'GET') {
@@ -510,6 +516,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             return
           }
           res.status(200).json(vehicle)
+          return
         } else if (req.method === 'PUT') {
           const { type, vehicleOwner, destinationId, thirdPartyId, note } = req.body
           if (!type || !vehicleOwner) {
@@ -539,6 +546,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             [type, vehicleOwner, destinationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null, id]
           )
           res.status(200).json(result[0])
+          return
         } else if (req.method === 'DELETE') {
           const existing = await queryOne('SELECT id FROM vehicles WHERE id = $1', [id])
           if (!existing) {
@@ -547,8 +555,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           }
           await query('DELETE FROM vehicles WHERE id = $1', [id])
           res.status(200).json({ message: 'Vehicle deleted successfully' })
+          return
         } else {
           res.status(405).json({ message: 'Method not allowed' })
+          return
         }
       }
       return

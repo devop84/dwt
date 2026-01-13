@@ -1272,8 +1272,8 @@ app.delete('/api/guides/:id', async (req, res) => {
   }
 })
 
-// Get all drivers
-app.get('/api/drivers', async (req, res) => {
+// Get all vehicles
+app.get('/api/vehicles', async (req, res) => {
   await initDb()
   
   try {
@@ -1291,31 +1291,31 @@ app.get('/api/drivers', async (req, res) => {
 
     const result = await pool.query(`
       SELECT 
-        d.id,
-        d.name,
-        d."contactNumber",
-        d.email,
-        d."destinationId",
-        d.languages,
-        d.vehicle,
-        d.note,
-        d."createdAt",
-        d."updatedAt",
-        dest.name as "destinationName"
-      FROM drivers d
-      LEFT JOIN destinations dest ON d."destinationId" = dest.id
-      ORDER BY d.name ASC
+        v.id,
+        v.type,
+        v."vehicleOwner",
+        v."destinationId",
+        v."thirdPartyId",
+        v.note,
+        v."createdAt",
+        v."updatedAt",
+        dest.name as "destinationName",
+        tp.name as "thirdPartyName"
+      FROM vehicles v
+      LEFT JOIN destinations dest ON v."destinationId" = dest.id
+      LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+      ORDER BY v.type ASC, v."createdAt" DESC
     `)
 
     res.json(result.rows)
   } catch (error) {
-    console.error('Drivers error:', error)
-    res.status(500).json({ message: error.message || 'Failed to fetch drivers' })
+    console.error('Vehicles error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch vehicles' })
   }
 })
 
-// Create a new driver
-app.post('/api/drivers', async (req, res) => {
+// Create a new vehicle
+app.post('/api/vehicles', async (req, res) => {
   await initDb()
   
   try {
@@ -1331,33 +1331,45 @@ app.post('/api/drivers', async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' })
     }
 
-    const { name, contactNumber, email, destinationId, languages, vehicle, note } = req.body
+    const { type, vehicleOwner, destinationId, thirdPartyId, note } = req.body
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' })
+    if (!type) {
+      return res.status(400).json({ message: 'Type is required' })
     }
 
-    if (!destinationId) {
-      return res.status(400).json({ message: 'Destination is required' })
+    if (!vehicleOwner) {
+      return res.status(400).json({ message: 'Vehicle owner is required' })
     }
 
-    const driverId = randomUUID()
+    if (!['car4x4', 'boat', 'quadbike', 'carSedan', 'outro'].includes(type)) {
+      return res.status(400).json({ message: 'Invalid vehicle type' })
+    }
+
+    if (!['company', 'third-party'].includes(vehicleOwner)) {
+      return res.status(400).json({ message: 'Invalid vehicle owner' })
+    }
+
+    if (vehicleOwner === 'third-party' && !thirdPartyId) {
+      return res.status(400).json({ message: 'Third party ID is required when vehicle owner is third-party' })
+    }
+
+    const vehicleId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO drivers (id, name, "contactNumber", email, "destinationId", languages, vehicle, note)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, name, "contactNumber", email, "destinationId", languages, vehicle, note, "createdAt", "updatedAt"`,
-      [driverId, name, contactNumber || null, email || null, destinationId, languages || null, vehicle || null, note || null]
+      `INSERT INTO vehicles (id, type, "vehicleOwner", "destinationId", "thirdPartyId", note)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [vehicleId, type, vehicleOwner, destinationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null]
     )
 
     res.status(201).json(result.rows[0])
   } catch (error) {
-    console.error('Create driver error:', error)
-    res.status(500).json({ message: error.message || 'Failed to create driver' })
+    console.error('Create vehicle error:', error)
+    res.status(500).json({ message: error.message || 'Failed to create vehicle' })
   }
 })
 
-// Get a single driver
-app.get('/api/drivers/:id', async (req, res) => {
+// Get a single vehicle
+app.get('/api/vehicles/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -1376,36 +1388,36 @@ app.get('/api/drivers/:id', async (req, res) => {
     const { id } = req.params
     const result = await pool.query(
       `SELECT 
-        d.id,
-        d.name,
-        d."contactNumber",
-        d.email,
-        d."destinationId",
-        d.languages,
-        d.vehicle,
-        d.note,
-        d."createdAt",
-        d."updatedAt",
-        dest.name as "destinationName"
-      FROM drivers d
-      LEFT JOIN destinations dest ON d."destinationId" = dest.id
-      WHERE d.id = $1`,
+        v.id,
+        v.type,
+        v."vehicleOwner",
+        v."destinationId",
+        v."thirdPartyId",
+        v.note,
+        v."createdAt",
+        v."updatedAt",
+        dest.name as "destinationName",
+        tp.name as "thirdPartyName"
+      FROM vehicles v
+      LEFT JOIN destinations dest ON v."destinationId" = dest.id
+      LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+      WHERE v.id = $1`,
       [id]
     )
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Driver not found' })
+      return res.status(404).json({ message: 'Vehicle not found' })
     }
 
     res.json(result.rows[0])
   } catch (error) {
-    console.error('Driver error:', error)
-    res.status(500).json({ message: error.message || 'Failed to fetch driver' })
+    console.error('Vehicle error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch vehicle' })
   }
 })
 
-// Update a driver
-app.put('/api/drivers/:id', async (req, res) => {
+// Update a vehicle
+app.put('/api/vehicles/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -1422,39 +1434,51 @@ app.put('/api/drivers/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const { name, contactNumber, email, destinationId, languages, vehicle, note } = req.body
+    const { type, vehicleOwner, destinationId, thirdPartyId, note } = req.body
 
-    if (!name) {
-      return res.status(400).json({ message: 'Name is required' })
+    if (!type) {
+      return res.status(400).json({ message: 'Type is required' })
     }
 
-    if (!destinationId) {
-      return res.status(400).json({ message: 'Destination is required' })
+    if (!vehicleOwner) {
+      return res.status(400).json({ message: 'Vehicle owner is required' })
     }
 
-    // Check if driver exists
-    const existing = await pool.query('SELECT id FROM drivers WHERE id = $1', [id])
+    if (!['car4x4', 'boat', 'quadbike', 'carSedan', 'outro'].includes(type)) {
+      return res.status(400).json({ message: 'Invalid vehicle type' })
+    }
+
+    if (!['company', 'third-party'].includes(vehicleOwner)) {
+      return res.status(400).json({ message: 'Invalid vehicle owner' })
+    }
+
+    if (vehicleOwner === 'third-party' && !thirdPartyId) {
+      return res.status(400).json({ message: 'Third party ID is required when vehicle owner is third-party' })
+    }
+
+    // Check if vehicle exists
+    const existing = await pool.query('SELECT id FROM vehicles WHERE id = $1', [id])
     if (existing.rows.length === 0) {
-      return res.status(404).json({ message: 'Driver not found' })
+      return res.status(404).json({ message: 'Vehicle not found' })
     }
 
     const result = await pool.query(
-      `UPDATE drivers 
-       SET name = $1, "contactNumber" = $2, email = $3, "destinationId" = $4, languages = $5, vehicle = $6, note = $7, "updatedAt" = NOW()
-       WHERE id = $8
-       RETURNING id, name, "contactNumber", email, "destinationId", languages, vehicle, note, "createdAt", "updatedAt"`,
-      [name, contactNumber || null, email || null, destinationId, languages || null, vehicle || null, note || null, id]
+      `UPDATE vehicles 
+       SET type = $1, "vehicleOwner" = $2, "destinationId" = $3, "thirdPartyId" = $4, note = $5, "updatedAt" = NOW()
+       WHERE id = $6
+       RETURNING *`,
+      [type, vehicleOwner, destinationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null, id]
     )
 
     res.status(200).json(result.rows[0])
   } catch (error) {
-    console.error('Update driver error:', error)
-    res.status(500).json({ message: error.message || 'Failed to update driver' })
+    console.error('Update vehicle error:', error)
+    res.status(500).json({ message: error.message || 'Failed to update vehicle' })
   }
 })
 
-// Delete a driver
-app.delete('/api/drivers/:id', async (req, res) => {
+// Delete a vehicle
+app.delete('/api/vehicles/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -1473,17 +1497,17 @@ app.delete('/api/drivers/:id', async (req, res) => {
     const { id } = req.params
 
     // Check if driver exists
-    const existing = await pool.query('SELECT id FROM drivers WHERE id = $1', [id])
+    const existing = await pool.query('SELECT id FROM vehicles WHERE id = $1', [id])
     if (existing.rows.length === 0) {
-      return res.status(404).json({ message: 'Driver not found' })
+      return res.status(404).json({ message: 'Vehicle not found' })
     }
 
-    await pool.query('DELETE FROM drivers WHERE id = $1', [id])
+    await pool.query('DELETE FROM vehicles WHERE id = $1', [id])
 
-    res.status(200).json({ message: 'Driver deleted successfully' })
+    res.status(200).json({ message: 'Vehicle deleted successfully' })
   } catch (error) {
-    console.error('Delete driver error:', error)
-    res.status(500).json({ message: error.message || 'Failed to delete driver' })
+    console.error('Delete vehicle error:', error)
+    res.status(500).json({ message: error.message || 'Failed to delete vehicle' })
   }
 })
 

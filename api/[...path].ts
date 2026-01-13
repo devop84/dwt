@@ -507,28 +507,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return
     }
 
-    // Drivers
-    if (route === 'drivers') {
+    // Vehicles
+    if (route === 'vehicles') {
       if (!id) {
         if (req.method === 'GET') {
-          const drivers = await query(`
-            SELECT d.*, dest.name as "destinationName"
-            FROM drivers d
-            LEFT JOIN destinations dest ON d."destinationId" = dest.id
-            ORDER BY d.name ASC
+          const vehicles = await query(`
+            SELECT v.*, dest.name as "destinationName", tp.name as "thirdPartyName"
+            FROM vehicles v
+            LEFT JOIN destinations dest ON v."destinationId" = dest.id
+            LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+            ORDER BY v.type ASC, v."createdAt" DESC
           `)
-          res.status(200).json(drivers)
+          res.status(200).json(vehicles)
         } else if (req.method === 'POST') {
-          const { name, contactNumber, email, destinationId, languages, vehicle, note } = req.body
-          if (!name || !destinationId) {
-            res.status(400).json({ message: 'Name and destination are required' })
+          const { type, vehicleOwner, destinationId, thirdPartyId, note } = req.body
+          if (!type || !vehicleOwner) {
+            res.status(400).json({ message: 'Type and vehicle owner are required' })
             return
           }
-          const driverId = randomUUID()
+          if (!['car4x4', 'boat', 'quadbike', 'carSedan', 'outro'].includes(type)) {
+            res.status(400).json({ message: 'Invalid vehicle type' })
+            return
+          }
+          if (!['company', 'third-party'].includes(vehicleOwner)) {
+            res.status(400).json({ message: 'Invalid vehicle owner' })
+            return
+          }
+          if (vehicleOwner === 'third-party' && !thirdPartyId) {
+            res.status(400).json({ message: 'Third party ID is required when vehicle owner is third-party' })
+            return
+          }
+          const vehicleId = randomUUID()
           const result = await query(
-            `INSERT INTO drivers (id, name, "contactNumber", email, "destinationId", languages, vehicle, note)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [driverId, name, contactNumber || null, email || null, destinationId, languages || null, vehicle || null, note || null]
+            `INSERT INTO vehicles (id, type, "vehicleOwner", "destinationId", "thirdPartyId", note)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [vehicleId, type, vehicleOwner, destinationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null]
           )
           res.status(201).json(result[0])
         } else {
@@ -536,41 +549,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         }
       } else {
         if (req.method === 'GET') {
-          const driver = await queryOne(
-            `SELECT d.*, dest.name as "destinationName" FROM drivers d
-             LEFT JOIN destinations dest ON d."destinationId" = dest.id WHERE d.id = $1`,
+          const vehicle = await queryOne(
+            `SELECT v.*, dest.name as "destinationName", tp.name as "thirdPartyName" 
+             FROM vehicles v
+             LEFT JOIN destinations dest ON v."destinationId" = dest.id
+             LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+             WHERE v.id = $1`,
             [id]
           )
-          if (!driver) {
-            res.status(404).json({ message: 'Driver not found' })
+          if (!vehicle) {
+            res.status(404).json({ message: 'Vehicle not found' })
             return
           }
-          res.status(200).json(driver)
+          res.status(200).json(vehicle)
         } else if (req.method === 'PUT') {
-          const { name, contactNumber, email, destinationId, languages, vehicle, note } = req.body
-          if (!name || !destinationId) {
-            res.status(400).json({ message: 'Name and destination are required' })
+          const { type, vehicleOwner, destinationId, thirdPartyId, note } = req.body
+          if (!type || !vehicleOwner) {
+            res.status(400).json({ message: 'Type and vehicle owner are required' })
             return
           }
-          const existing = await queryOne('SELECT id FROM drivers WHERE id = $1', [id])
+          if (!['car4x4', 'boat', 'quadbike', 'carSedan', 'outro'].includes(type)) {
+            res.status(400).json({ message: 'Invalid vehicle type' })
+            return
+          }
+          if (!['company', 'third-party'].includes(vehicleOwner)) {
+            res.status(400).json({ message: 'Invalid vehicle owner' })
+            return
+          }
+          if (vehicleOwner === 'third-party' && !thirdPartyId) {
+            res.status(400).json({ message: 'Third party ID is required when vehicle owner is third-party' })
+            return
+          }
+          const existing = await queryOne('SELECT id FROM vehicles WHERE id = $1', [id])
           if (!existing) {
-            res.status(404).json({ message: 'Driver not found' })
+            res.status(404).json({ message: 'Vehicle not found' })
             return
           }
           const result = await query(
-            `UPDATE drivers SET name = $1, "contactNumber" = $2, email = $3, "destinationId" = $4, languages = $5, vehicle = $6, note = $7, "updatedAt" = NOW()
-             WHERE id = $8 RETURNING *`,
-            [name, contactNumber || null, email || null, destinationId, languages || null, vehicle || null, note || null, id]
+            `UPDATE vehicles SET type = $1, "vehicleOwner" = $2, "destinationId" = $3, "thirdPartyId" = $4, note = $5, "updatedAt" = NOW()
+             WHERE id = $6 RETURNING *`,
+            [type, vehicleOwner, destinationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null, id]
           )
           res.status(200).json(result[0])
         } else if (req.method === 'DELETE') {
-          const existing = await queryOne('SELECT id FROM drivers WHERE id = $1', [id])
+          const existing = await queryOne('SELECT id FROM vehicles WHERE id = $1', [id])
           if (!existing) {
-            res.status(404).json({ message: 'Driver not found' })
+            res.status(404).json({ message: 'Vehicle not found' })
             return
           }
-          await query('DELETE FROM drivers WHERE id = $1', [id])
-          res.status(200).json({ message: 'Driver deleted successfully' })
+          await query('DELETE FROM vehicles WHERE id = $1', [id])
+          res.status(200).json({ message: 'Vehicle deleted successfully' })
         } else {
           res.status(405).json({ message: 'Method not allowed' })
         }
