@@ -334,6 +334,34 @@ export function Layout({ children }: LayoutProps) {
         >
           Company Accounts
         </Link>
+        <Link
+          to="/third-parties"
+          style={{
+            display: 'block',
+            padding: '0.75rem 1.5rem',
+            color: isActive('/third-parties') ? '#3b82f6' : '#6b7280',
+            textDecoration: 'none',
+            fontSize: '0.875rem',
+            fontWeight: isActive('/third-parties') ? '600' : '500',
+            backgroundColor: isActive('/third-parties') ? '#eff6ff' : 'transparent',
+            borderLeft: isActive('/third-parties') ? '3px solid #3b82f6' : '3px solid transparent',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => {
+            if (!isActive('/third-parties')) {
+              e.currentTarget.style.backgroundColor = '#f9fafb'
+              e.currentTarget.style.color = '#111827'
+            }
+          }}
+          onMouseOut={(e) => {
+            if (!isActive('/third-parties')) {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = '#6b7280'
+            }
+          }}
+        >
+          Third Parties
+        </Link>
         </nav>
       </aside>
 

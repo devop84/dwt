@@ -64,8 +64,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       headers: { host: req.headers.host }
     })
     
-    const route = pathArray.length > 0 ? pathArray[0] : null
-    const id = pathArray.length > 1 ? pathArray[1] : null
+    // Handle hyphenated routes that might be split (e.g., "third-parties" -> ["third", "parties"])
+    let route = pathArray.length > 0 ? pathArray[0] : null
+    let id = pathArray.length > 1 ? pathArray[1] : null
+    
+    // Check if route is part of a hyphenated route
+    if (route === 'third' && pathArray.length > 1 && pathArray[1] === 'parties') {
+      route = 'third-parties'
+      id = pathArray.length > 2 ? pathArray[2] : null
+    }
     
     // Health check endpoint
     if (route === 'health' || (pathArray.length === 0 && req.url?.includes('health'))) {
