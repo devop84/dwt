@@ -89,7 +89,7 @@ export interface ThirdParty {
   updatedAt: string
 }
 
-export type EntityType = 'client' | 'hotel' | 'guide' | 'driver' | 'caterer' | 'company'
+export type EntityType = 'client' | 'hotel' | 'guide' | 'driver' | 'caterer' | 'company' | 'third-party'
 
 export type AccountType = 'bank' | 'cash' | 'online' | 'other'
 

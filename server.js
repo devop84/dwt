@@ -172,6 +172,19 @@ async function initDb() {
       )
     `)
     
+    // Create third_parties table if not exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS third_parties (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        "contactNumber" VARCHAR(50),
+        email VARCHAR(255),
+        note TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    
     // Create accounts table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS accounts (
@@ -191,7 +204,7 @@ async function initDb() {
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),
-        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver', 'caterer', 'company')),
+        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party')),
         CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online', 'other'))
       )
     `)
@@ -1671,6 +1684,183 @@ app.delete('/api/caterers/:id', async (req, res) => {
   }
 })
 
+// Third Parties API routes
+// Get all third parties
+app.get('/api/third-parties', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const result = await pool.query(`
+      SELECT id, name, "contactNumber", email, note, "createdAt", "updatedAt"
+      FROM third_parties
+      ORDER BY "createdAt" DESC
+    `)
+
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Third parties error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch third parties' })
+  }
+})
+
+// Create a new third party
+app.post('/api/third-parties', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { name, contactNumber, email, note } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    const thirdPartyId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO third_parties (id, name, "contactNumber", email, note)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, name, "contactNumber", email, note, "createdAt", "updatedAt"`,
+      [thirdPartyId, name, contactNumber || null, email || null, note || null]
+    )
+
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Create third party error:', error)
+    res.status(500).json({ message: error.message || 'Failed to create third party' })
+  }
+})
+
+// Get a single third party
+app.get('/api/third-parties/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const result = await pool.query('SELECT * FROM third_parties WHERE id = $1', [id])
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Third party not found' })
+    }
+
+    res.json(result.rows[0])
+  } catch (error) {
+    console.error('Third party error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch third party' })
+  }
+})
+
+// Update a third party
+app.put('/api/third-parties/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+    const { name, contactNumber, email, note } = req.body
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' })
+    }
+
+    // Check if third party exists
+    const existing = await pool.query('SELECT id FROM third_parties WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Third party not found' })
+    }
+
+    const result = await pool.query(
+      `UPDATE third_parties SET name = $1, "contactNumber" = $2, email = $3, note = $4, "updatedAt" = NOW()
+       WHERE id = $5 RETURNING *`,
+      [name, contactNumber || null, email || null, note || null, id]
+    )
+
+    res.status(200).json(result.rows[0])
+  } catch (error) {
+    console.error('Update third party error:', error)
+    res.status(500).json({ message: error.message || 'Failed to update third party' })
+  }
+})
+
+// Delete a third party
+app.delete('/api/third-parties/:id', async (req, res) => {
+  await initDb()
+  
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+
+    const { id } = req.params
+
+    // Check if third party exists
+    const existing = await pool.query('SELECT id FROM third_parties WHERE id = $1', [id])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Third party not found' })
+    }
+
+    await pool.query('DELETE FROM third_parties WHERE id = $1', [id])
+
+    res.status(200).json({ message: 'Third party deleted successfully' })
+  } catch (error) {
+    console.error('Delete third party error:', error)
+    res.status(500).json({ message: error.message || 'Failed to delete third party' })
+  }
+})
+
 // Accounts API routes
 // Get all accounts (with optional filters)
 app.get('/api/accounts', async (req, res) => {
@@ -1751,7 +1941,7 @@ app.post('/api/accounts', async (req, res) => {
       return res.status(400).json({ message: 'Entity ID is required for non-company accounts' })
     }
 
-    if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company'].includes(entityType)) {
+    if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party'].includes(entityType)) {
       return res.status(400).json({ message: 'Invalid entity type' })
     }
 
@@ -1767,7 +1957,7 @@ app.post('/api/accounts', async (req, res) => {
       return res.status(400).json({ message: 'Service name/tag is required for online accounts' })
     }
 
-    if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company'].includes(entityType)) {
+    if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party'].includes(entityType)) {
       return res.status(400).json({ message: 'Invalid entity type' })
     }
 
@@ -1787,21 +1977,21 @@ app.post('/api/accounts', async (req, res) => {
 
     const accountId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO accounts (id, "entityType", "entityId", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "isOnlineService", "serviceName", "isPrimary", note)
+      `INSERT INTO accounts (id, "entityType", "entityId", "accountType", "accountHolderName", "bankName", "accountNumber", iban, "swiftBic", "routingNumber", currency, "serviceName", "isPrimary", note)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
       [
         accountId,
         entityType,
-        entityId,
+        entityId || null,
+        accountType,
         accountHolderName,
-        bankName,
+        (accountType === 'cash') ? null : (bankName || null),
         accountNumber || null,
         iban || null,
         swiftBic || null,
         routingNumber || null,
         currency || null,
-        isOnlineService || false,
         serviceName || null,
         isPrimary || false,
         note || null
@@ -1859,6 +2049,9 @@ app.get('/api/accounts/:id', async (req, res) => {
           entityName = entityResult.rows[0]?.name || null
         } else if (account.entityType === 'caterer') {
           const entityResult = await pool.query('SELECT name FROM caterers WHERE id = $1', [account.entityId])
+          entityName = entityResult.rows[0]?.name || null
+        } else if (account.entityType === 'third-party') {
+          const entityResult = await pool.query('SELECT name FROM third_parties WHERE id = $1', [account.entityId])
           entityName = entityResult.rows[0]?.name || null
         }
       } catch (err) {

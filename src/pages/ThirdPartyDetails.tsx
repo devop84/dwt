@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { thirdPartiesApi } from '../lib/api'
 import type { ThirdParty } from '../types'
 import { ThirdPartyForm } from '../components/ThirdPartyForm'
+import { AccountsCards } from '../components/AccountsCards'
 
 export function ThirdPartyDetails() {
   const { id } = useParams<{ id: string }>()
@@ -350,6 +351,8 @@ export function ThirdPartyDetails() {
             </p>
           </div>
         )}
+
+        <AccountsCards entityType="third-party" entityId={thirdParty.id} />
 
         <div style={{
           padding: '1.5rem 2rem',

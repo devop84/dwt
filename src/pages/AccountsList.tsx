@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { accountsApi, clientsApi, hotelsApi, guidesApi, driversApi, caterersApi } from '../lib/api'
+import { accountsApi, clientsApi, hotelsApi, guidesApi, driversApi, caterersApi, thirdPartiesApi } from '../lib/api'
 import type { Account, EntityType } from '../types'
 
 type FilterColumn = 'all' | 'accountHolderName' | 'bankName' | 'entityType' | 'serviceName'
@@ -56,6 +56,10 @@ export function AccountsList() {
               case 'caterer':
                 const caterer = await caterersApi.getById(account.entityId!)
                 entityName = caterer.name
+                break
+              case 'third-party':
+                const thirdParty = await thirdPartiesApi.getById(account.entityId!)
+                entityName = thirdParty.name
                 break
               case 'company':
                 entityName = 'Company'
@@ -188,6 +192,7 @@ export function AccountsList() {
       guide: '/guides',
       driver: '/drivers',
       caterer: '/caterers',
+      'third-party': '/third-parties',
       company: '/company-accounts'
     }
     if (routes[account.entityType]) {
@@ -370,6 +375,7 @@ export function AccountsList() {
           <option value="guide">Guides</option>
           <option value="driver">Drivers</option>
           <option value="caterer">Caterers</option>
+          <option value="third-party">Third Parties</option>
           <option value="company">Company</option>
         </select>
         <select

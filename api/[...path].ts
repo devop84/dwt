@@ -69,10 +69,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     let id = pathArray.length > 1 ? pathArray[1] : null
     
     // Check if route is part of a hyphenated route
+    // Case 1: Path split into ["third", "parties"]
     if (route === 'third' && pathArray.length > 1 && pathArray[1] === 'parties') {
       route = 'third-parties'
       id = pathArray.length > 2 ? pathArray[2] : null
+      console.log('🔗 Combined hyphenated route:', { original: pathArray, combined: route, id })
     }
+    // Case 2: Route is already "third-parties" (single segment)
+    // This is already handled by route === 'third-parties' check below
+    
+    console.log('📍 Final route:', { route, id, pathArray })
     
     // Health check endpoint
     if (route === 'health' || (pathArray.length === 0 && req.url?.includes('health'))) {
@@ -650,13 +656,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     // Third Parties
     if (route === 'third-parties') {
+      console.log('🔍 Third parties route matched:', { route, id, pathArray, method: req.method })
       if (!id) {
         if (req.method === 'GET') {
+          console.log('📋 Fetching all third parties...')
           const thirdParties = await query(`
             SELECT id, name, "contactNumber", email, note, "createdAt", "updatedAt"
             FROM third_parties
             ORDER BY "createdAt" DESC
           `)
+          console.log(`✅ Found ${thirdParties.length} third parties`)
           res.status(200).json(thirdParties)
         } else if (req.method === 'POST') {
           const { name, contactNumber, email, note } = req.body
@@ -755,7 +764,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             return
           }
 
-          if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company'].includes(entityType)) {
+          if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party'].includes(entityType)) {
             res.status(400).json({ message: 'Invalid entity type' })
             return
           }
@@ -837,6 +846,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
                 entityName = entity?.name || null
               } else if (account.entityType === 'caterer') {
                 const entity = await queryOne('SELECT name FROM caterers WHERE id = $1', [account.entityId])
+                entityName = entity?.name || null
+              } else if (account.entityType === 'third-party') {
+                const entity = await queryOne('SELECT name FROM third_parties WHERE id = $1', [account.entityId])
                 entityName = entity?.name || null
               }
             } catch (err) {
@@ -923,7 +935,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return
     }
 
-    res.status(404).json({ message: 'Route not found' })
+    // If we reach here, no route matched
+    console.log('❌ No route matched. Final route value:', { route, id, pathArray, url: req.url, method: req.method })
+    res.status(404).json({ 
+      message: 'Route not found', 
+      debug: { 
+        route, 
+        id, 
+        pathArray, 
+        url: req.url, 
+        method: req.method,
+        queryPath: req.query.path 
+      } 
+    })
   } catch (error: any) {
     console.error('API error:', error)
     res.status(500).json({ message: error.message || 'Internal server error' })
