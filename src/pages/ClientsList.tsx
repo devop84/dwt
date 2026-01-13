@@ -28,9 +28,7 @@ export function ClientsList() {
     try {
       setLoading(true)
       setError(null)
-      console.log('Loading clients...')
       const data = await clientsApi.getAll()
-      console.log('Clients loaded:', data)
       setClients(Array.isArray(data) ? data : [])
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to load clients'
