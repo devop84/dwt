@@ -655,16 +655,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     // Third Parties
-    // Use more robust comparison to handle any encoding/whitespace issues
-    const isThirdPartiesRoute = route === 'third-parties' || 
-                                 route === 'thirdParties' || 
-                                 (typeof route === 'string' && route.trim().toLowerCase() === 'third-parties') ||
-                                 (typeof route === 'string' && route.replace(/\s+/g, '-') === 'third-parties')
+    // Check for third-parties route (handles both "third-parties" and split ["third", "parties"])
+    console.log('🔍 Checking third-parties route:', { route, routeType: typeof route, routeValue: JSON.stringify(route), pathArray, routeEquals: route === 'third-parties', strictEquals: route === 'third-parties', charCode: route ? route.split('').map(c => c.charCodeAt(0)) : null })
     
-    console.log('🔍 Checking third-parties route:', { route, isThirdPartiesRoute, routeType: typeof route, routeValue: JSON.stringify(route), pathArray })
+    // Try multiple comparison methods to ensure we catch it
+    const isThirdParties = route === 'third-parties' || 
+                          (typeof route === 'string' && route.trim() === 'third-parties') ||
+                          (route && String(route) === 'third-parties')
     
-    if (isThirdPartiesRoute) {
-      console.log('✅ Third parties route matched:', { route, id, pathArray, method: req.method })
+    if (isThirdParties) {
+      console.log('✅ Third parties route matched:', { route, id, pathArray, method: req.method, isThirdParties })
       if (!id) {
         if (req.method === 'GET') {
           console.log('📋 Fetching all third parties...')
@@ -675,6 +675,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           `)
           console.log(`✅ Found ${thirdParties.length} third parties`)
           res.status(200).json(thirdParties)
+          return
         } else if (req.method === 'POST') {
           const { name, contactNumber, email, note } = req.body
           if (!name) {
@@ -689,8 +690,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             [thirdPartyId, name, contactNumber || null, email || null, note || null]
           )
           res.status(201).json(result[0])
+          return
         } else {
           res.status(405).json({ message: 'Method not allowed' })
+          return
         }
       } else {
         if (req.method === 'GET') {
@@ -700,6 +703,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             return
           }
           res.status(200).json(thirdParty)
+          return
         } else if (req.method === 'PUT') {
           const { name, contactNumber, email, note } = req.body
           if (!name) {
@@ -717,6 +721,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             [name, contactNumber || null, email || null, note || null, id]
           )
           res.status(200).json(result[0])
+          return
         } else if (req.method === 'DELETE') {
           const existing = await queryOne('SELECT id FROM third_parties WHERE id = $1', [id])
           if (!existing) {
@@ -725,11 +730,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           }
           await query('DELETE FROM third_parties WHERE id = $1', [id])
           res.status(200).json({ message: 'Third party deleted successfully' })
+          return
         } else {
           res.status(405).json({ message: 'Method not allowed' })
+          return
         }
       }
-      return
     }
 
     // Accounts
