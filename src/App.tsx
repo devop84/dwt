@@ -205,7 +205,7 @@ function App() {
               path="/routes/new"
               element={
                 <Layout>
-                  <RouteBuilder />
+                  <RouteDetails />
                 </Layout>
               }
             />
@@ -214,14 +214,6 @@ function App() {
               element={
                 <Layout>
                   <RouteDetails />
-                </Layout>
-              }
-            />
-            <Route
-              path="/routes/:id/edit"
-              element={
-                <Layout>
-                  <RouteBuilder />
                 </Layout>
               }
             />

@@ -2256,7 +2256,26 @@ app.get('/api/routes', async (req, res) => {
     query += ` ORDER BY "createdAt" DESC`
     
     const result = await pool.query(query, params)
-    res.json(result.rows)
+    
+    // Convert snake_case to camelCase
+    const routes = result.rows.map(route => ({
+      id: route.id,
+      name: route.name,
+      description: route.description,
+      startDate: route.start_date,
+      endDate: route.end_date,
+      duration: route.duration,
+      status: route.status,
+      totalDistance: route.total_distance,
+      estimatedCost: route.estimated_cost,
+      actualCost: route.actual_cost,
+      currency: route.currency,
+      notes: route.notes,
+      createdAt: route.createdAt,
+      updatedAt: route.updatedAt
+    }))
+    
+    res.json(routes)
   } catch (error) {
     console.error('Routes error:', error)
     if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
@@ -2281,7 +2300,24 @@ app.get('/api/routes/:id', async (req, res) => {
     if (routeResult.rows.length === 0) {
       return res.status(404).json({ message: 'Route not found' })
     }
-    const route = routeResult.rows[0]
+    const routeRow = routeResult.rows[0]
+    // Convert route snake_case to camelCase
+    const route = {
+      id: routeRow.id,
+      name: routeRow.name,
+      description: routeRow.description,
+      startDate: routeRow.start_date,
+      endDate: routeRow.end_date,
+      duration: routeRow.duration,
+      status: routeRow.status,
+      totalDistance: routeRow.total_distance,
+      estimatedCost: routeRow.estimated_cost,
+      actualCost: routeRow.actual_cost,
+      currency: routeRow.currency,
+      notes: routeRow.notes,
+      createdAt: routeRow.createdAt,
+      updatedAt: routeRow.updatedAt
+    }
     
     // Get segments with location names
     const segmentsResult = await pool.query(
@@ -2348,12 +2384,87 @@ app.get('/api/routes/:id', async (req, res) => {
       [id]
     )
     
+    // Convert segments snake_case to camelCase
+    const segments = segmentsResult.rows.map(seg => ({
+      id: seg.id,
+      routeId: seg.route_id,
+      dayNumber: seg.day_number,
+      segmentDate: seg.segment_date,
+      fromDestinationId: seg.from_destination_id,
+      toDestinationId: seg.to_destination_id,
+      overnightLocationId: seg.overnight_location_id,
+      distance: seg.distance,
+      estimatedDuration: seg.estimated_duration,
+      segmentType: seg.segment_type,
+      segmentOrder: seg.segment_order,
+      notes: seg.notes,
+      createdAt: seg.createdAt,
+      updatedAt: seg.updatedAt,
+      fromDestinationName: seg.from_destination_name,
+      toDestinationName: seg.to_destination_name,
+      overnightLocationName: seg.overnight_location_name
+    }))
+    
+    // Convert logistics snake_case to camelCase
+    const logistics = logisticsResult.rows.map(log => ({
+      id: log.id,
+      routeId: log.route_id,
+      segmentId: log.segment_id,
+      logisticsType: log.logistics_type,
+      entityId: log.entity_id,
+      entityType: log.entity_type,
+      quantity: log.quantity,
+      cost: log.cost,
+      date: log.date,
+      driverPilotName: log.driver_pilot_name,
+      isOwnVehicle: log.is_own_vehicle,
+      vehicleType: log.vehicle_type,
+      notes: log.notes,
+      createdAt: log.createdAt,
+      updatedAt: log.updatedAt,
+      entityName: log.entity_name
+    }))
+    
+    // Convert participants snake_case to camelCase
+    const participants = participantsResult.rows.map(part => ({
+      id: part.id,
+      routeId: part.route_id,
+      clientId: part.client_id,
+      guideId: part.guide_id,
+      role: part.role,
+      notes: part.notes,
+      createdAt: part.createdAt,
+      updatedAt: part.updatedAt,
+      clientName: part.client_name,
+      guideName: part.guide_name
+    }))
+    
+    // Convert transactions snake_case to camelCase
+    const transactions = transactionsResult.rows.map(trans => ({
+      id: trans.id,
+      routeId: trans.route_id,
+      segmentId: trans.segment_id,
+      transactionType: trans.transaction_type,
+      category: trans.category,
+      amount: trans.amount,
+      currency: trans.currency,
+      fromAccountId: trans.from_account_id,
+      toAccountId: trans.to_account_id,
+      description: trans.description,
+      snapshotData: trans.snapshot_data,
+      transactionDate: trans.transaction_date,
+      notes: trans.notes,
+      createdAt: trans.createdAt,
+      fromAccountName: trans.from_account_name,
+      toAccountName: trans.to_account_name
+    }))
+    
     res.json({
       ...route,
-      segments: segmentsResult.rows,
-      logistics: logisticsResult.rows,
-      participants: participantsResult.rows,
-      transactions: transactionsResult.rows
+      segments,
+      logistics,
+      participants,
+      transactions
     })
   } catch (error) {
     console.error('Get route error:', error)
@@ -2391,7 +2502,26 @@ app.post('/api/routes', async (req, res) => {
       ]
     )
     
-    res.status(201).json(result.rows[0])
+    // Convert to camelCase
+    const routeRow = result.rows[0]
+    const route = {
+      id: routeRow.id,
+      name: routeRow.name,
+      description: routeRow.description,
+      startDate: routeRow.start_date,
+      endDate: routeRow.end_date,
+      duration: routeRow.duration,
+      status: routeRow.status,
+      totalDistance: routeRow.total_distance,
+      estimatedCost: routeRow.estimated_cost,
+      actualCost: routeRow.actual_cost,
+      currency: routeRow.currency,
+      notes: routeRow.notes,
+      createdAt: routeRow.createdAt,
+      updatedAt: routeRow.updatedAt
+    }
+    
+    res.status(201).json(route)
   } catch (error) {
     console.error('Create route error:', error)
     if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
@@ -2435,7 +2565,26 @@ app.put('/api/routes/:id', async (req, res) => {
       ]
     )
     
-    res.json(result.rows[0])
+    // Convert to camelCase
+    const routeRow = result.rows[0]
+    const route = {
+      id: routeRow.id,
+      name: routeRow.name,
+      description: routeRow.description,
+      startDate: routeRow.start_date,
+      endDate: routeRow.end_date,
+      duration: routeRow.duration,
+      status: routeRow.status,
+      totalDistance: routeRow.total_distance,
+      estimatedCost: routeRow.estimated_cost,
+      actualCost: routeRow.actual_cost,
+      currency: routeRow.currency,
+      notes: routeRow.notes,
+      createdAt: routeRow.createdAt,
+      updatedAt: routeRow.updatedAt
+    }
+    
+    res.json(route)
   } catch (error) {
     console.error('Update route error:', error)
     if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
@@ -2619,7 +2768,28 @@ app.get('/api/routes/:routeId/segments', async (req, res) => {
       [routeId]
     )
     
-    res.json(result.rows)
+    // Convert snake_case to camelCase
+    const segments = result.rows.map(seg => ({
+      id: seg.id,
+      routeId: seg.route_id,
+      dayNumber: seg.day_number,
+      segmentDate: seg.segment_date,
+      fromDestinationId: seg.from_destination_id,
+      toDestinationId: seg.to_destination_id,
+      overnightLocationId: seg.overnight_location_id,
+      distance: seg.distance,
+      estimatedDuration: seg.estimated_duration,
+      segmentType: seg.segment_type,
+      segmentOrder: seg.segment_order,
+      notes: seg.notes,
+      createdAt: seg.createdAt,
+      updatedAt: seg.updatedAt,
+      fromDestinationName: seg.from_destination_name,
+      toDestinationName: seg.to_destination_name,
+      overnightLocationName: seg.overnight_location_name
+    }))
+    
+    res.json(segments)
   } catch (error) {
     console.error('Get segments error:', error)
     if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
@@ -2658,10 +2828,9 @@ app.post('/api/routes/:routeId/segments', async (req, res) => {
     }
     
     const segmentId = randomUUID()
-    const result = await pool.query(
+    await pool.query(
       `INSERT INTO route_segments (id, route_id, day_number, segment_date, from_destination_id, to_destination_id, overnight_location_id, distance, estimated_duration, segment_type, segment_order, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         segmentId,
         routeId,
@@ -2678,7 +2847,44 @@ app.post('/api/routes/:routeId/segments', async (req, res) => {
       ]
     )
     
-    res.status(201).json(result.rows[0])
+    // Fetch the created segment with location names
+    const result = await pool.query(
+      `SELECT 
+        rs.*,
+        l1.name as from_destination_name,
+        l2.name as to_destination_name,
+        l3.name as overnight_location_name
+      FROM route_segments rs
+      LEFT JOIN locations l1 ON rs.from_destination_id = l1.id
+      LEFT JOIN locations l2 ON rs.to_destination_id = l2.id
+      LEFT JOIN locations l3 ON rs.overnight_location_id = l3.id
+      WHERE rs.id = $1`,
+      [segmentId]
+    )
+    
+    // Convert to camelCase
+    const seg = result.rows[0]
+    const segment = {
+      id: seg.id,
+      routeId: seg.route_id,
+      dayNumber: seg.day_number,
+      segmentDate: seg.segment_date,
+      fromDestinationId: seg.from_destination_id,
+      toDestinationId: seg.to_destination_id,
+      overnightLocationId: seg.overnight_location_id,
+      distance: seg.distance,
+      estimatedDuration: seg.estimated_duration,
+      segmentType: seg.segment_type,
+      segmentOrder: seg.segment_order,
+      notes: seg.notes,
+      createdAt: seg.createdAt,
+      updatedAt: seg.updatedAt,
+      fromDestinationName: seg.from_destination_name,
+      toDestinationName: seg.to_destination_name,
+      overnightLocationName: seg.overnight_location_name
+    }
+    
+    res.status(201).json(segment)
   } catch (error) {
     console.error('Create segment error:', error)
     if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
@@ -2713,7 +2919,7 @@ app.put('/api/routes/:routeId/segments/:id', async (req, res) => {
       }
     }
     
-    const result = await pool.query(
+    await pool.query(
       `UPDATE route_segments 
        SET day_number = COALESCE($1, day_number),
            segment_date = COALESCE($2, segment_date),
@@ -2726,8 +2932,7 @@ app.put('/api/routes/:routeId/segments/:id', async (req, res) => {
            segment_order = COALESCE($9, segment_order),
            notes = $10,
            "updatedAt" = NOW()
-       WHERE id = $11
-       RETURNING *`,
+       WHERE id = $11`,
       [
         dayNumber,
         segmentDate,
@@ -2743,7 +2948,44 @@ app.put('/api/routes/:routeId/segments/:id', async (req, res) => {
       ]
     )
     
-    res.json(result.rows[0])
+    // Fetch the updated segment with location names
+    const result = await pool.query(
+      `SELECT 
+        rs.*,
+        l1.name as from_destination_name,
+        l2.name as to_destination_name,
+        l3.name as overnight_location_name
+      FROM route_segments rs
+      LEFT JOIN locations l1 ON rs.from_destination_id = l1.id
+      LEFT JOIN locations l2 ON rs.to_destination_id = l2.id
+      LEFT JOIN locations l3 ON rs.overnight_location_id = l3.id
+      WHERE rs.id = $1`,
+      [id]
+    )
+    
+    // Convert to camelCase
+    const seg = result.rows[0]
+    const segment = {
+      id: seg.id,
+      routeId: seg.route_id,
+      dayNumber: seg.day_number,
+      segmentDate: seg.segment_date,
+      fromDestinationId: seg.from_destination_id,
+      toDestinationId: seg.to_destination_id,
+      overnightLocationId: seg.overnight_location_id,
+      distance: seg.distance,
+      estimatedDuration: seg.estimated_duration,
+      segmentType: seg.segment_type,
+      segmentOrder: seg.segment_order,
+      notes: seg.notes,
+      createdAt: seg.createdAt,
+      updatedAt: seg.updatedAt,
+      fromDestinationName: seg.from_destination_name,
+      toDestinationName: seg.to_destination_name,
+      overnightLocationName: seg.overnight_location_name
+    }
+    
+    res.json(segment)
   } catch (error) {
     console.error('Update segment error:', error)
     if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
@@ -2853,7 +3095,27 @@ app.get('/api/routes/:routeId/logistics', async (req, res) => {
       [routeId]
     )
     
-    res.json(result.rows)
+    // Convert snake_case to camelCase
+    const logistics = result.rows.map(log => ({
+      id: log.id,
+      routeId: log.route_id,
+      segmentId: log.segment_id,
+      logisticsType: log.logistics_type,
+      entityId: log.entity_id,
+      entityType: log.entity_type,
+      quantity: log.quantity,
+      cost: log.cost,
+      date: log.date,
+      driverPilotName: log.driver_pilot_name,
+      isOwnVehicle: log.is_own_vehicle,
+      vehicleType: log.vehicle_type,
+      notes: log.notes,
+      createdAt: log.createdAt,
+      updatedAt: log.updatedAt,
+      entityName: log.entity_name
+    }))
+    
+    res.json(logistics)
   } catch (error) {
     console.error('Get logistics error:', error)
     if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
@@ -2876,10 +3138,9 @@ app.post('/api/routes/:routeId/logistics', async (req, res) => {
     }
     
     const logisticsId = randomUUID()
-    const result = await pool.query(
+    await pool.query(
       `INSERT INTO route_logistics (id, route_id, segment_id, logistics_type, entity_id, entity_type, quantity, cost, date, driver_pilot_name, is_own_vehicle, vehicle_type, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-       RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         logisticsId,
         routeId,
@@ -2897,7 +3158,50 @@ app.post('/api/routes/:routeId/logistics', async (req, res) => {
       ]
     )
     
-    res.status(201).json(result.rows[0])
+    // Fetch the created logistics with entity name
+    const result = await pool.query(
+      `SELECT 
+        rl.*,
+        CASE 
+          WHEN rl.entity_type = 'hotel' THEN h.name
+          WHEN rl.entity_type = 'caterer' THEN c.name
+          WHEN rl.entity_type = 'third-party' THEN tp.name
+          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE WHEN v."vehicleOwner" = 'company' THEN 'Company' ELSE 'Third Party' END
+          WHEN rl.entity_type = 'location' THEN l.name
+          ELSE NULL
+        END as entity_name
+      FROM route_logistics rl
+      LEFT JOIN hotels h ON rl.entity_type = 'hotel' AND rl.entity_id = h.id
+      LEFT JOIN caterers c ON rl.entity_type = 'caterer' AND rl.entity_id = c.id
+      LEFT JOIN third_parties tp ON rl.entity_type = 'third-party' AND rl.entity_id = tp.id
+      LEFT JOIN vehicles v ON rl.entity_type = 'vehicle' AND rl.entity_id = v.id
+      LEFT JOIN locations l ON rl.entity_type = 'location' AND rl.entity_id = l.id
+      WHERE rl.id = $1`,
+      [logisticsId]
+    )
+    
+    // Convert to camelCase
+    const log = result.rows[0]
+    const logistics = {
+      id: log.id,
+      routeId: log.route_id,
+      segmentId: log.segment_id,
+      logisticsType: log.logistics_type,
+      entityId: log.entity_id,
+      entityType: log.entity_type,
+      quantity: log.quantity,
+      cost: log.cost,
+      date: log.date,
+      driverPilotName: log.driver_pilot_name,
+      isOwnVehicle: log.is_own_vehicle,
+      vehicleType: log.vehicle_type,
+      notes: log.notes,
+      createdAt: log.createdAt,
+      updatedAt: log.updatedAt,
+      entityName: log.entity_name
+    }
+    
+    res.status(201).json(logistics)
   } catch (error) {
     console.error('Create logistics error:', error)
     if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
@@ -2920,7 +3224,7 @@ app.put('/api/routes/:routeId/logistics/:id', async (req, res) => {
       return res.status(404).json({ message: 'Logistics not found' })
     }
     
-    const result = await pool.query(
+    await pool.query(
       `UPDATE route_logistics 
        SET segment_id = $1,
            logistics_type = $2,
@@ -2934,8 +3238,7 @@ app.put('/api/routes/:routeId/logistics/:id', async (req, res) => {
            vehicle_type = $10,
            notes = $11,
            "updatedAt" = NOW()
-       WHERE id = $12
-       RETURNING *`,
+       WHERE id = $12`,
       [
         segmentId !== undefined ? segmentId : null,
         logisticsType,
@@ -2952,7 +3255,50 @@ app.put('/api/routes/:routeId/logistics/:id', async (req, res) => {
       ]
     )
     
-    res.json(result.rows[0])
+    // Fetch the updated logistics with entity name
+    const result = await pool.query(
+      `SELECT 
+        rl.*,
+        CASE 
+          WHEN rl.entity_type = 'hotel' THEN h.name
+          WHEN rl.entity_type = 'caterer' THEN c.name
+          WHEN rl.entity_type = 'third-party' THEN tp.name
+          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE WHEN v."vehicleOwner" = 'company' THEN 'Company' ELSE 'Third Party' END
+          WHEN rl.entity_type = 'location' THEN l.name
+          ELSE NULL
+        END as entity_name
+      FROM route_logistics rl
+      LEFT JOIN hotels h ON rl.entity_type = 'hotel' AND rl.entity_id = h.id
+      LEFT JOIN caterers c ON rl.entity_type = 'caterer' AND rl.entity_id = c.id
+      LEFT JOIN third_parties tp ON rl.entity_type = 'third-party' AND rl.entity_id = tp.id
+      LEFT JOIN vehicles v ON rl.entity_type = 'vehicle' AND rl.entity_id = v.id
+      LEFT JOIN locations l ON rl.entity_type = 'location' AND rl.entity_id = l.id
+      WHERE rl.id = $1`,
+      [id]
+    )
+    
+    // Convert to camelCase
+    const log = result.rows[0]
+    const logistics = {
+      id: log.id,
+      routeId: log.route_id,
+      segmentId: log.segment_id,
+      logisticsType: log.logistics_type,
+      entityId: log.entity_id,
+      entityType: log.entity_type,
+      quantity: log.quantity,
+      cost: log.cost,
+      date: log.date,
+      driverPilotName: log.driver_pilot_name,
+      isOwnVehicle: log.is_own_vehicle,
+      vehicleType: log.vehicle_type,
+      notes: log.notes,
+      createdAt: log.createdAt,
+      updatedAt: log.updatedAt,
+      entityName: log.entity_name
+    }
+    
+    res.json(logistics)
   } catch (error) {
     console.error('Update logistics error:', error)
     if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
