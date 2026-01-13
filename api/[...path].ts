@@ -75,10 +75,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       id = pathArray.length > 2 ? pathArray[2] : null
       console.log('🔗 Combined hyphenated route:', { original: pathArray, combined: route, id })
     }
-    // Case 2: Route is already "third-parties" (single segment)
-    // This is already handled by route === 'third-parties' check below
+    // Case 2: Route is already "third-parties" (single segment) - check explicitly
+    if (route === 'third-parties') {
+      console.log('✅ Route is already third-parties:', { route, id, pathArray })
+    }
     
-    console.log('📍 Final route:', { route, id, pathArray })
+    console.log('📍 Final route:', { route, id, pathArray, routeType: typeof route, routeLength: route?.length })
     
     // Health check endpoint
     if (route === 'health' || (pathArray.length === 0 && req.url?.includes('health'))) {
@@ -655,16 +657,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     // Third Parties
-    // Check for third-parties route (handles both "third-parties" and split ["third", "parties"])
-    console.log('🔍 Checking third-parties route:', { route, routeType: typeof route, routeValue: JSON.stringify(route), pathArray, routeEquals: route === 'third-parties', strictEquals: route === 'third-parties', charCode: route ? route.split('').map(c => c.charCodeAt(0)) : null })
-    
-    // Try multiple comparison methods to ensure we catch it
-    const isThirdParties = route === 'third-parties' || 
-                          (typeof route === 'string' && route.trim() === 'third-parties') ||
-                          (route && String(route) === 'third-parties')
-    
-    if (isThirdParties) {
-      console.log('✅ Third parties route matched:', { route, id, pathArray, method: req.method, isThirdParties })
+    if (route === 'third-parties') {
+      console.log('✅ Third parties route matched:', { route, id, pathArray, method: req.method })
       if (!id) {
         if (req.method === 'GET') {
           console.log('📋 Fetching all third parties...')
