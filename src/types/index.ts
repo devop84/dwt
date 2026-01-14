@@ -52,7 +52,7 @@ export interface Hotel {
   updatedAt: string
 }
 
-export interface Guide {
+export interface Staff {
   id: string
   name: string
   contactNumber: string | null
@@ -68,14 +68,16 @@ export interface Guide {
 export interface Vehicle {
   id: string
   type: 'car4x4' | 'boat' | 'quadbike' | 'carSedan' | 'outro'
-  vehicleOwner: 'company' | 'third-party'
+  vehicleOwner: 'company' | 'third-party' | 'hotel'
   locationId: string | null
   thirdPartyId: string | null
+  hotelId: string | null
   note: string | null
   createdAt: string
   updatedAt: string
   locationName?: string
   thirdPartyName?: string
+  hotelName?: string
 }
 
 export interface ThirdParty {
@@ -88,7 +90,7 @@ export interface ThirdParty {
   updatedAt: string
 }
 
-export type EntityType = 'client' | 'hotel' | 'guide' | 'driver' | 'caterer' | 'company' | 'third-party' | 'vehicle'
+export type EntityType = 'client' | 'hotel' | 'staff' | 'driver' | 'company' | 'third-party' | 'vehicle'
 
 export type AccountType = 'bank' | 'cash' | 'online' | 'other'
 
@@ -113,10 +115,11 @@ export interface Account {
 
 // Route types
 export type RouteStatus = 'draft' | 'confirmed' | 'in-progress' | 'completed' | 'cancelled'
-export type SegmentType = 'travel' | 'transfer-only' | 'free-day'
 export type LogisticsType = 'airport-transfer' | 'support-vehicle' | 'hotel-client' | 'hotel-staff' | 'lunch' | 'third-party' | 'extra-cost'
-export type EntityTypeForLogistics = 'vehicle' | 'hotel' | 'caterer' | 'third-party' | 'location'
+export type EntityTypeForLogistics = 'vehicle' | 'hotel' | 'third-party' | 'location'
 export type ParticipantRole = 'client' | 'guide-captain' | 'guide-tail' | 'staff'
+export type AccommodationGroupType = 'client' | 'staff'
+export type RoomType = 'single' | 'double' | 'twin' | 'triple'
 export type TransactionType = 'payment' | 'expense' | 'refund'
 export type TransactionCategory = 'hotel' | 'transport' | 'food' | 'third-party' | 'vehicle' | 'other'
 
@@ -144,10 +147,8 @@ export interface RouteSegment {
   segmentDate: string | null
   fromDestinationId: string | null
   toDestinationId: string | null
-  overnightLocationId: string | null
+  overnightLocationId?: string | null
   distance: number
-  estimatedDuration: number | null
-  segmentType: SegmentType
   segmentOrder: number
   notes: string | null
   createdAt: string
@@ -155,6 +156,18 @@ export interface RouteSegment {
   fromDestinationName?: string
   toDestinationName?: string
   overnightLocationName?: string
+  stops?: RouteSegmentStop[]
+}
+
+export interface RouteSegmentStop {
+  id: string
+  segmentId: string
+  locationId: string
+  stopOrder: number
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  locationName?: string
 }
 
 export interface RouteLogistics {
@@ -162,8 +175,9 @@ export interface RouteLogistics {
   routeId: string
   segmentId: string | null
   logisticsType: LogisticsType
-  entityId: string
+  entityId: string | null
   entityType: EntityTypeForLogistics
+  itemName?: string | null
   quantity: number
   cost: number
   date: string | null
@@ -174,6 +188,30 @@ export interface RouteLogistics {
   createdAt: string
   updatedAt: string
   entityName?: string
+}
+
+export interface RouteSegmentAccommodationRoom {
+  id: string
+  accommodationId: string
+  roomType: RoomType
+  roomLabel: string | null
+  isCouple: boolean
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  participants: RouteParticipant[]
+}
+
+export interface RouteSegmentAccommodation {
+  id: string
+  segmentId: string
+  hotelId: string
+  groupType: AccommodationGroupType
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  hotelName?: string
+  rooms: RouteSegmentAccommodationRoom[]
 }
 
 export interface RouteParticipant {
@@ -187,6 +225,7 @@ export interface RouteParticipant {
   updatedAt: string
   clientName?: string
   guideName?: string
+  segmentIds?: string[] // Array of segment IDs this participant is assigned to
 }
 
 export interface RouteTransaction {
@@ -206,4 +245,56 @@ export interface RouteTransaction {
   createdAt: string
   fromAccountName?: string
   toAccountName?: string
+}
+
+export interface RouteTransfer {
+  id: string
+  routeId: string
+  transferDate: string
+  fromLocationId: string
+  toLocationId: string
+  totalCost: number
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  fromLocationName?: string
+  toLocationName?: string
+  vehicles?: RouteTransferVehicle[]
+  participants?: RouteTransferParticipant[]
+}
+
+export interface RouteTransferVehicle {
+  id: string
+  transferId: string
+  vehicleId: string
+  driverPilotName: string | null
+  quantity: number
+  cost: number
+  isOwnVehicle: boolean
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  vehicleName?: string
+  vehicleType?: Vehicle['type']
+  vehicleOwner?: Vehicle['vehicleOwner']
+  hotelName?: string
+  thirdPartyName?: string
+}
+
+export interface RouteTransferParticipant {
+  id: string
+  transferId: string
+  participantId: string
+  createdAt: string
+  participantName?: string
+  participantRole?: ParticipantRole
+}
+
+export interface RouteSegmentParticipant {
+  id: string
+  segmentId: string
+  participantId: string
+  createdAt: string
+  participantName?: string
+  participantRole?: ParticipantRole
 }

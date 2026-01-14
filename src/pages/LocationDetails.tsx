@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { locationsApi, hotelsApi, guidesApi, vehiclesApi, caterersApi } from '../lib/api'
-import type { Location, Hotel, Guide, Vehicle, Caterer } from '../types'
+import { locationsApi, hotelsApi, staffApi, vehiclesApi } from '../lib/api'
+import type { Location, Hotel, Staff, Vehicle } from '../types'
 import { LocationForm } from '../components/LocationForm'
 
-type TabType = 'hotels' | 'vehicles' | 'caterers' | 'guides'
+type TabType = 'hotels' | 'vehicles' | 'staff'
 
 export function LocationDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [location, setLocation] = useState<Location | null>(null)
   const [hotels, setHotels] = useState<Hotel[]>([])
-  const [guides, setGuides] = useState<Guide[]>([])
+  const [staff, setStaff] = useState<Staff[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [caterers, setCaterers] = useState<Caterer[]>([])
   const [activeTab, setActiveTab] = useState<TabType>('hotels')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -43,25 +42,22 @@ export function LocationDetails() {
 
   const loadAllEntities = async () => {
     try {
-      const [allHotels, allGuides, allVehicles, allCaterers] = await Promise.all([
+      const [allHotels, allStaff, allVehicles] = await Promise.all([
         hotelsApi.getAll(),
-        guidesApi.getAll(),
-        vehiclesApi.getAll(),
-        caterersApi.getAll()
+        staffApi.getAll(),
+        vehiclesApi.getAll()
       ])
       
       // Filter entities for this location, ensuring arrays
       setHotels(Array.isArray(allHotels) ? allHotels.filter(hotel => hotel.locationId === id) : [])
-      setGuides(Array.isArray(allGuides) ? allGuides.filter(guide => guide.locationId === id) : [])
+      setStaff(Array.isArray(allStaff) ? allStaff.filter(member => member.locationId === id) : [])
       setVehicles(Array.isArray(allVehicles) ? allVehicles.filter(vehicle => vehicle.locationId === id) : [])
-      setCaterers(Array.isArray(allCaterers) ? allCaterers.filter(caterer => caterer.locationId === id) : [])
     } catch (err: any) {
       console.error('Error loading entities:', err)
       // Ensure all arrays are set to empty arrays on error
       setHotels([])
-      setGuides([])
+      setStaff([])
       setVehicles([])
-      setCaterers([])
     }
   }
 
@@ -509,12 +505,11 @@ export function LocationDetails() {
             marginBottom: '1.5rem',
             gap: '0.5rem'
           }}>
-            {(['hotels', 'vehicles', 'caterers', 'guides'] as TabType[]).map((tab) => {
+            {(['hotels', 'vehicles', 'staff'] as TabType[]).map((tab) => {
               const counts = {
                 hotels: hotels.length,
                 vehicles: vehicles.length,
-                caterers: caterers.length,
-                guides: guides.length
+                staff: staff.length
               }
               const isActive = activeTab === tab
               
@@ -771,13 +766,22 @@ export function LocationDetails() {
                         }}>
                           🚗 {getOwnerLabel(vehicle.vehicleOwner)}
                         </div>
-                        {vehicle.thirdPartyName && (
+                        {vehicle.vehicleOwner === 'third-party' && vehicle.thirdPartyName && (
                           <div style={{
                             fontSize: '0.75rem',
                             color: '#6b7280',
                             marginBottom: '0.5rem'
                           }}>
                             👤 {vehicle.thirdPartyName}
+                          </div>
+                        )}
+                        {vehicle.vehicleOwner === 'hotel' && vehicle.hotelName && (
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: '#6b7280',
+                            marginBottom: '0.5rem'
+                          }}>
+                            🏨 {vehicle.hotelName}
                           </div>
                         )}
                         {vehicle.note && (
@@ -801,9 +805,9 @@ export function LocationDetails() {
             </div>
           )}
 
-          {activeTab === 'caterers' && (
+          {activeTab === 'staff' && (
             <div>
-              {caterers.length === 0 ? (
+              {staff.length === 0 ? (
                 <div style={{
                   padding: '2rem',
                   textAlign: 'center',
@@ -816,7 +820,7 @@ export function LocationDetails() {
                     margin: 0,
                     fontSize: '0.875rem'
                   }}>
-                    No caterers found for this location.
+                    No staff found for this location.
                   </p>
                 </div>
               ) : (
@@ -825,123 +829,10 @@ export function LocationDetails() {
                   gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                   gap: '1rem'
                 }}>
-                  {caterers.map((caterer) => {
-                    const getTypeLabel = (type: string) => {
-                      switch (type) {
-                        case 'restaurant': return 'Restaurant'
-                        case 'hotel': return 'Hotel'
-                        case 'particular': return 'Particular'
-                        default: return type
-                      }
-                    }
-                    
-                    return (
-                      <div
-                        key={caterer.id}
-                        onClick={() => navigate(`/caterers/${caterer.id}`)}
-                        style={{
-                          padding: '1.5rem',
-                          backgroundColor: 'white',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '0.5rem',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = '#3b82f6'
-                          e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)'
-                          e.currentTarget.style.transform = 'translateY(-2px)'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = '#e5e7eb'
-                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)'
-                          e.currentTarget.style.transform = 'translateY(0)'
-                        }}
-                      >
-                        <h4 style={{
-                          fontSize: '1rem',
-                          fontWeight: '600',
-                          color: '#111827',
-                          margin: '0 0 0.5rem 0'
-                        }}>
-                          {caterer.name}
-                        </h4>
-                        <div style={{
-                          fontSize: '0.875rem',
-                          color: '#3b82f6',
-                          fontWeight: '500',
-                          marginBottom: '0.5rem'
-                        }}>
-                          🍽️ {getTypeLabel(caterer.type)}
-                        </div>
-                        {caterer.contactNumber && (
-                          <div style={{
-                            fontSize: '0.75rem',
-                            color: '#6b7280',
-                            marginBottom: '0.25rem'
-                          }}>
-                            📞 {caterer.contactNumber}
-                          </div>
-                        )}
-                        {caterer.email && (
-                          <div style={{
-                            fontSize: '0.75rem',
-                            color: '#6b7280',
-                            marginBottom: '0.5rem'
-                          }}>
-                            ✉️ {caterer.email}
-                          </div>
-                        )}
-                        {caterer.note && (
-                          <p style={{
-                            fontSize: '0.75rem',
-                            color: '#6b7280',
-                            margin: '0.5rem 0 0 0',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
-                          }}>
-                            {caterer.note}
-                          </p>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'guides' && (
-            <div>
-              {guides.length === 0 ? (
-                <div style={{
-                  padding: '2rem',
-                  textAlign: 'center',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '0.5rem',
-                  border: '1px dashed #d1d5db'
-                }}>
-                  <p style={{
-                    color: '#6b7280',
-                    margin: 0,
-                    fontSize: '0.875rem'
-                  }}>
-                    No guides found for this location.
-                  </p>
-                </div>
-              ) : (
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                  gap: '1rem'
-                }}>
-                  {guides.map((guide) => (
+                  {staff.map((member) => (
                     <div
-                      key={guide.id}
-                      onClick={() => navigate(`/guides/${guide.id}`)}
+                      key={member.id}
+                      onClick={() => navigate(`/staff/${member.id}`)}
                       style={{
                         padding: '1.5rem',
                         backgroundColor: 'white',
@@ -968,36 +859,36 @@ export function LocationDetails() {
                         color: '#111827',
                         margin: '0 0 0.5rem 0'
                       }}>
-                        {guide.name}
+                        {member.name}
                       </h4>
-                      {guide.languages && (
+                      {member.languages && (
                         <div style={{
                           fontSize: '0.75rem',
                           color: '#6b7280',
                           marginBottom: '0.5rem'
                         }}>
-                          🗣️ {guide.languages}
+                          🗣️ {member.languages}
                         </div>
                       )}
-                      {guide.contactNumber && (
+                      {member.contactNumber && (
                         <div style={{
                           fontSize: '0.75rem',
                           color: '#6b7280',
                           marginBottom: '0.25rem'
                         }}>
-                          📞 {guide.contactNumber}
+                          📞 {member.contactNumber}
                         </div>
                       )}
-                      {guide.email && (
+                      {member.email && (
                         <div style={{
                           fontSize: '0.75rem',
                           color: '#6b7280',
                           marginBottom: '0.5rem'
                         }}>
-                          ✉️ {guide.email}
+                          ✉️ {member.email}
                         </div>
                       )}
-                      {guide.note && (
+                      {member.note && (
                         <p style={{
                           fontSize: '0.75rem',
                           color: '#6b7280',
@@ -1007,7 +898,7 @@ export function LocationDetails() {
                           WebkitBoxOrient: 'vertical',
                           overflow: 'hidden'
                         }}>
-                          {guide.note}
+                          {member.note}
                         </p>
                       )}
                     </div>

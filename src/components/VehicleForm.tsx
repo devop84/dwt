@@ -1,21 +1,23 @@
 import { useState, useEffect, FormEvent } from 'react'
 import { vehiclesApi } from '../lib/api'
-import type { Vehicle, Location, ThirdParty } from '../types'
+import type { Vehicle, Location, ThirdParty, Hotel } from '../types'
 
 interface VehicleFormProps {
   vehicle?: Vehicle | null
   locations: Location[]
   thirdParties: ThirdParty[]
+  hotels: Hotel[]
   onClose: () => void
   onSave: () => Promise<void>
 }
 
-export function VehicleForm({ vehicle, locations, thirdParties, onClose, onSave }: VehicleFormProps) {
+export function VehicleForm({ vehicle, locations, thirdParties, hotels, onClose, onSave }: VehicleFormProps) {
   const [formData, setFormData] = useState({
     type: '' as Vehicle['type'] | '',
     vehicleOwner: '' as Vehicle['vehicleOwner'] | '',
     locationId: '',
     thirdPartyId: '',
+    hotelId: '',
     note: '',
   })
   const [loading, setLoading] = useState(false)
@@ -28,6 +30,7 @@ export function VehicleForm({ vehicle, locations, thirdParties, onClose, onSave 
         vehicleOwner: vehicle.vehicleOwner || '',
         locationId: vehicle.locationId || '',
         thirdPartyId: vehicle.thirdPartyId || '',
+        hotelId: vehicle.hotelId || '',
         note: vehicle.note || '',
       })
     }
@@ -52,6 +55,11 @@ export function VehicleForm({ vehicle, locations, thirdParties, onClose, onSave 
       return
     }
 
+    if (formData.vehicleOwner === 'hotel' && !formData.hotelId) {
+      setError('Hotel is required when vehicle owner is hotel')
+      return
+    }
+
     setLoading(true)
     try {
       if (vehicle) {
@@ -60,6 +68,7 @@ export function VehicleForm({ vehicle, locations, thirdParties, onClose, onSave 
           vehicleOwner: formData.vehicleOwner as Vehicle['vehicleOwner'],
           locationId: formData.locationId || null,
           thirdPartyId: formData.vehicleOwner === 'third-party' ? formData.thirdPartyId : null,
+          hotelId: formData.vehicleOwner === 'hotel' ? formData.hotelId : null,
           note: formData.note.trim() || null,
         })
       } else {
@@ -68,6 +77,7 @@ export function VehicleForm({ vehicle, locations, thirdParties, onClose, onSave 
           vehicleOwner: formData.vehicleOwner as Vehicle['vehicleOwner'],
           locationId: formData.locationId || null,
           thirdPartyId: formData.vehicleOwner === 'third-party' ? formData.thirdPartyId : null,
+          hotelId: formData.vehicleOwner === 'hotel' ? formData.hotelId : null,
           note: formData.note.trim() || null,
         })
       }
@@ -83,9 +93,16 @@ export function VehicleForm({ vehicle, locations, thirdParties, onClose, onSave 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => {
       const updated = { ...prev, [field]: value }
-      // Clear thirdPartyId if owner changes to company
-      if (field === 'vehicleOwner' && value === 'company') {
-        updated.thirdPartyId = ''
+      // Clear owner-specific IDs when owner type changes
+      if (field === 'vehicleOwner') {
+        if (value === 'company') {
+          updated.thirdPartyId = ''
+          updated.hotelId = ''
+        } else if (value === 'third-party') {
+          updated.hotelId = ''
+        } else if (value === 'hotel') {
+          updated.thirdPartyId = ''
+        }
       }
       return updated
     })
@@ -145,6 +162,7 @@ export function VehicleForm({ vehicle, locations, thirdParties, onClose, onSave 
               <option value="">Select owner type</option>
               <option value="company">Company Vehicle</option>
               <option value="third-party">Third Party Vehicle</option>
+              <option value="hotel">Hotel Vehicle</option>
             </select>
           </div>
 
@@ -164,6 +182,22 @@ export function VehicleForm({ vehicle, locations, thirdParties, onClose, onSave 
             </div>
           )}
 
+          {formData.vehicleOwner === 'hotel' && (
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="hotelId" style={labelStyle}>
+                Hotel <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <select id="hotelId" value={formData.hotelId} onChange={(e) => handleChange('hotelId', e.target.value)} required={formData.vehicleOwner === 'hotel'} style={inputStyle} onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)' }} onBlur={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.boxShadow = 'none' }}>
+                <option value="">Select a hotel</option>
+                {(hotels || []).map((hotel) => (
+                  <option key={hotel.id} value={hotel.id}>
+                    {hotel.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div style={{ marginBottom: '1rem' }}>
             <label htmlFor="locationId" style={labelStyle}>
               Location
@@ -171,8 +205,8 @@ export function VehicleForm({ vehicle, locations, thirdParties, onClose, onSave 
             <select id="locationId" value={formData.locationId} onChange={(e) => handleChange('locationId', e.target.value)} style={inputStyle} onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)' }} onBlur={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.boxShadow = 'none' }}>
               <option value="">Select a location (optional)</option>
               {locations.map((loc) => (
-                <option key={dest.id} value={dest.id}>
-                  {dest.name}
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
                 </option>
               ))}
             </select>

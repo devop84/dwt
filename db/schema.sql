@@ -55,8 +55,8 @@ CREATE TABLE IF NOT EXISTS hotels (
   "updatedAt" TIMESTAMP DEFAULT NOW()
 );
 
--- Guides table
-CREATE TABLE IF NOT EXISTS guides (
+-- Staff table
+CREATE TABLE IF NOT EXISTS staff (
   id UUID PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   "contactNumber" VARCHAR(50),
@@ -75,25 +75,17 @@ CREATE TABLE IF NOT EXISTS vehicles (
   "vehicleOwner" VARCHAR(50) NOT NULL,
   "locationId" UUID REFERENCES locations(id) ON DELETE SET NULL,
   "thirdPartyId" UUID REFERENCES third_parties(id) ON DELETE SET NULL,
+  "hotelId" UUID REFERENCES hotels(id) ON DELETE SET NULL,
   note TEXT,
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW(),
   CONSTRAINT check_vehicle_type CHECK (type IN ('car4x4', 'boat', 'quadbike', 'carSedan', 'outro')),
-  CONSTRAINT check_vehicle_owner CHECK ("vehicleOwner" IN ('company', 'third-party'))
-);
-
--- Caterers table
-CREATE TABLE IF NOT EXISTS caterers (
-  id UUID PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  "contactNumber" VARCHAR(50),
-  email VARCHAR(255),
-  type VARCHAR(50) NOT NULL,
-  "locationId" UUID REFERENCES locations(id) ON DELETE SET NULL,
-  note TEXT,
-  "createdAt" TIMESTAMP DEFAULT NOW(),
-  "updatedAt" TIMESTAMP DEFAULT NOW(),
-  CONSTRAINT check_caterer_type CHECK (type IN ('restaurant', 'hotel', 'particular'))
+  CONSTRAINT check_vehicle_owner CHECK ("vehicleOwner" IN ('company', 'third-party', 'hotel')),
+  CONSTRAINT check_vehicle_owner_consistency CHECK (
+    ("vehicleOwner" = 'company' AND "thirdPartyId" IS NULL AND "hotelId" IS NULL) OR
+    ("vehicleOwner" = 'third-party' AND "thirdPartyId" IS NOT NULL AND "hotelId" IS NULL) OR
+    ("vehicleOwner" = 'hotel' AND "thirdPartyId" IS NULL AND "hotelId" IS NOT NULL)
+  )
 );
 
 -- Third Parties table
@@ -125,6 +117,6 @@ CREATE TABLE IF NOT EXISTS accounts (
   note TEXT,
   "createdAt" TIMESTAMP DEFAULT NOW(),
   "updatedAt" TIMESTAMP DEFAULT NOW(),
-  CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'vehicle', 'caterer', 'company', 'third-party')),
+  CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'staff', 'vehicle', 'driver', 'company', 'third-party')),
   CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online', 'other'))
 );

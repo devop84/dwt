@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, User, Client, Location, Hotel, Guide, Driver, Vehicle, Caterer, Account, EntityType, ThirdParty, Route, RouteSegment, RouteLogistics, RouteParticipant, RouteTransaction } from '../types'
+import type { AuthResponse, User, Client, Location, Hotel, Staff, Driver, Vehicle, Account, EntityType, ThirdParty, Route, RouteSegment, RouteSegmentStop, RouteLogistics, RouteParticipant, RouteTransaction, RouteTransfer, RouteTransferVehicle, RouteTransferParticipant, RouteSegmentAccommodation, RouteSegmentAccommodationRoom, RoomType } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -115,25 +115,25 @@ export const hotelsApi = {
   },
 }
 
-export const guidesApi = {
-  getAll: async (): Promise<Guide[]> => {
-    const { data } = await api.get<Guide[]>('/guides')
+export const staffApi = {
+  getAll: async (): Promise<Staff[]> => {
+    const { data } = await api.get<Staff[]>('/staff')
     return data
   },
-  getById: async (id: string): Promise<Guide> => {
-    const { data } = await api.get<Guide>(`/guides/${id}`)
+  getById: async (id: string): Promise<Staff> => {
+    const { data } = await api.get<Staff>(`/staff/${id}`)
     return data
   },
-  create: async (guide: Omit<Guide, 'id' | 'createdAt' | 'updatedAt' | 'locationName'>): Promise<Guide> => {
-    const { data } = await api.post<Guide>('/guides', guide)
+  create: async (staff: Omit<Staff, 'id' | 'createdAt' | 'updatedAt' | 'locationName'>): Promise<Staff> => {
+    const { data } = await api.post<Staff>('/staff', staff)
     return data
   },
-  update: async (id: string, guide: Omit<Guide, 'id' | 'createdAt' | 'updatedAt' | 'locationName'>): Promise<Guide> => {
-    const { data } = await api.put<Guide>(`/guides/${id}`, guide)
+  update: async (id: string, staff: Partial<Omit<Staff, 'id' | 'createdAt' | 'updatedAt' | 'locationName'>>): Promise<Staff> => {
+    const { data } = await api.put<Staff>(`/staff/${id}`, staff)
     return data
   },
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/guides/${id}`)
+    await api.delete(`/staff/${id}`)
   },
 }
 
@@ -146,38 +146,16 @@ export const vehiclesApi = {
     const { data } = await api.get<Vehicle>(`/vehicles/${id}`)
     return data
   },
-  create: async (vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'locationName' | 'thirdPartyName'>): Promise<Vehicle> => {
+  create: async (vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'locationName' | 'thirdPartyName' | 'hotelName'>): Promise<Vehicle> => {
     const { data } = await api.post<Vehicle>('/vehicles', vehicle)
     return data
   },
-  update: async (id: string, vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'locationName' | 'thirdPartyName'>): Promise<Vehicle> => {
+  update: async (id: string, vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'locationName' | 'thirdPartyName' | 'hotelName'>): Promise<Vehicle> => {
     const { data } = await api.put<Vehicle>(`/vehicles/${id}`, vehicle)
     return data
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/vehicles/${id}`)
-  },
-}
-
-export const caterersApi = {
-  getAll: async (): Promise<Caterer[]> => {
-    const { data } = await api.get<Caterer[]>('/caterers')
-    return data
-  },
-  getById: async (id: string): Promise<Caterer> => {
-    const { data } = await api.get<Caterer>(`/caterers/${id}`)
-    return data
-  },
-  create: async (caterer: Omit<Caterer, 'id' | 'createdAt' | 'updatedAt' | 'locationName'>): Promise<Caterer> => {
-    const { data } = await api.post<Caterer>('/caterers', caterer)
-    return data
-  },
-  update: async (id: string, caterer: Omit<Caterer, 'id' | 'createdAt' | 'updatedAt' | 'locationName'>): Promise<Caterer> => {
-    const { data } = await api.put<Caterer>(`/caterers/${id}`, caterer)
-    return data
-  },
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/caterers/${id}`)
   },
 }
 
@@ -265,11 +243,11 @@ export const routeSegmentsApi = {
     const { data } = await api.get<RouteSegment[]>(`/routes/${routeId}/segments`)
     return data
   },
-  create: async (routeId: string, segment: Omit<RouteSegment, 'id' | 'routeId' | 'segmentDate' | 'createdAt' | 'updatedAt' | 'fromDestinationName' | 'toDestinationName' | 'overnightLocationName'>): Promise<RouteSegment> => {
+  create: async (routeId: string, segment: Omit<RouteSegment, 'id' | 'routeId' | 'segmentDate' | 'createdAt' | 'updatedAt' | 'fromDestinationName' | 'toDestinationName' | 'stops'>): Promise<RouteSegment> => {
     const { data } = await api.post<RouteSegment>(`/routes/${routeId}/segments`, segment)
     return data
   },
-  update: async (routeId: string, id: string, segment: Partial<Omit<RouteSegment, 'id' | 'routeId' | 'createdAt' | 'updatedAt' | 'fromDestinationName' | 'toDestinationName' | 'overnightLocationName'>>): Promise<RouteSegment> => {
+  update: async (routeId: string, id: string, segment: Partial<Omit<RouteSegment, 'id' | 'routeId' | 'createdAt' | 'updatedAt' | 'fromDestinationName' | 'toDestinationName' | 'stops'>>): Promise<RouteSegment> => {
     const { data } = await api.put<RouteSegment>(`/routes/${routeId}/segments/${id}`, segment)
     return data
   },
@@ -278,6 +256,23 @@ export const routeSegmentsApi = {
   },
   reorder: async (routeId: string, segmentOrders: Array<{ id: string; segmentOrder: number; dayNumber: number }>): Promise<void> => {
     await api.put(`/routes/${routeId}/segments/reorder`, { segmentOrders })
+  },
+}
+
+export const routeSegmentStopsApi = {
+  getAll: async (routeId: string, segmentId: string): Promise<RouteSegmentStop[]> => {
+    const { data } = await api.get<RouteSegmentStop[]>(`/routes/${routeId}/segments/${segmentId}/stops`)
+    return data
+  },
+  add: async (routeId: string, segmentId: string, stop: Omit<RouteSegmentStop, 'id' | 'segmentId' | 'createdAt' | 'updatedAt' | 'locationName'>): Promise<RouteSegmentStop> => {
+    const { data } = await api.post<RouteSegmentStop>(`/routes/${routeId}/segments/${segmentId}/stops`, stop)
+    return data
+  },
+  delete: async (routeId: string, segmentId: string, stopId: string): Promise<void> => {
+    await api.delete(`/routes/${routeId}/segments/${segmentId}/stops/${stopId}`)
+  },
+  reorder: async (routeId: string, segmentId: string, stopOrders: Array<{ id: string; stopOrder: number }>): Promise<void> => {
+    await api.put(`/routes/${routeId}/segments/${segmentId}/stops/reorder`, { stopOrders })
   },
 }
 
@@ -304,12 +299,58 @@ export const routeParticipantsApi = {
     const { data } = await api.get<RouteParticipant[]>(`/routes/${routeId}/participants`)
     return data
   },
-  create: async (routeId: string, participant: Omit<RouteParticipant, 'id' | 'routeId' | 'createdAt' | 'updatedAt' | 'clientName' | 'guideName'>): Promise<RouteParticipant> => {
+  create: async (routeId: string, participant: Omit<RouteParticipant, 'id' | 'routeId' | 'createdAt' | 'updatedAt' | 'clientName' | 'guideName' | 'segmentIds'> & { segmentIds?: string[] }): Promise<RouteParticipant> => {
     const { data } = await api.post<RouteParticipant>(`/routes/${routeId}/participants`, participant)
+    return data
+  },
+  update: async (routeId: string, id: string, participant: Partial<Omit<RouteParticipant, 'id' | 'routeId' | 'createdAt' | 'updatedAt' | 'clientName' | 'guideName'>> & { segmentIds?: string[] }): Promise<RouteParticipant> => {
+    const { data } = await api.put<RouteParticipant>(`/routes/${routeId}/participants/${id}`, participant)
     return data
   },
   delete: async (routeId: string, id: string): Promise<void> => {
     await api.delete(`/routes/${routeId}/participants/${id}`)
+  },
+  updateSegments: async (routeId: string, id: string, segmentIds: string[]): Promise<RouteParticipant> => {
+    const { data } = await api.put<RouteParticipant>(`/routes/${routeId}/participants/${id}/segments`, { segmentIds })
+    return data
+  },
+}
+
+export const routeSegmentParticipantsApi = {
+  getBySegment: async (routeId: string, segmentId: string): Promise<RouteParticipant[]> => {
+    const { data } = await api.get<RouteParticipant[]>(`/routes/${routeId}/segments/${segmentId}/participants`)
+    return data
+  },
+  add: async (routeId: string, segmentId: string, participantId: string): Promise<void> => {
+    await api.post(`/routes/${routeId}/segments/${segmentId}/participants`, { participantId })
+  },
+  remove: async (routeId: string, segmentId: string, participantId: string): Promise<void> => {
+    await api.delete(`/routes/${routeId}/segments/${segmentId}/participants/${participantId}`)
+  },
+}
+
+export const routeSegmentAccommodationsApi = {
+  getBySegment: async (routeId: string, segmentId: string): Promise<RouteSegmentAccommodation[]> => {
+    const { data } = await api.get<RouteSegmentAccommodation[]>(`/routes/${routeId}/segments/${segmentId}/accommodations`)
+    return data
+  },
+  addHotel: async (routeId: string, segmentId: string, payload: { hotelId: string; groupType: 'client' | 'staff'; notes?: string | null }): Promise<RouteSegmentAccommodation> => {
+    const { data } = await api.post<RouteSegmentAccommodation>(`/routes/${routeId}/segments/${segmentId}/accommodations`, payload)
+    return data
+  },
+  removeHotel: async (routeId: string, segmentId: string, accommodationId: string): Promise<void> => {
+    await api.delete(`/routes/${routeId}/segments/${segmentId}/accommodations/${accommodationId}`)
+  },
+  addRoom: async (routeId: string, segmentId: string, accommodationId: string, payload: { roomType: RoomType; roomLabel?: string | null; isCouple?: boolean; participantIds?: string[] }): Promise<RouteSegmentAccommodationRoom> => {
+    const { data } = await api.post<RouteSegmentAccommodationRoom>(`/routes/${routeId}/segments/${segmentId}/accommodations/${accommodationId}/rooms`, payload)
+    return data
+  },
+  updateRoom: async (routeId: string, segmentId: string, accommodationId: string, roomId: string, payload: { roomType?: RoomType; roomLabel?: string | null; isCouple?: boolean; participantIds?: string[] }): Promise<RouteSegmentAccommodationRoom> => {
+    const { data } = await api.put<RouteSegmentAccommodationRoom>(`/routes/${routeId}/segments/${segmentId}/accommodations/${accommodationId}/rooms/${roomId}`, payload)
+    return data
+  },
+  removeRoom: async (routeId: string, segmentId: string, accommodationId: string, roomId: string): Promise<void> => {
+    await api.delete(`/routes/${routeId}/segments/${segmentId}/accommodations/${accommodationId}/rooms/${roomId}`)
   },
 }
 
@@ -321,5 +362,41 @@ export const routeTransactionsApi = {
   create: async (routeId: string, transaction: Omit<RouteTransaction, 'id' | 'routeId' | 'createdAt' | 'fromAccountName' | 'toAccountName'>): Promise<RouteTransaction> => {
     const { data } = await api.post<RouteTransaction>(`/routes/${routeId}/transactions`, transaction)
     return data
+  },
+}
+
+export const routeTransfersApi = {
+  getAll: async (routeId: string): Promise<RouteTransfer[]> => {
+    const { data } = await api.get<RouteTransfer[]>(`/routes/${routeId}/transfers`)
+    return data
+  },
+  getById: async (routeId: string, id: string): Promise<RouteTransfer> => {
+    const { data } = await api.get<RouteTransfer>(`/routes/${routeId}/transfers/${id}`)
+    return data
+  },
+  create: async (routeId: string, transfer: Omit<RouteTransfer, 'id' | 'routeId' | 'totalCost' | 'createdAt' | 'updatedAt' | 'fromLocationName' | 'toLocationName' | 'vehicles' | 'participants'> & { vehicles?: Omit<RouteTransferVehicle, 'id' | 'transferId' | 'createdAt' | 'updatedAt' | 'vehicleName' | 'vehicleType'>[], participants?: string[] }): Promise<RouteTransfer> => {
+    const { data } = await api.post<RouteTransfer>(`/routes/${routeId}/transfers`, transfer)
+    return data
+  },
+  update: async (routeId: string, id: string, transfer: Partial<Omit<RouteTransfer, 'id' | 'routeId' | 'totalCost' | 'createdAt' | 'updatedAt' | 'fromLocationName' | 'toLocationName' | 'vehicles' | 'participants'>>): Promise<RouteTransfer> => {
+    const { data } = await api.put<RouteTransfer>(`/routes/${routeId}/transfers/${id}`, transfer)
+    return data
+  },
+  delete: async (routeId: string, id: string): Promise<void> => {
+    await api.delete(`/routes/${routeId}/transfers/${id}`)
+  },
+  addVehicle: async (routeId: string, transferId: string, vehicle: Omit<RouteTransferVehicle, 'id' | 'transferId' | 'createdAt' | 'updatedAt' | 'vehicleName' | 'vehicleType'>): Promise<RouteTransferVehicle> => {
+    const { data } = await api.post<RouteTransferVehicle>(`/routes/${routeId}/transfers/${transferId}/vehicles`, vehicle)
+    return data
+  },
+  removeVehicle: async (routeId: string, transferId: string, id: string): Promise<void> => {
+    await api.delete(`/routes/${routeId}/transfers/${transferId}/vehicles/${id}`)
+  },
+  addParticipant: async (routeId: string, transferId: string, participantId: string): Promise<RouteTransferParticipant> => {
+    const { data } = await api.post<RouteTransferParticipant>(`/routes/${routeId}/transfers/${transferId}/participants`, { participantId })
+    return data
+  },
+  removeParticipant: async (routeId: string, transferId: string, id: string): Promise<void> => {
+    await api.delete(`/routes/${routeId}/transfers/${transferId}/participants/${id}`)
   },
 }

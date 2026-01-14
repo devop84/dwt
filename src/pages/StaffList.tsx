@@ -1,20 +1,20 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { caterersApi, locationsApi } from '../lib/api'
-import type { Caterer, Location } from '../types'
-import { CatererForm } from '../components/CatererForm'
+import { staffApi, locationsApi } from '../lib/api'
+import type { Staff, Location } from '../types'
+import { StaffForm } from '../components/StaffForm'
 
-type FilterColumn = 'all' | 'name' | 'locationName' | 'type' | 'contactNumber' | 'email'
-type SortColumn = 'name' | 'locationName' | 'type' | 'contactNumber' | 'email'
+type FilterColumn = 'all' | 'name' | 'locationName' | 'languages' | 'contactNumber' | 'email'
+type SortColumn = 'name' | 'locationName' | 'languages' | 'contactNumber' | 'email'
 type SortDirection = 'asc' | 'desc' | null
 
-interface CatererWithLocation extends Caterer {
+interface StaffWithLocation extends Staff {
   locationName?: string
 }
 
-export function CaterersList() {
+export function StaffList() {
   const navigate = useNavigate()
-  const [caterers, setCaterers] = useState<CatererWithLocation[]>([])
+  const [staff, setStaff] = useState<StaffWithLocation[]>([])
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -23,23 +23,23 @@ export function CaterersList() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingCaterer, setEditingCaterer] = useState<CatererWithLocation | null>(null)
+  const [editingStaff, setEditingStaff] = useState<StaffWithLocation | null>(null)
 
   useEffect(() => {
-    loadCaterers()
+    loadStaff()
     loadLocations()
   }, [])
 
-  const loadCaterers = async () => {
+  const loadStaff = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await caterersApi.getAll() as CatererWithLocation[]
-      setCaterers(Array.isArray(data) ? data : [])
+      const data = await staffApi.getAll() as StaffWithLocation[]
+      setStaff(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setError(err.message || 'Failed to load caterers')
-      setCaterers([]) // Ensure caterers is always an array
-      console.error('Error loading caterers:', err)
+      setError(err.message || 'Failed to load staff')
+      setStaff([]) // Ensure staff is always an array
+      console.error('Error loading staff:', err)
     } finally {
       setLoading(false)
     }
@@ -55,35 +55,35 @@ export function CaterersList() {
     }
   }
 
-  // Filter and sort caterers
-  const filteredCaterers = useMemo(() => {
-    let result = [...caterers]
+  // Filter and sort staff
+  const filteredStaffs = useMemo(() => {
+    let result = [...staff]
 
     // Apply search filter
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase().trim()
 
-      result = result.filter((caterer) => {
+      result = result.filter((staff) => {
         if (filterColumn === 'all') {
           return (
-            caterer.name.toLowerCase().includes(search) ||
-            (caterer.locationName && caterer.locationName.toLowerCase().includes(search)) ||
-            (caterer.type && caterer.type.toLowerCase().includes(search)) ||
-            (caterer.contactNumber && caterer.contactNumber.toLowerCase().includes(search)) ||
-            (caterer.email && caterer.email.toLowerCase().includes(search))
+            staff.name.toLowerCase().includes(search) ||
+            (staff.locationName && staff.locationName.toLowerCase().includes(search)) ||
+            (staff.languages && staff.languages.toLowerCase().includes(search)) ||
+            (staff.contactNumber && staff.contactNumber.toLowerCase().includes(search)) ||
+            (staff.email && staff.email.toLowerCase().includes(search))
           )
         } else {
           switch (filterColumn) {
             case 'name':
-              return caterer.name.toLowerCase().includes(search)
+              return staff.name.toLowerCase().includes(search)
             case 'locationName':
-              return caterer.locationName?.toLowerCase().includes(search) ?? false
-            case 'type':
-              return caterer.type?.toLowerCase().includes(search) ?? false
+              return staff.locationName?.toLowerCase().includes(search) ?? false
+            case 'languages':
+              return staff.languages?.toLowerCase().includes(search) ?? false
             case 'contactNumber':
-              return caterer.contactNumber?.toLowerCase().includes(search) ?? false
+              return staff.contactNumber?.toLowerCase().includes(search) ?? false
             case 'email':
-              return caterer.email?.toLowerCase().includes(search) ?? false
+              return staff.email?.toLowerCase().includes(search) ?? false
             default:
               return true
           }
@@ -106,9 +106,9 @@ export function CaterersList() {
             aValue = a.locationName?.toLowerCase() || ''
             bValue = b.locationName?.toLowerCase() || ''
             break
-          case 'type':
-            aValue = a.type?.toLowerCase() || ''
-            bValue = b.type?.toLowerCase() || ''
+          case 'languages':
+            aValue = a.languages?.toLowerCase() || ''
+            bValue = b.languages?.toLowerCase() || ''
             break
           case 'contactNumber':
             aValue = a.contactNumber?.toLowerCase() || ''
@@ -127,7 +127,7 @@ export function CaterersList() {
     }
 
     return result
-  }, [caterers, searchTerm, filterColumn, sortColumn, sortDirection])
+  }, [staff, searchTerm, filterColumn, sortColumn, sortDirection])
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -152,32 +152,25 @@ export function CaterersList() {
     return ''
   }
 
-  const handleRowClick = (catererId: string) => {
-    navigate(`/caterers/${catererId}`)
+  const handleRowClick = (staffId: string) => {
+    navigate(`/staff/${staffId}`)
+  }
+
+  const handleEdit = (e: React.MouseEvent, staff: StaffWithLocation) => {
+    e.stopPropagation()
+    setEditingStaff(staff)
+    setShowForm(true)
   }
 
   const handleAdd = () => {
-    setEditingCaterer(null)
+    setEditingStaff(null)
     setShowForm(true)
   }
 
   const handleSave = async () => {
-    await loadCaterers()
+    await loadStaff()
     setShowForm(false)
-    setEditingCaterer(null)
-  }
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'restaurant':
-        return 'Restaurant'
-      case 'hotel':
-        return 'Hotel'
-      case 'particular':
-        return 'Particular'
-      default:
-        return type
-    }
+    setEditingStaff(null)
   }
 
   if (loading) {
@@ -198,7 +191,7 @@ export function CaterersList() {
             color: '#111827',
             margin: 0
           }}>
-            Caterers
+            Staffs
           </h1>
         </div>
         <div style={{
@@ -208,7 +201,7 @@ export function CaterersList() {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#6b7280', margin: 0 }}>Loading caterers...</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading staff...</p>
         </div>
       </div>
     )
@@ -232,7 +225,7 @@ export function CaterersList() {
             color: '#111827',
             margin: 0
           }}>
-            Caterers
+            Staffs
           </h1>
         </div>
         <div style={{
@@ -251,7 +244,7 @@ export function CaterersList() {
             <p style={{ margin: 0 }}>Error: {error}</p>
           </div>
           <button
-            onClick={loadCaterers}
+            onClick={loadStaff}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: '#3b82f6',
@@ -289,7 +282,7 @@ export function CaterersList() {
           color: '#111827',
           margin: 0
         }}>
-          Caterers
+          Staffs
         </h1>
         <div style={{
           display: 'flex',
@@ -300,9 +293,9 @@ export function CaterersList() {
             color: '#6b7280',
             fontSize: '0.875rem'
           }}>
-            {searchTerm ? filteredCaterers.length : caterers.length} {filteredCaterers.length === 1 ? 'caterer' : 'caterers'}
-            {searchTerm && filteredCaterers.length !== caterers.length && (
-              <span style={{ color: '#9ca3af' }}> of {caterers.length}</span>
+            {searchTerm ? filteredStaffs.length : staff.length} {filteredStaffs.length === 1 ? 'staff' : 'staff'}
+            {searchTerm && filteredStaffs.length !== staff.length && (
+              <span style={{ color: '#9ca3af' }}> of {staff.length}</span>
             )}
           </div>
           <button
@@ -324,7 +317,7 @@ export function CaterersList() {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
           >
-            <span>+</span> Add Caterer
+            <span>+</span> Add Staff
           </button>
         </div>
       </div>
@@ -343,7 +336,7 @@ export function CaterersList() {
       }}>
         <input
           type="text"
-          placeholder="Search caterers..."
+          placeholder="Search staff..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
@@ -371,7 +364,7 @@ export function CaterersList() {
           <option value="contactNumber">Contact Number</option>
           <option value="email">Email</option>
           <option value="locationName">Location</option>
-          <option value="type">Type</option>
+          <option value="languages">Languages</option>
         </select>
         {searchTerm && (
           <button
@@ -398,7 +391,7 @@ export function CaterersList() {
       </div>
 
       {/* Content Card */}
-      {filteredCaterers.length === 0 && searchTerm ? (
+      {filteredStaffs.length === 0 && searchTerm ? (
         <div style={{
           backgroundColor: 'white',
           padding: '3rem',
@@ -411,10 +404,10 @@ export function CaterersList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No caterers match your search criteria.
+            No staff match your search criteria.
           </p>
         </div>
-      ) : filteredCaterers.length === 0 ? (
+      ) : filteredStaffs.length === 0 ? (
         <div style={{
           backgroundColor: 'white',
           padding: '3rem',
@@ -427,7 +420,7 @@ export function CaterersList() {
             fontSize: '1rem',
             margin: 0
           }}>
-            No caterers found. Caterers will appear here once added.
+            No staff found. Staffs will appear here once added.
           </p>
         </div>
       ) : (
@@ -531,33 +524,6 @@ export function CaterersList() {
                     Email{getSortIndicator('email')}
                   </th>
                   <th
-                    onClick={() => handleSort('type')}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      textAlign: 'left',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      color: sortColumn === 'type' ? '#3b82f6' : '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      transition: 'color 0.2s, background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (sortColumn !== 'type') {
-                        e.currentTarget.style.backgroundColor = '#f3f4f6'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (sortColumn !== 'type') {
-                        e.currentTarget.style.backgroundColor = '#f9fafb'
-                      }
-                    }}
-                  >
-                    Type{getSortIndicator('type')}
-                  </th>
-                  <th
                     onClick={() => handleSort('locationName')}
                     style={{
                       padding: '0.75rem 1rem',
@@ -584,13 +550,40 @@ export function CaterersList() {
                   >
                     Location{getSortIndicator('locationName')}
                   </th>
+                  <th
+                    onClick={() => handleSort('languages')}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      textAlign: 'left',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      color: sortColumn === 'languages' ? '#3b82f6' : '#6b7280',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      transition: 'color 0.2s, background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (sortColumn !== 'languages') {
+                        e.currentTarget.style.backgroundColor = '#f3f4f6'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (sortColumn !== 'languages') {
+                        e.currentTarget.style.backgroundColor = '#f9fafb'
+                      }
+                    }}
+                  >
+                    Languages{getSortIndicator('languages')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {filteredCaterers.map((caterer) => (
+                {filteredStaffs.map((staff) => (
                   <tr
-                    key={caterer.id}
-                    onClick={() => handleRowClick(caterer.id)}
+                    key={staff.id}
+                    onClick={() => handleRowClick(staff.id)}
                     style={{
                       borderBottom: '1px solid #e5e7eb',
                       cursor: 'pointer',
@@ -604,19 +597,19 @@ export function CaterersList() {
                     }}
                   >
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {caterer.name}
+                      {staff.name}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {caterer.contactNumber || '-'}
+                      {staff.contactNumber || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {caterer.email || '-'}
+                      {staff.email || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {getTypeLabel(caterer.type)}
+                      {staff.locationName || '-'}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#111827' }}>
-                      {caterer.locationName || '-'}
+                      {staff.languages || '-'}
                     </td>
                   </tr>
                 ))}
@@ -627,12 +620,12 @@ export function CaterersList() {
       )}
 
       {showForm && (
-        <CatererForm
-          caterer={editingCaterer}
+        <StaffForm
+          staff={editingStaff}
           locations={locations}
           onClose={() => {
             setShowForm(false)
-            setEditingCaterer(null)
+            setEditingStaff(null)
           }}
           onSave={handleSave}
         />

@@ -49,12 +49,10 @@ export function AccountDetails() {
         navigate(`/clients/${account.entityId}`)
       } else if (account.entityType === 'hotel') {
         navigate(`/hotels/${account.entityId}`)
-      } else if (account.entityType === 'guide') {
-        navigate(`/guides/${account.entityId}`)
+      } else if (account.entityType === 'staff') {
+        navigate(`/staff/${account.entityId}`)
       } else if (account.entityType === 'vehicle') {
         navigate(`/vehicles/${account.entityId}`)
-      } else if (account.entityType === 'caterer') {
-        navigate(`/caterers/${account.entityId}`)
       } else {
         navigate('/accounts')
       }
@@ -86,8 +84,6 @@ export function AccountDetails() {
       navigate(`/guides/${account.entityId}`)
     } else if (account.entityType === 'vehicle') {
       navigate(`/vehicles/${account.entityId}`)
-    } else if (account.entityType === 'caterer') {
-      navigate(`/caterers/${account.entityId}`)
     } else {
       navigate('/accounts')
     }

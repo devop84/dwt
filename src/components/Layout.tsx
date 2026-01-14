@@ -223,32 +223,32 @@ export function Layout({ children }: LayoutProps) {
             Hotels
           </Link>
           <Link
-            to="/guides"
+            to="/staff"
             style={{
               display: 'block',
               padding: '0.75rem 1.5rem',
-              color: isActive('/guides') ? '#3b82f6' : '#6b7280',
+              color: isActive('/staff') ? '#3b82f6' : '#6b7280',
               textDecoration: 'none',
               fontSize: '0.875rem',
-              fontWeight: isActive('/guides') ? '600' : '500',
-              backgroundColor: isActive('/guides') ? '#eff6ff' : 'transparent',
-              borderLeft: isActive('/guides') ? '3px solid #3b82f6' : '3px solid transparent',
+              fontWeight: isActive('/staff') ? '600' : '500',
+              backgroundColor: isActive('/staff') ? '#eff6ff' : 'transparent',
+              borderLeft: isActive('/staff') ? '3px solid #3b82f6' : '3px solid transparent',
               transition: 'all 0.2s'
             }}
             onMouseOver={(e) => {
-              if (!isActive('/guides')) {
+              if (!isActive('/staff')) {
                 e.currentTarget.style.backgroundColor = '#f9fafb'
                 e.currentTarget.style.color = '#111827'
               }
             }}
             onMouseOut={(e) => {
-              if (!isActive('/guides')) {
+              if (!isActive('/staff')) {
                 e.currentTarget.style.backgroundColor = 'transparent'
                 e.currentTarget.style.color = '#6b7280'
               }
             }}
           >
-            Guides
+            Staff
           </Link>
         <Link
           to="/vehicles"
@@ -277,34 +277,6 @@ export function Layout({ children }: LayoutProps) {
           }}
         >
           Vehicles
-        </Link>
-        <Link
-          to="/caterers"
-          style={{
-            display: 'block',
-            padding: '0.75rem 1.5rem',
-            color: isActive('/caterers') ? '#3b82f6' : '#6b7280',
-            textDecoration: 'none',
-            fontSize: '0.875rem',
-            fontWeight: isActive('/caterers') ? '600' : '500',
-            backgroundColor: isActive('/caterers') ? '#eff6ff' : 'transparent',
-            borderLeft: isActive('/caterers') ? '3px solid #3b82f6' : '3px solid transparent',
-            transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => {
-            if (!isActive('/caterers')) {
-              e.currentTarget.style.backgroundColor = '#f9fafb'
-              e.currentTarget.style.color = '#111827'
-            }
-          }}
-          onMouseOut={(e) => {
-            if (!isActive('/caterers')) {
-              e.currentTarget.style.backgroundColor = 'transparent'
-              e.currentTarget.style.color = '#6b7280'
-            }
-          }}
-        >
-          Caterers
         </Link>
         <Link
           to="/accounts"

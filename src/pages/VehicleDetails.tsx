@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { vehiclesApi, locationsApi, thirdPartiesApi } from '../lib/api'
-import type { Vehicle, Location, ThirdParty } from '../types'
+import { vehiclesApi, locationsApi, thirdPartiesApi, hotelsApi } from '../lib/api'
+import type { Vehicle, Location, ThirdParty, Hotel } from '../types'
 import { VehicleForm } from '../components/VehicleForm'
 
 interface VehicleWithRelations extends Vehicle {
   locationName?: string
   thirdPartyName?: string
+  hotelName?: string
 }
 
 export function VehicleDetails() {
@@ -15,6 +16,7 @@ export function VehicleDetails() {
   const [vehicle, setVehicle] = useState<VehicleWithRelations | null>(null)
   const [locations, setLocations] = useState<Location[]>([])
   const [thirdParties, setThirdParties] = useState<ThirdParty[]>([])
+  const [hotels, setHotels] = useState<Hotel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditForm, setShowEditForm] = useState(false)
@@ -25,6 +27,7 @@ export function VehicleDetails() {
       loadVehicle()
       loadLocations()
       loadThirdParties()
+      loadHotels()
     }
   }, [id])
 
@@ -113,7 +116,9 @@ export function VehicleDetails() {
   }
 
   const getOwnerLabel = (owner: string) => {
-    return owner === 'company' ? 'Company Vehicle' : 'Third Party Vehicle'
+    if (owner === 'company') return 'Company Vehicle'
+    if (owner === 'hotel') return 'Hotel Vehicle'
+    return 'Third Party Vehicle'
   }
 
   if (loading) {
@@ -184,6 +189,13 @@ export function VehicleDetails() {
                 <p style={{ fontSize: '0.875rem', color: '#111827', margin: 0 }}>{vehicle.thirdPartyName || '-'}</p>
               </div>
             )}
+
+            {vehicle.vehicleOwner === 'hotel' && (
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Hotel</label>
+                <p style={{ fontSize: '0.875rem', color: '#111827', margin: 0 }}>{vehicle.hotelName || '-'}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -205,6 +217,7 @@ export function VehicleDetails() {
           vehicle={vehicle}
           locations={locations}
           thirdParties={thirdParties}
+          hotels={hotels}
           onClose={() => setShowEditForm(false)}
           onSave={handleSave}
         />

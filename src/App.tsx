@@ -11,12 +11,10 @@ import { LocationsList } from './pages/LocationsList'
 import { LocationDetails } from './pages/LocationDetails'
 import { HotelsList } from './pages/HotelsList'
 import { HotelDetails } from './pages/HotelDetails'
-import { GuidesList } from './pages/GuidesList'
-import { GuideDetails } from './pages/GuideDetails'
+import { StaffList } from './pages/StaffList'
+import { StaffDetails } from './pages/StaffDetails'
 import { VehiclesList } from './pages/VehiclesList'
 import { VehicleDetails } from './pages/VehicleDetails'
-import { CaterersList } from './pages/CaterersList'
-import { CatererDetails } from './pages/CatererDetails'
 import { AccountsList } from './pages/AccountsList'
 import { AccountDetails } from './pages/AccountDetails'
 import { CompanyAccountsList } from './pages/CompanyAccountsList'
@@ -26,6 +24,7 @@ import { ThirdPartyDetails } from './pages/ThirdPartyDetails'
 import { RoutesList } from './pages/RoutesList'
 import { RouteBuilder } from './pages/RouteBuilder'
 import { RouteDetails } from './pages/RouteDetails'
+import { SegmentDetails } from './pages/SegmentDetails'
 
 function App() {
   return (
@@ -98,18 +97,18 @@ function App() {
               }
             />
             <Route
-              path="/guides"
+              path="/staff"
               element={
                 <Layout>
-                  <GuidesList />
+                  <StaffList />
                 </Layout>
               }
             />
             <Route
-              path="/guides/:id"
+              path="/staff/:id"
               element={
                 <Layout>
-                  <GuideDetails />
+                  <StaffDetails />
                 </Layout>
               }
             />
@@ -126,22 +125,6 @@ function App() {
               element={
                 <Layout>
                   <VehicleDetails />
-                </Layout>
-              }
-            />
-            <Route
-              path="/caterers"
-              element={
-                <Layout>
-                  <CaterersList />
-                </Layout>
-              }
-            />
-            <Route
-              path="/caterers/:id"
-              element={
-                <Layout>
-                  <CatererDetails />
                 </Layout>
               }
             />
@@ -214,6 +197,14 @@ function App() {
               element={
                 <Layout>
                   <RouteDetails />
+                </Layout>
+              }
+            />
+            <Route
+              path="/routes/:routeId/segments/:segmentId"
+              element={
+                <Layout>
+                  <SegmentDetails />
                 </Layout>
               }
             />

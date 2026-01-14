@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { routesApi, routeSegmentsApi, routeLogisticsApi, routeParticipantsApi, locationsApi, hotelsApi, vehiclesApi, caterersApi, guidesApi, clientsApi } from '../lib/api'
-import type { Route, RouteSegment, RouteLogistics, RouteParticipant, Location, Hotel, Vehicle, Caterer, Guide, Client } from '../types'
+import { routesApi, routeSegmentsApi, routeLogisticsApi, routeParticipantsApi, locationsApi, hotelsApi, vehiclesApi, staffApi, clientsApi } from '../lib/api'
+import type { Route, RouteSegment, RouteLogistics, RouteParticipant, Location, Hotel, Vehicle, Staff, Client } from '../types'
 import { RouteForm } from '../components/RouteForm'
 
 type Step = 'info' | 'segments' | 'logistics' | 'participants' | 'review'
@@ -16,8 +16,7 @@ export function RouteBuilder() {
   const [locations, setLocations] = useState<Location[]>([])
   const [hotels, setHotels] = useState<Hotel[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [caterers, setCaterers] = useState<Caterer[]>([])
-  const [guides, setGuides] = useState<Guide[]>([])
+  const [staff, setStaff] = useState<Staff[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState<Step>('info')
@@ -35,18 +34,16 @@ export function RouteBuilder() {
 
   const loadInitialData = async () => {
     try {
-      const [locs, hots, vehs, cats, gds, clis] = await Promise.all([
+      const [locs, hots, vehs, gds, clis] = await Promise.all([
         locationsApi.getAll(),
         hotelsApi.getAll(),
         vehiclesApi.getAll(),
-        caterersApi.getAll(),
-        guidesApi.getAll(),
+        staffApi.getAll(),
         clientsApi.getAll()
       ])
       setLocations(locs)
       setHotels(hots)
       setVehicles(vehs)
-      setCaterers(cats)
       setGuides(gds)
       setClients(clis)
     } catch (err) {
@@ -101,8 +98,6 @@ export function RouteBuilder() {
         toDestinationId: null,
         overnightLocationId: null,
         distance: 0,
-        estimatedDuration: null,
-        segmentType: 'travel',
         segmentOrder: segments.length,
         notes: null
       })
@@ -122,8 +117,6 @@ export function RouteBuilder() {
         toDestinationId: segment.toDestinationId,
         overnightLocationId: segment.overnightLocationId,
         distance: segment.distance,
-        estimatedDuration: segment.estimatedDuration,
-        segmentType: segment.segmentType,
         segmentOrder: segment.segmentOrder,
         notes: segment.notes
       })
@@ -395,7 +388,6 @@ export function RouteBuilder() {
                               </div>
                               <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem', color: '#6b7280', marginTop: '0.5rem' }}>
                                 <span><strong>Distance:</strong> {segment.distance} km</span>
-                                <span><strong>Type:</strong> {segment.segmentType}</span>
                               </div>
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -544,8 +536,6 @@ function SegmentForm({ segment, locations, onSave, onCancel }: SegmentFormProps)
     toDestinationId: segment.toDestinationId || '',
     overnightLocationId: segment.overnightLocationId || '',
     distance: segment.distance,
-    estimatedDuration: segment.estimatedDuration || '',
-    segmentType: segment.segmentType,
     notes: segment.notes || ''
   })
   const [saving, setSaving] = useState(false)
@@ -560,8 +550,6 @@ function SegmentForm({ segment, locations, onSave, onCancel }: SegmentFormProps)
         toDestinationId: formData.toDestinationId || null,
         overnightLocationId: formData.overnightLocationId || null,
         distance: formData.distance,
-        estimatedDuration: formData.estimatedDuration ? parseInt(formData.estimatedDuration.toString()) : null,
-        segmentType: formData.segmentType,
         notes: formData.notes || null
       })
     } catch (err) {
@@ -585,18 +573,6 @@ function SegmentForm({ segment, locations, onSave, onCancel }: SegmentFormProps)
           />
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.25rem' }}>Segment Type</label>
-          <select
-            value={formData.segmentType}
-            onChange={(e) => setFormData({ ...formData, segmentType: e.target.value as any })}
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem' }}
-          >
-            <option value="travel">Travel</option>
-            <option value="transfer-only">Transfer Only</option>
-            <option value="free-day">Free Day</option>
-          </select>
-        </div>
-        <div>
           <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.25rem' }}>Distance (km)</label>
           <input
             type="number"
@@ -605,16 +581,6 @@ function SegmentForm({ segment, locations, onSave, onCancel }: SegmentFormProps)
             min="0"
             max="60"
             step="0.1"
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem' }}
-          />
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.25rem' }}>Duration (hours)</label>
-          <input
-            type="number"
-            value={formData.estimatedDuration}
-            onChange={(e) => setFormData({ ...formData, estimatedDuration: e.target.value ? parseInt(e.target.value) : null })}
-            min="0"
             style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem' }}
           />
         </div>

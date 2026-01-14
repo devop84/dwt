@@ -1,15 +1,15 @@
 import { useState, useEffect, FormEvent } from 'react'
-import { guidesApi } from '../lib/api'
-import type { Guide, Location } from '../types'
+import { staffApi } from '../lib/api'
+import type { Staff, Location } from '../types'
 
-interface GuideFormProps {
-  guide?: Guide | null
+interface StaffFormProps {
+  staff?: Staff | null
   locations: Location[]
   onClose: () => void
   onSave: () => Promise<void>
 }
 
-export function GuideForm({ guide, locations, onClose, onSave }: GuideFormProps) {
+export function StaffForm({ staff, locations, onClose, onSave }: StaffFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     contactNumber: '',
@@ -22,17 +22,17 @@ export function GuideForm({ guide, locations, onClose, onSave }: GuideFormProps)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (guide) {
+    if (staff) {
       setFormData({
-        name: guide.name || '',
-        contactNumber: guide.contactNumber || '',
-        email: guide.email || '',
-        locationId: guide.locationId || '',
-        languages: guide.languages || '',
-        note: guide.note || '',
+        name: staff.name || '',
+        contactNumber: staff.contactNumber || '',
+        email: staff.email || '',
+        locationId: staff.locationId || '',
+        languages: staff.languages || '',
+        note: staff.note || '',
       })
     }
-  }, [guide])
+  }, [staff])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -50,8 +50,8 @@ export function GuideForm({ guide, locations, onClose, onSave }: GuideFormProps)
 
     setLoading(true)
     try {
-      if (guide) {
-        await guidesApi.update(guide.id, {
+      if (staff) {
+        await staffApi.update(staff.id, {
           name: formData.name.trim(),
           contactNumber: formData.contactNumber.trim() || null,
           email: formData.email.trim() || null,
@@ -60,7 +60,7 @@ export function GuideForm({ guide, locations, onClose, onSave }: GuideFormProps)
           note: formData.note.trim() || null,
         })
       } else {
-        await guidesApi.create({
+        await staffApi.create({
           name: formData.name.trim(),
           contactNumber: formData.contactNumber.trim() || null,
           email: formData.email.trim() || null,
@@ -72,7 +72,7 @@ export function GuideForm({ guide, locations, onClose, onSave }: GuideFormProps)
       await onSave()
       onClose()
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to save guide')
+      setError(err.response?.data?.message || err.message || 'Failed to save staff')
     } finally {
       setLoading(false)
     }
@@ -136,7 +136,7 @@ export function GuideForm({ guide, locations, onClose, onSave }: GuideFormProps)
           color: '#111827',
           marginBottom: '1.5rem'
         }}>
-          {guide ? 'Edit Guide' : 'Add Guide'}
+          {staff ? 'Edit Staff' : 'Add Staff'}
         </h2>
 
         {error && (
@@ -234,7 +234,7 @@ export function GuideForm({ guide, locations, onClose, onSave }: GuideFormProps)
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
-                placeholder="e.g., guide@example.com"
+                placeholder="e.g., staff@example.com"
                 style={inputStyle}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = '#3b82f6'
@@ -279,7 +279,7 @@ export function GuideForm({ guide, locations, onClose, onSave }: GuideFormProps)
               value={formData.note}
               onChange={(e) => handleChange('note', e.target.value)}
               rows={4}
-              placeholder="Additional information about this guide..."
+              placeholder="Additional information about this staff..."
               style={{
                 ...inputStyle,
                 resize: 'vertical',
@@ -354,7 +354,7 @@ export function GuideForm({ guide, locations, onClose, onSave }: GuideFormProps)
                 }
               }}
             >
-              {loading ? 'Saving...' : guide ? 'Update' : 'Create'}
+              {loading ? 'Saving...' : staff ? 'Update' : 'Create'}
             </button>
           </div>
         </form>

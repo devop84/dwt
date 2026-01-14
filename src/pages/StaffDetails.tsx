@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { guidesApi, locationsApi } from '../lib/api'
-import type { Guide, Location } from '../types'
-import { GuideForm } from '../components/GuideForm'
+import { staffApi, locationsApi } from '../lib/api'
+import type { Staff, Location } from '../types'
+import { StaffForm } from '../components/StaffForm'
 import { AccountsCards } from '../components/AccountsCards'
 
-interface GuideWithLocation extends Guide {
+interface StaffWithLocation extends Staff {
   locationName?: string
 }
 
-export function GuideDetails() {
+export function StaffDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [guide, setGuide] = useState<GuideWithLocation | null>(null)
+  const [staff, setStaff] = useState<StaffWithLocation | null>(null)
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,20 +21,20 @@ export function GuideDetails() {
 
   useEffect(() => {
     if (id) {
-      loadGuide()
+      loadStaff()
       loadLocations()
     }
   }, [id])
 
-  const loadGuide = async () => {
+  const loadStaff = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await guidesApi.getById(id!) as GuideWithLocation
-      setGuide(data)
+      const data = await staffApi.getById(id!) as StaffWithLocation
+      setStaff(data)
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to load guide')
-      console.error('Error loading guide:', err)
+      setError(err.response?.data?.message || err.message || 'Failed to load staff')
+      console.error('Error loading staff:', err)
     } finally {
       setLoading(false)
     }
@@ -51,26 +51,26 @@ export function GuideDetails() {
   }
 
   const handleDelete = async () => {
-    if (!guide) return
+    if (!staff) return
     
-    if (!confirm('Are you sure you want to delete this guide? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete this staff? This action cannot be undone.')) {
       return
     }
 
     try {
       setDeleting(true)
-      await guidesApi.delete(guide.id)
-      navigate('/guides')
+      await staffApi.delete(staff.id)
+      navigate('/staffs')
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to delete guide')
+      alert(err.response?.data?.message || err.message || 'Failed to delete staff')
     } finally {
       setDeleting(false)
     }
   }
 
   const handleSave = async () => {
-    if (!guide) return
-    await loadGuide()
+    if (!staff) return
+    await loadStaff()
     setShowEditForm(false)
   }
 
@@ -107,7 +107,7 @@ export function GuideDetails() {
             color: '#111827',
             margin: 0
           }}>
-            Guide Details
+            Staff Details
           </h1>
         </div>
         <div style={{
@@ -117,13 +117,13 @@ export function GuideDetails() {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#6b7280', margin: 0 }}>Loading guide details...</p>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading staff details...</p>
         </div>
       </div>
     )
   }
 
-  if (error || !guide) {
+  if (error || !staff) {
     return (
       <div style={{
         maxWidth: '1200px',
@@ -141,7 +141,7 @@ export function GuideDetails() {
             color: '#111827',
             margin: 0
           }}>
-            Guide Details
+            Staff Details
           </h1>
         </div>
         <div style={{
@@ -157,10 +157,10 @@ export function GuideDetails() {
             borderRadius: '0.5rem',
             marginBottom: '1rem'
           }}>
-            <p style={{ margin: 0 }}>Error: {error || 'Guide not found'}</p>
+            <p style={{ margin: 0 }}>Error: {error || 'Staff not found'}</p>
           </div>
           <button
-            onClick={() => navigate('/guides')}
+            onClick={() => navigate('/staffs')}
             style={{
               padding: '0.625rem 1.25rem',
               backgroundColor: '#3b82f6',
@@ -175,7 +175,7 @@ export function GuideDetails() {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
           >
-            Back to Guides
+            Back to Staffs
           </button>
         </div>
       </div>
@@ -199,14 +199,14 @@ export function GuideDetails() {
           color: '#111827',
           margin: 0
         }}>
-          Guide Details
+          Staff Details
         </h1>
         <div style={{
           display: 'flex',
           gap: '0.75rem'
         }}>
           <button
-            onClick={() => navigate('/guides')}
+            onClick={() => navigate('/staffs')}
             style={{
               padding: '0.625rem 1.25rem',
               backgroundColor: 'white',
@@ -287,7 +287,7 @@ export function GuideDetails() {
             color: '#111827',
             margin: '0 0 1.5rem 0'
           }}>
-            {guide.name}
+            {staff.name}
           </h2>
           
           <div style={{
@@ -312,7 +312,7 @@ export function GuideDetails() {
                 color: '#111827',
                 margin: 0
               }}>
-                {guide.locationName || '-'}
+                {staff.locationName || '-'}
               </p>
             </div>
 
@@ -333,7 +333,7 @@ export function GuideDetails() {
                 color: '#111827',
                 margin: 0
               }}>
-                {guide.languages || '-'}
+                {staff.languages || '-'}
               </p>
             </div>
 
@@ -354,7 +354,7 @@ export function GuideDetails() {
                 color: '#111827',
                 margin: 0
               }}>
-                {guide.contactNumber || '-'}
+                {staff.contactNumber || '-'}
               </p>
             </div>
 
@@ -375,13 +375,13 @@ export function GuideDetails() {
                 color: '#111827',
                 margin: 0
               }}>
-                {guide.email || '-'}
+                {staff.email || '-'}
               </p>
             </div>
           </div>
         </div>
 
-        {guide.note && (
+        {staff.note && (
           <div style={{
             padding: '2rem',
             borderBottom: '1px solid #e5e7eb',
@@ -404,12 +404,12 @@ export function GuideDetails() {
               margin: 0,
               whiteSpace: 'pre-wrap'
             }}>
-              {guide.note}
+              {staff.note}
             </p>
           </div>
         )}
 
-        <AccountsCards entityType="guide" entityId={guide.id} />
+        <AccountsCards entityType="staff" entityId={staff.id} />
 
         <div style={{
           padding: '1.5rem 2rem',
@@ -421,17 +421,17 @@ export function GuideDetails() {
           color: '#6b7280'
         }}>
           <div>
-            <span style={{ fontWeight: '600' }}>Created:</span> {formatDateTime(guide.createdAt)}
+            <span style={{ fontWeight: '600' }}>Created:</span> {formatDateTime(staff.createdAt)}
           </div>
           <div>
-            <span style={{ fontWeight: '600' }}>Last Updated:</span> {formatDateTime(guide.updatedAt)}
+            <span style={{ fontWeight: '600' }}>Last Updated:</span> {formatDateTime(staff.updatedAt)}
           </div>
         </div>
       </div>
 
       {showEditForm && (
-        <GuideForm
-          guide={guide}
+        <StaffForm
+          staff={staff}
           locations={locations}
           onClose={() => setShowEditForm(false)}
           onSave={handleSave}

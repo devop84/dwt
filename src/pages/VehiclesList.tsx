@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { vehiclesApi, locationsApi, thirdPartiesApi } from '../lib/api'
-import type { Vehicle, Location, ThirdParty } from '../types'
+import { vehiclesApi, locationsApi, thirdPartiesApi, hotelsApi } from '../lib/api'
+import type { Vehicle, Location, ThirdParty, Hotel } from '../types'
 import { VehicleForm } from '../components/VehicleForm'
 
 type FilterColumn = 'all' | 'type' | 'owner' | 'locationName'
@@ -10,7 +10,8 @@ type SortColumn = 'type' | 'owner' | 'locationName'
 interface VehicleWithRelations extends Vehicle {
   locationName?: string
   thirdPartyName?: string
-  owner?: string // Computed: "Company" or third party name
+  hotelName?: string
+  owner?: string // Computed: "Company", hotel name, or third party name
 }
 
 export function VehiclesList() {
@@ -18,6 +19,7 @@ export function VehiclesList() {
   const [vehicles, setVehicles] = useState<VehicleWithRelations[]>([])
   const [locations, setLocations] = useState<Location[]>([])
   const [thirdParties, setThirdParties] = useState<ThirdParty[]>([])
+  const [hotels, setHotels] = useState<Hotel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -31,6 +33,7 @@ export function VehiclesList() {
     loadVehicles()
     loadLocations()
     loadThirdParties()
+    loadHotels()
   }, [])
 
   const loadVehicles = async () => {
@@ -41,7 +44,11 @@ export function VehiclesList() {
       // Compute owner name for each vehicle
       const vehiclesWithOwner = data.map(vehicle => ({
         ...vehicle,
-        owner: vehicle.vehicleOwner === 'company' ? 'Company' : vehicle.thirdPartyName || ''
+        owner: vehicle.vehicleOwner === 'company' 
+          ? 'Company' 
+          : vehicle.vehicleOwner === 'hotel' 
+            ? vehicle.hotelName || 'Hotel'
+            : vehicle.thirdPartyName || 'Third Party'
       }))
       setVehicles(Array.isArray(vehiclesWithOwner) ? vehiclesWithOwner : [])
     } catch (err: any) {
@@ -70,6 +77,16 @@ export function VehiclesList() {
     } catch (err: any) {
       setThirdParties([])
       console.error('Error loading third parties:', err)
+    }
+  }
+
+  const loadHotels = async () => {
+    try {
+      const data = await hotelsApi.getAll()
+      setHotels(Array.isArray(data) ? data : [])
+    } catch (err: any) {
+      setHotels([])
+      console.error('Error loading hotels:', err)
     }
   }
 
@@ -182,7 +199,9 @@ export function VehiclesList() {
   const getOwnerDisplay = (vehicle: VehicleWithRelations) => {
     if (vehicle.owner) return vehicle.owner
     // Fallback: compute on the fly if owner wasn't set
-    return vehicle.vehicleOwner === 'company' ? 'Company' : (vehicle.thirdPartyName || '-')
+    if (vehicle.vehicleOwner === 'company') return 'Company'
+    if (vehicle.vehicleOwner === 'hotel') return vehicle.hotelName || 'Hotel'
+    return vehicle.thirdPartyName || 'Third Party'
   }
 
   if (loading) {
@@ -273,7 +292,7 @@ export function VehiclesList() {
         </div>
       )}
 
-      {showForm && <VehicleForm vehicle={editingVehicle} locations={locations} thirdParties={thirdParties} onClose={() => { setShowForm(false); setEditingVehicle(null) }} onSave={handleSave} />}
+      {showForm && <VehicleForm vehicle={editingVehicle} locations={locations} thirdParties={thirdParties} hotels={hotels} onClose={() => { setShowForm(false); setEditingVehicle(null) }} onSave={handleSave} />}
     </div>
   )
 }

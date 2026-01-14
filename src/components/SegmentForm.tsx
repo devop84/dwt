@@ -1,48 +1,159 @@
 import { useState, useEffect } from 'react'
-import type { RouteSegment, Location } from '../types'
+import type { RouteSegment, Location, RouteSegmentStop } from '../types'
+import { routeSegmentStopsApi } from '../lib/api'
 
 interface SegmentFormProps {
   segment: RouteSegment | null
   locations: Location[]
   segments: RouteSegment[]
-  onSave: (segment: Omit<RouteSegment, 'id' | 'routeId' | 'segmentDate' | 'createdAt' | 'updatedAt' | 'fromDestinationName' | 'toDestinationName' | 'overnightLocationName'>) => Promise<void>
+  routeId: string
+  onSave: (segment: Omit<RouteSegment, 'id' | 'routeId' | 'segmentDate' | 'createdAt' | 'updatedAt' | 'fromDestinationName' | 'toDestinationName' | 'stops'>) => Promise<void>
   onClose: () => void
 }
 
-export function SegmentForm({ segment, locations, segments, onSave, onClose }: SegmentFormProps) {
+interface StopFormData {
+  id?: string // For existing stops
+  locationId: string
+  stopOrder: number
+  notes: string
+}
+
+export function SegmentForm({ segment, locations, segments, routeId, onSave, onClose }: SegmentFormProps) {
   const [formData, setFormData] = useState({
     dayNumber: segment?.dayNumber || segments.length + 1,
     fromDestinationId: segment?.fromDestinationId || '',
     toDestinationId: segment?.toDestinationId || '',
-    overnightLocationId: segment?.overnightLocationId || '',
     distance: segment?.distance || 0,
-    estimatedDuration: segment?.estimatedDuration || '',
-    segmentType: segment?.segmentType || 'travel',
     segmentOrder: segment?.segmentOrder !== undefined ? segment.segmentOrder : segments.length,
     notes: segment?.notes || ''
   })
+  const [stops, setStops] = useState<StopFormData[]>([])
   const [saving, setSaving] = useState(false)
+  const [loadingStops, setLoadingStops] = useState(false)
+
+  // Load existing stops when editing
+  useEffect(() => {
+    if (segment?.id) {
+      loadStops()
+    } else {
+      setStops([])
+    }
+  }, [segment?.id])
+
+  const loadStops = async () => {
+    if (!segment?.id) return
+    try {
+      setLoadingStops(true)
+      const stopsData = await routeSegmentStopsApi.getAll(routeId, segment.id)
+      setStops(stopsData.map(stop => ({
+        id: stop.id,
+        locationId: stop.locationId,
+        stopOrder: stop.stopOrder,
+        notes: stop.notes || ''
+      })))
+    } catch (err) {
+      console.error('Error loading stops:', err)
+    } finally {
+      setLoadingStops(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
     try {
+      // Save the segment first
       await onSave({
         dayNumber: formData.dayNumber,
         fromDestinationId: formData.fromDestinationId || null,
         toDestinationId: formData.toDestinationId || null,
-        overnightLocationId: formData.overnightLocationId || null,
         distance: formData.distance,
-        estimatedDuration: formData.estimatedDuration ? parseInt(formData.estimatedDuration.toString()) : null,
-        segmentType: formData.segmentType,
         segmentOrder: formData.segmentOrder,
         notes: formData.notes || null
       })
+      
+      // Then save stops if segment already exists (editing mode)
+      // For new segments, stops will need to be added after the segment is created
+      if (segment?.id) {
+        // Get current stops from API to compare
+        const currentStops = await routeSegmentStopsApi.getAll(routeId, segment.id)
+        const currentStopIds = new Set(currentStops.map(s => s.id))
+        const newStopIds = new Set(stops.filter(s => s.id).map(s => s.id!))
+        
+        // Delete stops that were removed
+        for (const currentStop of currentStops) {
+          if (!newStopIds.has(currentStop.id)) {
+            try {
+              await routeSegmentStopsApi.delete(routeId, segment.id, currentStop.id)
+            } catch (err) {
+              console.error('Error deleting stop:', err)
+            }
+          }
+        }
+        
+        // Add or update stops
+        for (const stop of stops) {
+          if (stop.locationId) {
+            if (stop.id && currentStopIds.has(stop.id)) {
+              // Stop exists, would need update endpoint - for now, delete and recreate
+              try {
+                await routeSegmentStopsApi.delete(routeId, segment.id, stop.id)
+              } catch (err) {
+                console.error('Error deleting stop for update:', err)
+              }
+            }
+            // Add the stop (new or recreated)
+            try {
+              await routeSegmentStopsApi.add(routeId, segment.id, {
+                locationId: stop.locationId,
+                stopOrder: stop.stopOrder,
+                notes: stop.notes || null
+              })
+            } catch (err) {
+              console.error('Error adding stop:', err)
+            }
+          }
+        }
+      }
     } catch (err) {
       // Error handled by parent
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleAddStop = () => {
+    const maxOrder = stops.length > 0 ? Math.max(...stops.map(s => s.stopOrder)) : 0
+    setStops([...stops, {
+      locationId: '',
+      stopOrder: maxOrder + 1,
+      notes: ''
+    }])
+  }
+
+  const handleRemoveStop = (index: number) => {
+    setStops(stops.filter((_, i) => i !== index).map((stop, i) => ({
+      ...stop,
+      stopOrder: i + 1
+    })))
+  }
+
+  const handleStopChange = (index: number, field: keyof StopFormData, value: any) => {
+    const newStops = [...stops]
+    newStops[index] = { ...newStops[index], [field]: value }
+    setStops(newStops)
+  }
+
+  const handleMoveStop = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return
+    if (direction === 'down' && index === stops.length - 1) return
+    
+    const newStops = [...stops]
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    const temp = newStops[index]
+    newStops[index] = { ...newStops[targetIndex], stopOrder: index + 1 }
+    newStops[targetIndex] = { ...temp, stopOrder: targetIndex + 1 }
+    setStops(newStops)
   }
 
   return (
@@ -68,7 +179,7 @@ export function SegmentForm({ segment, locations, segments, onSave, onClose }: S
           borderRadius: '0.5rem',
           padding: '2rem',
           width: '100%',
-          maxWidth: '700px',
+          maxWidth: '800px',
           maxHeight: '90vh',
           overflowY: 'auto',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
@@ -109,18 +220,6 @@ export function SegmentForm({ segment, locations, segments, onSave, onClose }: S
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.25rem' }}>Segment Type</label>
-              <select
-                value={formData.segmentType}
-                onChange={(e) => setFormData({ ...formData, segmentType: e.target.value as any })}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem' }}
-              >
-                <option value="travel">Travel</option>
-                <option value="transfer-only">Transfer Only</option>
-                <option value="free-day">Free Day</option>
-              </select>
-            </div>
-            <div>
               <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.25rem' }}>Distance (km)</label>
               <input
                 type="number"
@@ -132,18 +231,8 @@ export function SegmentForm({ segment, locations, segments, onSave, onClose }: S
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem' }}
               />
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.25rem' }}>Duration (hours)</label>
-              <input
-                type="number"
-                value={formData.estimatedDuration}
-                onChange={(e) => setFormData({ ...formData, estimatedDuration: e.target.value ? parseInt(e.target.value) : null })}
-                min="0"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem' }}
-              />
-            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.25rem' }}>From Location</label>
               <select
@@ -170,20 +259,117 @@ export function SegmentForm({ segment, locations, segments, onSave, onClose }: S
                 ))}
               </select>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.25rem' }}>Overnight Location</label>
-              <select
-                value={formData.overnightLocationId}
-                onChange={(e) => setFormData({ ...formData, overnightLocationId: e.target.value })}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem' }}
-              >
-                <option value="">Select location...</option>
-                {locations.map(loc => (
-                  <option key={loc.id} value={loc.id}>{loc.name}</option>
-                ))}
-              </select>
-            </div>
           </div>
+
+          {/* Stops Section */}
+          <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '0.375rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <label style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>Intermediate Stops</label>
+              <button
+                type="button"
+                onClick={handleAddStop}
+                style={{
+                  padding: '0.375rem 0.75rem',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: '500'
+                }}
+              >
+                + Add Stop
+              </button>
+            </div>
+            {loadingStops ? (
+              <div style={{ textAlign: 'center', padding: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>Loading stops...</div>
+            ) : stops.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                No stops added. Click "Add Stop" to add intermediate locations.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {stops.map((stop, index) => (
+                  <div key={index} style={{ display: 'flex', gap: '0.5rem', alignItems: 'start' }}>
+                    <div style={{ flex: 1, display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ flex: 1 }}>
+                        <select
+                          value={stop.locationId}
+                          onChange={(e) => handleStopChange(index, 'locationId', e.target.value)}
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem' }}
+                        >
+                          <option value="">Select stop location...</option>
+                          {locations.map(loc => (
+                            <option key={loc.id} value={loc.id}>{loc.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div style={{ width: '200px' }}>
+                        <input
+                          type="text"
+                          value={stop.notes}
+                          onChange={(e) => handleStopChange(index, 'notes', e.target.value)}
+                          placeholder="Notes (optional)"
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem' }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveStop(index, 'up')}
+                        disabled={index === 0}
+                        style={{
+                          padding: '0.375rem',
+                          backgroundColor: index === 0 ? '#e5e7eb' : '#f3f4f6',
+                          color: index === 0 ? '#9ca3af' : '#374151',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '0.25rem',
+                          cursor: index === 0 ? 'not-allowed' : 'pointer',
+                          fontSize: '0.75rem'
+                        }}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveStop(index, 'down')}
+                        disabled={index === stops.length - 1}
+                        style={{
+                          padding: '0.375rem',
+                          backgroundColor: index === stops.length - 1 ? '#e5e7eb' : '#f3f4f6',
+                          color: index === stops.length - 1 ? '#9ca3af' : '#374151',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '0.25rem',
+                          cursor: index === stops.length - 1 ? 'not-allowed' : 'pointer',
+                          fontSize: '0.75rem'
+                        }}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStop(index)}
+                        style={{
+                          padding: '0.375rem 0.5rem',
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.25rem',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem'
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.25rem' }}>Notes</label>
             <textarea

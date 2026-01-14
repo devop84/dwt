@@ -44,10 +44,7 @@ async function createRoutesTables() {
         segment_date DATE,
         from_destination_id UUID REFERENCES locations(id) ON DELETE SET NULL,
         to_destination_id UUID REFERENCES locations(id) ON DELETE SET NULL,
-        overnight_location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
         distance DECIMAL(6, 2) DEFAULT 0 CHECK (distance >= 0 AND distance <= 60),
-        estimated_duration INTEGER,
-        segment_type VARCHAR(50) DEFAULT 'travel' CHECK (segment_type IN ('travel', 'transfer-only', 'free-day')),
         segment_order INTEGER NOT NULL,
         notes TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
@@ -80,14 +77,14 @@ async function createRoutesTables() {
           'third-party', 
           'extra-cost'
         )),
-        entity_id UUID NOT NULL,
+        entity_id UUID,
         entity_type VARCHAR(50) NOT NULL CHECK (entity_type IN (
           'vehicle',
           'hotel', 
-          'caterer', 
           'third-party', 
           'location'
         )),
+        item_name VARCHAR(255),
         quantity INTEGER DEFAULT 1,
         cost DECIMAL(10, 2) DEFAULT 0,
         date DATE,
@@ -117,15 +114,15 @@ async function createRoutesTables() {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         route_id UUID NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
         client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
-        guide_id UUID REFERENCES guides(id) ON DELETE SET NULL,
+        guide_id UUID REFERENCES staff(id) ON DELETE SET NULL,
         role VARCHAR(50) NOT NULL CHECK (role IN ('client', 'guide-captain', 'guide-tail', 'staff')),
         notes TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),
         CHECK (
-          (client_id IS NOT NULL AND role = 'client') OR
-          (guide_id IS NOT NULL AND role IN ('guide-captain', 'guide-tail')) OR
-          (role = 'staff' AND client_id IS NULL AND guide_id IS NULL)
+          (role = 'client' AND client_id IS NOT NULL AND guide_id IS NULL) OR
+          (role IN ('guide-captain', 'guide-tail') AND guide_id IS NOT NULL AND client_id IS NULL) OR
+          (role = 'staff' AND client_id IS NULL)
         )
       )
     `)
@@ -292,7 +289,8 @@ async function createRoutesTables() {
         IF route_start_date IS NOT NULL THEN
           UPDATE route_segments
           SET segment_date = route_start_date + day_number - 1
-          WHERE route_id = route_uuid;
+          WHERE route_id = route_uuid
+            AND (segment_date IS DISTINCT FROM (route_start_date + day_number - 1));
         END IF;
       END;
       $$ LANGUAGE plpgsql;
@@ -321,11 +319,15 @@ async function createRoutesTables() {
     `)
 
     // Trigger to update segment dates when segments are added/modified
+    // Only recalculate if day_number changed, not if segment_date was updated by the trigger itself
     await pool.query(`
       CREATE OR REPLACE FUNCTION update_segment_dates_on_segment_change()
       RETURNS TRIGGER AS $$
       BEGIN
-        PERFORM recalculate_segment_dates(COALESCE(NEW.route_id, OLD.route_id));
+        -- Only recalculate if day_number changed, to avoid infinite loops
+        IF (TG_OP = 'INSERT') OR (TG_OP = 'UPDATE' AND (NEW.day_number IS DISTINCT FROM OLD.day_number)) THEN
+          PERFORM recalculate_segment_dates(COALESCE(NEW.route_id, OLD.route_id));
+        END IF;
         RETURN COALESCE(NEW, OLD);
       END;
       $$ LANGUAGE plpgsql;
@@ -345,6 +347,205 @@ async function createRoutesTables() {
         AFTER UPDATE ON route_segments
         FOR EACH ROW
         EXECUTE FUNCTION update_segment_dates_on_segment_change();
+    `)
+
+    // Route transfers table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS route_transfers (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        route_id UUID NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
+        transfer_date DATE NOT NULL,
+        from_location_id UUID NOT NULL REFERENCES locations(id) ON DELETE RESTRICT,
+        to_location_id UUID NOT NULL REFERENCES locations(id) ON DELETE RESTRICT,
+        total_cost DECIMAL(10, 2) DEFAULT 0,
+        notes TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW(),
+        CHECK (from_location_id != to_location_id)
+      )
+    `)
+    console.log('✅ Created route_transfers table')
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_transfers_route ON route_transfers(route_id)
+    `)
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_transfers_date ON route_transfers(transfer_date)
+    `)
+
+    // Route transfer vehicles table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS route_transfer_vehicles (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        transfer_id UUID NOT NULL REFERENCES route_transfers(id) ON DELETE CASCADE,
+        vehicle_id UUID NOT NULL REFERENCES vehicles(id) ON DELETE RESTRICT,
+        driver_pilot_name VARCHAR(255),
+        quantity INTEGER DEFAULT 1,
+        cost DECIMAL(10, 2) DEFAULT 0,
+        is_own_vehicle BOOLEAN DEFAULT FALSE,
+        notes TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    console.log('✅ Created route_transfer_vehicles table')
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_transfer_vehicles_transfer ON route_transfer_vehicles(transfer_id)
+    `)
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_transfer_vehicles_vehicle ON route_transfer_vehicles(vehicle_id)
+    `)
+
+    // Route transfer participants table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS route_transfer_participants (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        transfer_id UUID NOT NULL REFERENCES route_transfers(id) ON DELETE CASCADE,
+        participant_id UUID NOT NULL REFERENCES route_participants(id) ON DELETE CASCADE,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        UNIQUE(transfer_id, participant_id)
+      )
+    `)
+    console.log('✅ Created route_transfer_participants table')
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_transfer_participants_transfer ON route_transfer_participants(transfer_id)
+    `)
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_transfer_participants_participant ON route_transfer_participants(participant_id)
+    `)
+
+    // Function to calculate transfer total cost
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION calculate_transfer_total_cost(transfer_uuid UUID)
+      RETURNS DECIMAL AS $$
+        SELECT COALESCE(SUM(cost * quantity), 0)
+        FROM route_transfer_vehicles
+        WHERE transfer_id = transfer_uuid;
+      $$ LANGUAGE SQL;
+    `)
+
+    // Trigger to update transfer total cost when vehicles change
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION update_transfer_total_cost()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        UPDATE route_transfers
+        SET 
+          total_cost = calculate_transfer_total_cost(COALESCE(NEW.transfer_id, OLD.transfer_id)),
+          "updatedAt" = NOW()
+        WHERE id = COALESCE(NEW.transfer_id, OLD.transfer_id);
+        RETURN COALESCE(NEW, OLD);
+      END;
+      $$ LANGUAGE plpgsql;
+    `)
+
+    await pool.query(`
+      DROP TRIGGER IF EXISTS trigger_update_transfer_cost ON route_transfer_vehicles;
+      CREATE TRIGGER trigger_update_transfer_cost
+        AFTER INSERT OR UPDATE OR DELETE ON route_transfer_vehicles
+        FOR EACH ROW
+        EXECUTE FUNCTION update_transfer_total_cost();
+    `)
+
+    // Route segment participants table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS route_segment_participants (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        segment_id UUID NOT NULL REFERENCES route_segments(id) ON DELETE CASCADE,
+        participant_id UUID NOT NULL REFERENCES route_participants(id) ON DELETE CASCADE,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        UNIQUE(segment_id, participant_id)
+      )
+    `)
+    console.log('✅ Created route_segment_participants table')
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_segment_participants_segment ON route_segment_participants(segment_id)
+    `)
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_segment_participants_participant ON route_segment_participants(participant_id)
+    `)
+
+    // Route segment stops table (for intermediate stops between from and to destinations)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS route_segment_stops (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        segment_id UUID NOT NULL REFERENCES route_segments(id) ON DELETE CASCADE,
+        location_id UUID NOT NULL REFERENCES locations(id) ON DELETE RESTRICT,
+        stop_order INTEGER NOT NULL,
+        notes TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW(),
+        UNIQUE(segment_id, stop_order)
+      )
+    `)
+    console.log('✅ Created route_segment_stops table')
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_segment_stops_segment ON route_segment_stops(segment_id)
+    `)
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_segment_stops_order ON route_segment_stops(segment_id, stop_order)
+    `)
+
+    // Route segment accommodations tables
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS route_segment_accommodations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        segment_id UUID NOT NULL REFERENCES route_segments(id) ON DELETE CASCADE,
+        hotel_id UUID NOT NULL REFERENCES hotels(id) ON DELETE RESTRICT,
+        group_type VARCHAR(20) NOT NULL CHECK (group_type IN ('client', 'staff')),
+        notes TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW(),
+        UNIQUE(segment_id, hotel_id, group_type)
+      )
+    `)
+    console.log('✅ Created route_segment_accommodations table')
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_segment_accommodations_segment ON route_segment_accommodations(segment_id)
+    `)
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_segment_accommodations_hotel ON route_segment_accommodations(hotel_id)
+    `)
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS route_segment_accommodation_rooms (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        accommodation_id UUID NOT NULL REFERENCES route_segment_accommodations(id) ON DELETE CASCADE,
+        room_type VARCHAR(20) NOT NULL CHECK (room_type IN ('single', 'double', 'twin', 'triple')),
+        room_label VARCHAR(100),
+        is_couple BOOLEAN DEFAULT FALSE,
+        notes TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    console.log('✅ Created route_segment_accommodation_rooms table')
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_segment_accommodation_rooms_accommodation ON route_segment_accommodation_rooms(accommodation_id)
+    `)
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS route_segment_accommodation_room_participants (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        room_id UUID NOT NULL REFERENCES route_segment_accommodation_rooms(id) ON DELETE CASCADE,
+        participant_id UUID NOT NULL REFERENCES route_participants(id) ON DELETE CASCADE,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        UNIQUE(room_id, participant_id)
+      )
+    `)
+    console.log('✅ Created route_segment_accommodation_room_participants table')
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_segment_room_participants_room ON route_segment_accommodation_room_participants(room_id)
+    `)
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_route_segment_room_participants_participant ON route_segment_accommodation_room_participants(participant_id)
     `)
 
     console.log('✅ All routes tables and triggers created successfully!')

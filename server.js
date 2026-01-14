@@ -118,9 +118,9 @@ async function initDb() {
       )
     `)
     
-    // Create guides table if not exists
+    // Create staff table if not exists
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS guides (
+      CREATE TABLE IF NOT EXISTS staff (
         id UUID PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         "contactNumber" VARCHAR(50),
@@ -141,30 +141,20 @@ async function initDb() {
         "vehicleOwner" VARCHAR(50) NOT NULL,
         "locationId" UUID REFERENCES locations(id) ON DELETE SET NULL,
         "thirdPartyId" UUID REFERENCES third_parties(id) ON DELETE SET NULL,
+        "hotelId" UUID REFERENCES hotels(id) ON DELETE SET NULL,
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),
         CONSTRAINT check_vehicle_type CHECK (type IN ('car4x4', 'boat', 'quadbike', 'carSedan', 'outro')),
-        CONSTRAINT check_vehicle_owner CHECK ("vehicleOwner" IN ('company', 'third-party'))
+        CONSTRAINT check_vehicle_owner CHECK ("vehicleOwner" IN ('company', 'third-party', 'hotel')),
+        CONSTRAINT check_vehicle_owner_consistency CHECK (
+          ("vehicleOwner" = 'company' AND "thirdPartyId" IS NULL AND "hotelId" IS NULL) OR
+          ("vehicleOwner" = 'third-party' AND "thirdPartyId" IS NOT NULL AND "hotelId" IS NULL) OR
+          ("vehicleOwner" = 'hotel' AND "thirdPartyId" IS NULL AND "hotelId" IS NOT NULL)
+        )
       )
     `)
 
-    // Create caterers table if not exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS caterers (
-        id UUID PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        "contactNumber" VARCHAR(50),
-        email VARCHAR(255),
-        type VARCHAR(50) NOT NULL,
-        "locationId" UUID REFERENCES locations(id) ON DELETE SET NULL,
-        note TEXT,
-        "createdAt" TIMESTAMP DEFAULT NOW(),
-        "updatedAt" TIMESTAMP DEFAULT NOW(),
-        CONSTRAINT check_caterer_type CHECK (type IN ('restaurant', 'hotel', 'particular'))
-      )
-    `)
-    
     // Create third_parties table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS third_parties (
@@ -197,7 +187,7 @@ async function initDb() {
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),
-        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party')),
+        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'staff', 'driver', 'vehicle', 'company', 'third-party')),
         CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online', 'other'))
       )
     `)
@@ -396,7 +386,11 @@ app.post('/api/auth/login', async (req, res) => {
     })
   } catch (error) {
     console.error('Login error:', error)
-    res.status(500).json({ message: error.message || 'Authentication failed' })
+    console.error('Login error stack:', error.stack)
+    res.status(500).json({ 
+      message: error.message || 'Authentication failed',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    })
   }
 })
 
@@ -1059,8 +1053,8 @@ app.delete('/api/hotels/:id', async (req, res) => {
   }
 })
 
-// Get all guides
-app.get('/api/guides', async (req, res) => {
+// Get all staff
+app.get('/api/staff', async (req, res) => {
   await initDb()
   
   try {
@@ -1088,20 +1082,20 @@ app.get('/api/guides', async (req, res) => {
         g."createdAt",
         g."updatedAt",
         d.name as "locationName"
-      FROM guides g
+      FROM staff g
       LEFT JOIN locations d ON g."locationId" = d.id
       ORDER BY g.name ASC
     `)
 
     res.json(result.rows)
   } catch (error) {
-    console.error('Guides error:', error)
-    res.status(500).json({ message: error.message || 'Failed to fetch guides' })
+    console.error('Staff error:', error)
+    res.status(500).json({ message: error.message || 'Failed to fetch staff' })
   }
 })
 
 // Create a new guide
-app.post('/api/guides', async (req, res) => {
+app.post('/api/staff', async (req, res) => {
   await initDb()
   
   try {
@@ -1127,12 +1121,12 @@ app.post('/api/guides', async (req, res) => {
       return res.status(400).json({ message: 'Destination is required' })
     }
 
-    const guideId = randomUUID()
+    const staffId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO guides (id, name, "contactNumber", email, "locationId", languages, note)
+      `INSERT INTO staff (id, name, "contactNumber", email, "locationId", languages, note)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, name, "contactNumber", email, "locationId", languages, note, "createdAt", "updatedAt"`,
-      [guideId, name, contactNumber || null, email || null, locationId, languages || null, note || null]
+      [staffId, name, contactNumber || null, email || null, locationId, languages || null, note || null]
     )
 
     res.status(201).json(result.rows[0])
@@ -1143,7 +1137,7 @@ app.post('/api/guides', async (req, res) => {
 })
 
 // Get a single guide
-app.get('/api/guides/:id', async (req, res) => {
+app.get('/api/staff/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -1172,7 +1166,7 @@ app.get('/api/guides/:id', async (req, res) => {
         g."createdAt",
         g."updatedAt",
         d.name as "locationName"
-      FROM guides g
+      FROM staff g
       LEFT JOIN locations d ON g."locationId" = d.id
       WHERE g.id = $1`,
       [id]
@@ -1190,7 +1184,7 @@ app.get('/api/guides/:id', async (req, res) => {
 })
 
 // Update a guide
-app.put('/api/guides/:id', async (req, res) => {
+app.put('/api/staff/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -1218,13 +1212,13 @@ app.put('/api/guides/:id', async (req, res) => {
     }
 
     // Check if guide exists
-    const existing = await pool.query('SELECT id FROM guides WHERE id = $1', [id])
+    const existing = await pool.query('SELECT id FROM staff WHERE id = $1', [id])
     if (existing.rows.length === 0) {
       return res.status(404).json({ message: 'Guide not found' })
     }
 
     const result = await pool.query(
-      `UPDATE guides 
+      `UPDATE staff 
        SET name = $1, "contactNumber" = $2, email = $3, "locationId" = $4, languages = $5, note = $6, "updatedAt" = NOW()
        WHERE id = $7
        RETURNING id, name, "contactNumber", email, "locationId", languages, note, "createdAt", "updatedAt"`,
@@ -1239,7 +1233,7 @@ app.put('/api/guides/:id', async (req, res) => {
 })
 
 // Delete a guide
-app.delete('/api/guides/:id', async (req, res) => {
+app.delete('/api/staff/:id', async (req, res) => {
   await initDb()
   
   try {
@@ -1258,12 +1252,12 @@ app.delete('/api/guides/:id', async (req, res) => {
     const { id } = req.params
 
     // Check if guide exists
-    const existing = await pool.query('SELECT id FROM guides WHERE id = $1', [id])
+    const existing = await pool.query('SELECT id FROM staff WHERE id = $1', [id])
     if (existing.rows.length === 0) {
       return res.status(404).json({ message: 'Guide not found' })
     }
 
-    await pool.query('DELETE FROM guides WHERE id = $1', [id])
+    await pool.query('DELETE FROM staff WHERE id = $1', [id])
 
     res.status(200).json({ message: 'Guide deleted successfully' })
   } catch (error) {
@@ -1296,14 +1290,17 @@ app.get('/api/vehicles', async (req, res) => {
         v."vehicleOwner",
         v."locationId",
         v."thirdPartyId",
+        v."hotelId",
         v.note,
         v."createdAt",
         v."updatedAt",
         dest.name as "locationName",
-        tp.name as "thirdPartyName"
+        tp.name as "thirdPartyName",
+        h.name as "hotelName"
       FROM vehicles v
       LEFT JOIN locations dest ON v."locationId" = dest.id
       LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+      LEFT JOIN hotels h ON v."hotelId" = h.id
       ORDER BY v.type ASC, v."createdAt" DESC
     `)
 
@@ -1331,7 +1328,7 @@ app.post('/api/vehicles', async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' })
     }
 
-    const { type, vehicleOwner, locationId, thirdPartyId, note } = req.body
+    const { type, vehicleOwner, locationId, thirdPartyId, hotelId, note } = req.body
 
     if (!type) {
       return res.status(400).json({ message: 'Type is required' })
@@ -1345,7 +1342,7 @@ app.post('/api/vehicles', async (req, res) => {
       return res.status(400).json({ message: 'Invalid vehicle type' })
     }
 
-    if (!['company', 'third-party'].includes(vehicleOwner)) {
+    if (!['company', 'third-party', 'hotel'].includes(vehicleOwner)) {
       return res.status(400).json({ message: 'Invalid vehicle owner' })
     }
 
@@ -1353,12 +1350,24 @@ app.post('/api/vehicles', async (req, res) => {
       return res.status(400).json({ message: 'Third party ID is required when vehicle owner is third-party' })
     }
 
+    if (vehicleOwner === 'hotel' && !hotelId) {
+      return res.status(400).json({ message: 'Hotel ID is required when vehicle owner is hotel' })
+    }
+
     const vehicleId = randomUUID()
     const result = await pool.query(
-      `INSERT INTO vehicles (id, type, "vehicleOwner", "locationId", "thirdPartyId", note)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO vehicles (id, type, "vehicleOwner", "locationId", "thirdPartyId", "hotelId", note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [vehicleId, type, vehicleOwner, locationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null]
+      [
+        vehicleId, 
+        type, 
+        vehicleOwner, 
+        locationId || null, 
+        vehicleOwner === 'third-party' ? thirdPartyId : null,
+        vehicleOwner === 'hotel' ? hotelId : null,
+        note || null
+      ]
     )
 
     res.status(201).json(result.rows[0])
@@ -1393,14 +1402,17 @@ app.get('/api/vehicles/:id', async (req, res) => {
         v."vehicleOwner",
         v."locationId",
         v."thirdPartyId",
+        v."hotelId",
         v.note,
         v."createdAt",
         v."updatedAt",
         dest.name as "locationName",
-        tp.name as "thirdPartyName"
+        tp.name as "thirdPartyName",
+        h.name as "hotelName"
       FROM vehicles v
       LEFT JOIN locations dest ON v."locationId" = dest.id
       LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+      LEFT JOIN hotels h ON v."hotelId" = h.id
       WHERE v.id = $1`,
       [id]
     )
@@ -1434,7 +1446,7 @@ app.put('/api/vehicles/:id', async (req, res) => {
     }
 
     const { id } = req.params
-    const { type, vehicleOwner, locationId, thirdPartyId, note } = req.body
+    const { type, vehicleOwner, locationId, thirdPartyId, hotelId, note } = req.body
 
     if (!type) {
       return res.status(400).json({ message: 'Type is required' })
@@ -1448,12 +1460,16 @@ app.put('/api/vehicles/:id', async (req, res) => {
       return res.status(400).json({ message: 'Invalid vehicle type' })
     }
 
-    if (!['company', 'third-party'].includes(vehicleOwner)) {
+    if (!['company', 'third-party', 'hotel'].includes(vehicleOwner)) {
       return res.status(400).json({ message: 'Invalid vehicle owner' })
     }
 
     if (vehicleOwner === 'third-party' && !thirdPartyId) {
       return res.status(400).json({ message: 'Third party ID is required when vehicle owner is third-party' })
+    }
+
+    if (vehicleOwner === 'hotel' && !hotelId) {
+      return res.status(400).json({ message: 'Hotel ID is required when vehicle owner is hotel' })
     }
 
     // Check if vehicle exists
@@ -1464,10 +1480,18 @@ app.put('/api/vehicles/:id', async (req, res) => {
 
     const result = await pool.query(
       `UPDATE vehicles 
-       SET type = $1, "vehicleOwner" = $2, "locationId" = $3, "thirdPartyId" = $4, note = $5, "updatedAt" = NOW()
-       WHERE id = $6
+       SET type = $1, "vehicleOwner" = $2, "locationId" = $3, "thirdPartyId" = $4, "hotelId" = $5, note = $6, "updatedAt" = NOW()
+       WHERE id = $7
        RETURNING *`,
-      [type, vehicleOwner, locationId || null, vehicleOwner === 'third-party' ? thirdPartyId : null, note || null, id]
+      [
+        type, 
+        vehicleOwner, 
+        locationId || null, 
+        vehicleOwner === 'third-party' ? thirdPartyId : null,
+        vehicleOwner === 'hotel' ? hotelId : null,
+        note || null, 
+        id
+      ]
     )
 
     res.status(200).json(result.rows[0])
@@ -1508,196 +1532,6 @@ app.delete('/api/vehicles/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete vehicle error:', error)
     res.status(500).json({ message: error.message || 'Failed to delete vehicle' })
-  }
-})
-
-// Get all caterers
-app.get('/api/caterers', async (req, res) => {
-  await initDb()
-  
-  try {
-    const authHeader = req.headers.authorization
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Unauthorized' })
-    }
-
-    const token = authHeader.substring(7)
-    const decoded = verifyToken(token)
-    
-    if (!decoded) {
-      return res.status(401).json({ message: 'Invalid token' })
-    }
-
-    const result = await pool.query(`
-      SELECT c.*, d.name as "locationName"
-      FROM caterers c
-      LEFT JOIN locations d ON c."locationId" = d.id
-      ORDER BY c.name
-    `)
-    res.json(result.rows)
-  } catch (error) {
-    console.error('Caterers error:', error)
-    res.status(500).json({ message: error.message || 'Failed to fetch caterers' })
-  }
-})
-
-// Create a new caterer
-app.post('/api/caterers', async (req, res) => {
-  await initDb()
-  
-  try {
-    const authHeader = req.headers.authorization
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Unauthorized' })
-    }
-
-    const token = authHeader.substring(7)
-    const decoded = verifyToken(token)
-    
-    if (!decoded) {
-      return res.status(401).json({ message: 'Invalid token' })
-    }
-
-    const { name, contactNumber, email, type, locationId, note } = req.body
-
-    if (!name || !type) {
-      return res.status(400).json({ message: 'Name and type are required' })
-    }
-
-    if (!['restaurant', 'hotel', 'particular'].includes(type)) {
-      return res.status(400).json({ message: 'Type must be restaurant, hotel, or particular' })
-    }
-
-    const catererId = randomUUID()
-    const result = await pool.query(
-      `INSERT INTO caterers (id, name, "contactNumber", email, type, "locationId", note)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [catererId, name, contactNumber || null, email || null, type, locationId || null, note || null]
-    )
-
-    res.status(201).json(result.rows[0])
-  } catch (error) {
-    console.error('Create caterer error:', error)
-    res.status(500).json({ message: error.message || 'Failed to create caterer' })
-  }
-})
-
-// Get a single caterer
-app.get('/api/caterers/:id', async (req, res) => {
-  await initDb()
-  
-  try {
-    const authHeader = req.headers.authorization
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Unauthorized' })
-    }
-
-    const token = authHeader.substring(7)
-    const decoded = verifyToken(token)
-    
-    if (!decoded) {
-      return res.status(401).json({ message: 'Invalid token' })
-    }
-
-    const { id } = req.params
-    const result = await pool.query(`
-      SELECT c.*, d.name as "locationName"
-      FROM caterers c
-      LEFT JOIN locations d ON c."locationId" = d.id
-      WHERE c.id = $1
-    `, [id])
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Caterer not found' })
-    }
-
-    res.json(result.rows[0])
-  } catch (error) {
-    console.error('Caterer error:', error)
-    res.status(500).json({ message: error.message || 'Failed to fetch caterer' })
-  }
-})
-
-// Update a caterer
-app.put('/api/caterers/:id', async (req, res) => {
-  await initDb()
-  
-  try {
-    const authHeader = req.headers.authorization
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Unauthorized' })
-    }
-
-    const token = authHeader.substring(7)
-    const decoded = verifyToken(token)
-    
-    if (!decoded) {
-      return res.status(401).json({ message: 'Invalid token' })
-    }
-
-    const { id } = req.params
-    const { name, contactNumber, email, type, locationId, note } = req.body
-
-    if (!name || !type) {
-      return res.status(400).json({ message: 'Name and type are required' })
-    }
-
-    if (!['restaurant', 'hotel', 'particular'].includes(type)) {
-      return res.status(400).json({ message: 'Type must be restaurant, hotel, or particular' })
-    }
-
-    // Check if caterer exists
-    const existing = await pool.query('SELECT id FROM caterers WHERE id = $1', [id])
-    if (existing.rows.length === 0) {
-      return res.status(404).json({ message: 'Caterer not found' })
-    }
-
-    const result = await pool.query(
-      `UPDATE caterers 
-       SET name = $1, "contactNumber" = $2, email = $3, type = $4, "locationId" = $5, note = $6, "updatedAt" = NOW()
-       WHERE id = $7
-       RETURNING *`,
-      [name, contactNumber || null, email || null, type, locationId || null, note || null, id]
-    )
-
-    res.status(200).json(result.rows[0])
-  } catch (error) {
-    console.error('Update caterer error:', error)
-    res.status(500).json({ message: error.message || 'Failed to update caterer' })
-  }
-})
-
-// Delete a caterer
-app.delete('/api/caterers/:id', async (req, res) => {
-  await initDb()
-  
-  try {
-    const authHeader = req.headers.authorization
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Unauthorized' })
-    }
-
-    const token = authHeader.substring(7)
-    const decoded = verifyToken(token)
-    
-    if (!decoded) {
-      return res.status(401).json({ message: 'Invalid token' })
-    }
-
-    const { id } = req.params
-
-    // Check if caterer exists
-    const existing = await pool.query('SELECT id FROM caterers WHERE id = $1', [id])
-    if (existing.rows.length === 0) {
-      return res.status(404).json({ message: 'Caterer not found' })
-    }
-
-    await pool.query('DELETE FROM caterers WHERE id = $1', [id])
-
-    res.status(200).json({ message: 'Caterer deleted successfully' })
-  } catch (error) {
-    console.error('Delete caterer error:', error)
-    res.status(500).json({ message: error.message || 'Failed to delete caterer' })
   }
 })
 
@@ -1960,7 +1794,7 @@ app.post('/api/accounts', async (req, res) => {
       return res.status(400).json({ message: 'Entity ID is required for non-company accounts' })
     }
 
-    const validEntityTypes = ['client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party']
+    const validEntityTypes = ['client', 'hotel', 'guide', 'driver', 'company', 'third-party']
     if (!validEntityTypes.includes(entityType)) {
       console.log('❌ Invalid entity type:', { entityType, validTypes: validEntityTypes, receivedType: typeof entityType })
       return res.status(400).json({ message: 'Invalid entity type', received: entityType, valid: validEntityTypes })
@@ -1978,7 +1812,7 @@ app.post('/api/accounts', async (req, res) => {
       return res.status(400).json({ message: 'Service name/tag is required for online accounts' })
     }
 
-    if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party'].includes(entityType)) {
+    if (!['client', 'hotel', 'guide', 'driver', 'company', 'third-party'].includes(entityType)) {
       return res.status(400).json({ message: 'Invalid entity type' })
     }
 
@@ -2063,13 +1897,10 @@ app.get('/api/accounts/:id', async (req, res) => {
           const entityResult = await pool.query('SELECT name FROM hotels WHERE id = $1', [account.entityId])
           entityName = entityResult.rows[0]?.name || null
         } else if (account.entityType === 'guide') {
-          const entityResult = await pool.query('SELECT name FROM guides WHERE id = $1', [account.entityId])
+          const entityResult = await pool.query('SELECT name FROM staff WHERE id = $1', [account.entityId])
           entityName = entityResult.rows[0]?.name || null
         } else if (account.entityType === 'driver') {
           const entityResult = await pool.query('SELECT name FROM drivers WHERE id = $1', [account.entityId])
-          entityName = entityResult.rows[0]?.name || null
-        } else if (account.entityType === 'caterer') {
-          const entityResult = await pool.query('SELECT name FROM caterers WHERE id = $1', [account.entityId])
           entityName = entityResult.rows[0]?.name || null
         } else if (account.entityType === 'third-party') {
           const entityResult = await pool.query('SELECT name FROM third_parties WHERE id = $1', [account.entityId])
@@ -2324,16 +2155,27 @@ app.get('/api/routes/:id', async (req, res) => {
       `SELECT 
         rs.*,
         l1.name as from_destination_name,
-        l2.name as to_destination_name,
-        l3.name as overnight_location_name
+        l2.name as to_destination_name
       FROM route_segments rs
       LEFT JOIN locations l1 ON rs.from_destination_id = l1.id
       LEFT JOIN locations l2 ON rs.to_destination_id = l2.id
-      LEFT JOIN locations l3 ON rs.overnight_location_id = l3.id
       WHERE rs.route_id = $1
       ORDER BY rs.segment_order, rs.day_number`,
       [id]
     )
+    
+    // Get stops for all segments
+    const segmentIds = segmentsResult.rows.map(s => s.id)
+    const stopsResult = segmentIds.length > 0 ? await pool.query(
+      `SELECT 
+        rss.*,
+        l.name as location_name
+      FROM route_segment_stops rss
+      LEFT JOIN locations l ON rss.location_id = l.id
+      WHERE rss.segment_id = ANY($1::uuid[])
+      ORDER BY rss.segment_id, rss.stop_order`,
+      [segmentIds]
+    ) : { rows: [] }
     
     // Get logistics with entity names
     const logisticsResult = await pool.query(
@@ -2341,17 +2183,19 @@ app.get('/api/routes/:id', async (req, res) => {
         rl.*,
         CASE 
           WHEN rl.entity_type = 'hotel' THEN h.name
-          WHEN rl.entity_type = 'caterer' THEN c.name
           WHEN rl.entity_type = 'third-party' THEN tp.name
-          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE WHEN v."vehicleOwner" = 'company' THEN 'Company' ELSE 'Third Party' END
+          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE 
+            WHEN v."vehicleOwner" = 'company' THEN 'Company'
+            WHEN v."vehicleOwner" = 'hotel' THEN COALESCE(h.name, 'Hotel')
+            ELSE COALESCE(tp.name, 'Third Party')
+          END
           WHEN rl.entity_type = 'location' THEN l.name
           ELSE NULL
         END as entity_name
       FROM route_logistics rl
-      LEFT JOIN hotels h ON rl.entity_type = 'hotel' AND rl.entity_id = h.id
-      LEFT JOIN caterers c ON rl.entity_type = 'caterer' AND rl.entity_id = c.id
-      LEFT JOIN third_parties tp ON rl.entity_type = 'third-party' AND rl.entity_id = tp.id
       LEFT JOIN vehicles v ON rl.entity_type = 'vehicle' AND rl.entity_id = v.id
+      LEFT JOIN hotels h ON (rl.entity_type = 'hotel' AND rl.entity_id = h.id) OR (rl.entity_type = 'vehicle' AND v."hotelId" = h.id)
+      LEFT JOIN third_parties tp ON (rl.entity_type = 'third-party' AND rl.entity_id = tp.id) OR (rl.entity_type = 'vehicle' AND v."thirdPartyId" = tp.id)
       LEFT JOIN locations l ON rl.entity_type = 'location' AND rl.entity_id = l.id
       WHERE rl.route_id = $1`,
       [id]
@@ -2365,7 +2209,7 @@ app.get('/api/routes/:id', async (req, res) => {
         g.name as guide_name
       FROM route_participants rp
       LEFT JOIN clients c ON rp.client_id = c.id
-      LEFT JOIN guides g ON rp.guide_id = g.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
       WHERE rp.route_id = $1`,
       [id]
     )
@@ -2384,26 +2228,39 @@ app.get('/api/routes/:id', async (req, res) => {
       [id]
     )
     
-    // Convert segments snake_case to camelCase
-    const segments = segmentsResult.rows.map(seg => ({
-      id: seg.id,
-      routeId: seg.route_id,
-      dayNumber: seg.day_number,
-      segmentDate: seg.segment_date,
-      fromDestinationId: seg.from_destination_id,
-      toDestinationId: seg.to_destination_id,
-      overnightLocationId: seg.overnight_location_id,
-      distance: seg.distance,
-      estimatedDuration: seg.estimated_duration,
-      segmentType: seg.segment_type,
-      segmentOrder: seg.segment_order,
-      notes: seg.notes,
-      createdAt: seg.createdAt,
-      updatedAt: seg.updatedAt,
-      fromDestinationName: seg.from_destination_name,
-      toDestinationName: seg.to_destination_name,
-      overnightLocationName: seg.overnight_location_name
-    }))
+    // Convert segments snake_case to camelCase and attach stops
+    const segments = segmentsResult.rows.map(seg => {
+      const stops = stopsResult.rows
+        .filter(stop => stop.segment_id === seg.id)
+        .map(stop => ({
+          id: stop.id,
+          segmentId: stop.segment_id,
+          locationId: stop.location_id,
+          stopOrder: stop.stop_order,
+          notes: stop.notes,
+          createdAt: stop.createdAt,
+          updatedAt: stop.updatedAt,
+          locationName: stop.location_name
+        }))
+        .sort((a, b) => a.stopOrder - b.stopOrder)
+      
+      return {
+        id: seg.id,
+        routeId: seg.route_id,
+        dayNumber: seg.day_number,
+        segmentDate: seg.segment_date,
+        fromDestinationId: seg.from_destination_id,
+        toDestinationId: seg.to_destination_id,
+        distance: seg.distance,
+        segmentOrder: seg.segment_order,
+        notes: seg.notes,
+        createdAt: seg.createdAt,
+        updatedAt: seg.updatedAt,
+        fromDestinationName: seg.from_destination_name,
+        toDestinationName: seg.to_destination_name,
+        stops
+      }
+    })
     
     // Convert logistics snake_case to camelCase
     const logistics = logisticsResult.rows.map(log => ({
@@ -2413,6 +2270,7 @@ app.get('/api/routes/:id', async (req, res) => {
       logisticsType: log.logistics_type,
       entityId: log.entity_id,
       entityType: log.entity_type,
+      itemName: log.item_name,
       quantity: log.quantity,
       cost: log.cost,
       date: log.date,
@@ -2425,7 +2283,7 @@ app.get('/api/routes/:id', async (req, res) => {
       entityName: log.entity_name
     }))
     
-    // Convert participants snake_case to camelCase
+    // Convert participants snake_case to camelCase and get segment assignments
     const participants = participantsResult.rows.map(part => ({
       id: part.id,
       routeId: part.route_id,
@@ -2436,8 +2294,28 @@ app.get('/api/routes/:id', async (req, res) => {
       createdAt: part.createdAt,
       updatedAt: part.updatedAt,
       clientName: part.client_name,
-      guideName: part.guide_name
+      guideName: part.guide_name,
+      segmentIds: []
     }))
+    
+    // Fetch segment assignments for all participants
+    if (participants.length > 0) {
+      const participantIds = participants.map(p => p.id)
+      const segmentAssignments = await pool.query(
+        `SELECT segment_id, participant_id 
+         FROM route_segment_participants 
+         WHERE participant_id = ANY($1::uuid[])`,
+        [participantIds]
+      )
+      
+      // Map segment IDs to participants
+      segmentAssignments.rows.forEach(assignment => {
+        const participant = participants.find(p => p.id === assignment.participant_id)
+        if (participant && participant.segmentIds) {
+          participant.segmentIds.push(assignment.segment_id)
+        }
+      })
+    }
     
     // Convert transactions snake_case to camelCase
     const transactions = transactionsResult.rows.map(trans => ({
@@ -2664,8 +2542,8 @@ app.post('/api/routes/:id/duplicate', async (req, res) => {
     )
     for (const segment of segmentsResult.rows) {
       await pool.query(
-        `INSERT INTO route_segments (id, route_id, day_number, segment_date, from_destination_id, to_destination_id, overnight_location_id, distance, estimated_duration, segment_type, segment_order, notes)
-         VALUES (gen_random_uuid(), $1, $2, NULL, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        `INSERT INTO route_segments (id, route_id, day_number, segment_date, from_destination_id, to_destination_id, overnight_location_id, distance, segment_order, notes)
+         VALUES (gen_random_uuid(), $1, $2, NULL, $3, $4, $5, $6, $7, $8)`,
         [
           newRouteId,
           segment.day_number,
@@ -2673,8 +2551,6 @@ app.post('/api/routes/:id/duplicate', async (req, res) => {
           segment.to_destination_id,
           segment.overnight_location_id,
           segment.distance,
-          segment.estimated_duration,
-          segment.segment_type,
           segment.segment_order,
           segment.notes
         ]
@@ -2695,14 +2571,15 @@ app.post('/api/routes/:id/duplicate', async (req, res) => {
       ).rows[0]?.id : null
       
       await pool.query(
-        `INSERT INTO route_logistics (id, route_id, segment_id, logistics_type, entity_id, entity_type, quantity, cost, date, driver_pilot_name, is_own_vehicle, vehicle_type, notes)
-         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, NULL, $8, $9, $10, $11)`,
+        `INSERT INTO route_logistics (id, route_id, segment_id, logistics_type, entity_id, entity_type, item_name, quantity, cost, date, driver_pilot_name, is_own_vehicle, vehicle_type, notes)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NULL, $9, $10, $11, $12)`,
         [
           newRouteId,
           newSegmentId,
           logistics.logistics_type,
           logistics.entity_id,
           logistics.entity_type,
+          logistics.item_name,
           logistics.quantity,
           logistics.cost,
           logistics.driver_pilot_name,
@@ -2757,37 +2634,61 @@ app.get('/api/routes/:routeId/segments', async (req, res) => {
       `SELECT 
         rs.*,
         l1.name as from_destination_name,
-        l2.name as to_destination_name,
-        l3.name as overnight_location_name
+        l2.name as to_destination_name
       FROM route_segments rs
       LEFT JOIN locations l1 ON rs.from_destination_id = l1.id
       LEFT JOIN locations l2 ON rs.to_destination_id = l2.id
-      LEFT JOIN locations l3 ON rs.overnight_location_id = l3.id
       WHERE rs.route_id = $1
       ORDER BY rs.segment_order, rs.day_number`,
       [routeId]
     )
     
-    // Convert snake_case to camelCase
-    const segments = result.rows.map(seg => ({
-      id: seg.id,
-      routeId: seg.route_id,
-      dayNumber: seg.day_number,
-      segmentDate: seg.segment_date,
-      fromDestinationId: seg.from_destination_id,
-      toDestinationId: seg.to_destination_id,
-      overnightLocationId: seg.overnight_location_id,
-      distance: seg.distance,
-      estimatedDuration: seg.estimated_duration,
-      segmentType: seg.segment_type,
-      segmentOrder: seg.segment_order,
-      notes: seg.notes,
-      createdAt: seg.createdAt,
-      updatedAt: seg.updatedAt,
-      fromDestinationName: seg.from_destination_name,
-      toDestinationName: seg.to_destination_name,
-      overnightLocationName: seg.overnight_location_name
-    }))
+    // Get stops for all segments
+    const segmentIds = result.rows.map(s => s.id)
+    const stopsResult = segmentIds.length > 0 ? await pool.query(
+      `SELECT 
+        rss.*,
+        l.name as location_name
+      FROM route_segment_stops rss
+      LEFT JOIN locations l ON rss.location_id = l.id
+      WHERE rss.segment_id = ANY($1::uuid[])
+      ORDER BY rss.segment_id, rss.stop_order`,
+      [segmentIds]
+    ) : { rows: [] }
+    
+    // Convert snake_case to camelCase and attach stops
+    const segments = result.rows.map(seg => {
+      const stops = stopsResult.rows
+        .filter(stop => stop.segment_id === seg.id)
+        .map(stop => ({
+          id: stop.id,
+          segmentId: stop.segment_id,
+          locationId: stop.location_id,
+          stopOrder: stop.stop_order,
+          notes: stop.notes,
+          createdAt: stop.createdAt,
+          updatedAt: stop.updatedAt,
+          locationName: stop.location_name
+        }))
+        .sort((a, b) => a.stopOrder - b.stopOrder)
+      
+      return {
+        id: seg.id,
+        routeId: seg.route_id,
+        dayNumber: seg.day_number,
+        segmentDate: seg.segment_date,
+        fromDestinationId: seg.from_destination_id,
+        toDestinationId: seg.to_destination_id,
+        distance: seg.distance,
+        segmentOrder: seg.segment_order,
+        notes: seg.notes,
+        createdAt: seg.createdAt,
+        updatedAt: seg.updatedAt,
+        fromDestinationName: seg.from_destination_name,
+        toDestinationName: seg.to_destination_name,
+        stops
+      }
+    })
     
     res.json(segments)
   } catch (error) {
@@ -2805,7 +2706,7 @@ app.post('/api/routes/:routeId/segments', async (req, res) => {
   try {
     verifyAuth(req)
     const { routeId } = req.params
-    const { dayNumber, fromDestinationId, toDestinationId, overnightLocationId, distance, estimatedDuration, segmentType, segmentOrder, notes } = req.body
+    const { dayNumber, fromDestinationId, toDestinationId, distance, segmentOrder, notes } = req.body
     
     // Get max day_number to set default
     const maxDayResult = await pool.query(
@@ -2829,8 +2730,8 @@ app.post('/api/routes/:routeId/segments', async (req, res) => {
     
     const segmentId = randomUUID()
     await pool.query(
-      `INSERT INTO route_segments (id, route_id, day_number, segment_date, from_destination_id, to_destination_id, overnight_location_id, distance, estimated_duration, segment_type, segment_order, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      `INSERT INTO route_segments (id, route_id, day_number, segment_date, from_destination_id, to_destination_id, distance, segment_order, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         segmentId,
         routeId,
@@ -2838,32 +2739,50 @@ app.post('/api/routes/:routeId/segments', async (req, res) => {
         segmentDateStr,
         fromDestinationId || null,
         toDestinationId || null,
-        overnightLocationId || null,
         distance || 0,
-        estimatedDuration || null,
-        segmentType || 'travel',
         segOrder,
         notes || null
       ]
     )
     
-    // Fetch the created segment with location names
+    // Fetch the created segment with location names and stops
     const result = await pool.query(
       `SELECT 
         rs.*,
         l1.name as from_destination_name,
-        l2.name as to_destination_name,
-        l3.name as overnight_location_name
+        l2.name as to_destination_name
       FROM route_segments rs
       LEFT JOIN locations l1 ON rs.from_destination_id = l1.id
       LEFT JOIN locations l2 ON rs.to_destination_id = l2.id
-      LEFT JOIN locations l3 ON rs.overnight_location_id = l3.id
       WHERE rs.id = $1`,
+      [segmentId]
+    )
+    
+    // Get stops for this segment
+    const stopsResult = await pool.query(
+      `SELECT 
+        rss.*,
+        l.name as location_name
+      FROM route_segment_stops rss
+      LEFT JOIN locations l ON rss.location_id = l.id
+      WHERE rss.segment_id = $1
+      ORDER BY rss.stop_order`,
       [segmentId]
     )
     
     // Convert to camelCase
     const seg = result.rows[0]
+    const stops = stopsResult.rows.map(stop => ({
+      id: stop.id,
+      segmentId: stop.segment_id,
+      locationId: stop.location_id,
+      stopOrder: stop.stop_order,
+      notes: stop.notes,
+      createdAt: stop.createdAt,
+      updatedAt: stop.updatedAt,
+      locationName: stop.location_name
+    }))
+    
     const segment = {
       id: seg.id,
       routeId: seg.route_id,
@@ -2871,17 +2790,14 @@ app.post('/api/routes/:routeId/segments', async (req, res) => {
       segmentDate: seg.segment_date,
       fromDestinationId: seg.from_destination_id,
       toDestinationId: seg.to_destination_id,
-      overnightLocationId: seg.overnight_location_id,
       distance: seg.distance,
-      estimatedDuration: seg.estimated_duration,
-      segmentType: seg.segment_type,
       segmentOrder: seg.segment_order,
       notes: seg.notes,
       createdAt: seg.createdAt,
       updatedAt: seg.updatedAt,
       fromDestinationName: seg.from_destination_name,
       toDestinationName: seg.to_destination_name,
-      overnightLocationName: seg.overnight_location_name
+      stops
     }
     
     res.status(201).json(segment)
@@ -2900,7 +2816,7 @@ app.put('/api/routes/:routeId/segments/:id', async (req, res) => {
   try {
     verifyAuth(req)
     const { routeId, id } = req.params
-    const { dayNumber, fromDestinationId, toDestinationId, overnightLocationId, distance, estimatedDuration, segmentType, segmentOrder, notes } = req.body
+    const { dayNumber, fromDestinationId, toDestinationId, distance, segmentOrder, notes } = req.body
     
     const existing = await pool.query('SELECT id FROM route_segments WHERE id = $1 AND route_id = $2', [id, routeId])
     if (existing.rows.length === 0) {
@@ -2925,46 +2841,62 @@ app.put('/api/routes/:routeId/segments/:id', async (req, res) => {
            segment_date = COALESCE($2, segment_date),
            from_destination_id = $3,
            to_destination_id = $4,
-           overnight_location_id = $5,
-           distance = $6,
-           estimated_duration = $7,
-           segment_type = $8,
-           segment_order = COALESCE($9, segment_order),
-           notes = $10,
+           distance = $5,
+           segment_order = COALESCE($6, segment_order),
+           notes = $7,
            "updatedAt" = NOW()
-       WHERE id = $11`,
+       WHERE id = $8 AND route_id = $9`,
       [
         dayNumber,
         segmentDate,
         fromDestinationId || null,
         toDestinationId || null,
-        overnightLocationId || null,
         distance || 0,
-        estimatedDuration || null,
-        segmentType || 'travel',
         segmentOrder,
         notes || null,
-        id
+        id,
+        routeId
       ]
     )
     
-    // Fetch the updated segment with location names
+    // Fetch the updated segment with location names and stops
     const result = await pool.query(
       `SELECT 
         rs.*,
         l1.name as from_destination_name,
-        l2.name as to_destination_name,
-        l3.name as overnight_location_name
+        l2.name as to_destination_name
       FROM route_segments rs
       LEFT JOIN locations l1 ON rs.from_destination_id = l1.id
       LEFT JOIN locations l2 ON rs.to_destination_id = l2.id
-      LEFT JOIN locations l3 ON rs.overnight_location_id = l3.id
       WHERE rs.id = $1`,
+      [id]
+    )
+    
+    // Get stops for this segment
+    const stopsResult = await pool.query(
+      `SELECT 
+        rss.*,
+        l.name as location_name
+      FROM route_segment_stops rss
+      LEFT JOIN locations l ON rss.location_id = l.id
+      WHERE rss.segment_id = $1
+      ORDER BY rss.stop_order`,
       [id]
     )
     
     // Convert to camelCase
     const seg = result.rows[0]
+    const stops = stopsResult.rows.map(stop => ({
+      id: stop.id,
+      segmentId: stop.segment_id,
+      locationId: stop.location_id,
+      stopOrder: stop.stop_order,
+      notes: stop.notes,
+      createdAt: stop.createdAt,
+      updatedAt: stop.updatedAt,
+      locationName: stop.location_name
+    }))
+    
     const segment = {
       id: seg.id,
       routeId: seg.route_id,
@@ -2972,17 +2904,14 @@ app.put('/api/routes/:routeId/segments/:id', async (req, res) => {
       segmentDate: seg.segment_date,
       fromDestinationId: seg.from_destination_id,
       toDestinationId: seg.to_destination_id,
-      overnightLocationId: seg.overnight_location_id,
       distance: seg.distance,
-      estimatedDuration: seg.estimated_duration,
-      segmentType: seg.segment_type,
       segmentOrder: seg.segment_order,
       notes: seg.notes,
       createdAt: seg.createdAt,
       updatedAt: seg.updatedAt,
       fromDestinationName: seg.from_destination_name,
       toDestinationName: seg.to_destination_name,
-      overnightLocationName: seg.overnight_location_name
+      stops
     }
     
     res.json(segment)
@@ -2992,6 +2921,195 @@ app.put('/api/routes/:routeId/segments/:id', async (req, res) => {
       return res.status(401).json({ message: error.message })
     }
     res.status(500).json({ message: error.message || 'Failed to update segment' })
+  }
+})
+
+// ============================================
+// ROUTE SEGMENT STOPS API ENDPOINTS
+// ============================================
+
+// Get all stops for a segment
+app.get('/api/routes/:routeId/segments/:segmentId/stops', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId } = req.params
+    
+    // Verify segment belongs to route
+    const segmentCheck = await pool.query(
+      'SELECT id FROM route_segments WHERE id = $1 AND route_id = $2',
+      [segmentId, routeId]
+    )
+    if (segmentCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Segment not found' })
+    }
+    
+    const result = await pool.query(
+      `SELECT 
+        rss.*,
+        l.name as location_name
+      FROM route_segment_stops rss
+      LEFT JOIN locations l ON rss.location_id = l.id
+      WHERE rss.segment_id = $1
+      ORDER BY rss.stop_order`,
+      [segmentId]
+    )
+    
+    const stops = result.rows.map(stop => ({
+      id: stop.id,
+      segmentId: stop.segment_id,
+      locationId: stop.location_id,
+      stopOrder: stop.stop_order,
+      notes: stop.notes,
+      createdAt: stop.createdAt,
+      updatedAt: stop.updatedAt,
+      locationName: stop.location_name
+    }))
+    
+    res.json(stops)
+  } catch (error) {
+    console.error('Get segment stops error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch segment stops' })
+  }
+})
+
+// Add a stop to a segment
+app.post('/api/routes/:routeId/segments/:segmentId/stops', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId } = req.params
+    const { locationId, stopOrder, notes } = req.body
+    
+    // Verify segment belongs to route
+    const segmentCheck = await pool.query(
+      'SELECT id FROM route_segments WHERE id = $1 AND route_id = $2',
+      [segmentId, routeId]
+    )
+    if (segmentCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Segment not found' })
+    }
+    
+    // Get max stop_order if not provided
+    let order = stopOrder
+    if (order === undefined || order === null) {
+      const maxOrderResult = await pool.query(
+        'SELECT COALESCE(MAX(stop_order), 0) as max_order FROM route_segment_stops WHERE segment_id = $1',
+        [segmentId]
+      )
+      order = parseInt(maxOrderResult.rows[0].max_order) + 1
+    }
+    
+    const stopId = randomUUID()
+    await pool.query(
+      `INSERT INTO route_segment_stops (id, segment_id, location_id, stop_order, notes)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [stopId, segmentId, locationId, order, notes || null]
+    )
+    
+    // Fetch the created stop with location name
+    const result = await pool.query(
+      `SELECT 
+        rss.*,
+        l.name as location_name
+      FROM route_segment_stops rss
+      LEFT JOIN locations l ON rss.location_id = l.id
+      WHERE rss.id = $1`,
+      [stopId]
+    )
+    
+    const stop = result.rows[0]
+    res.status(201).json({
+      id: stop.id,
+      segmentId: stop.segment_id,
+      locationId: stop.location_id,
+      stopOrder: stop.stop_order,
+      notes: stop.notes,
+      createdAt: stop.createdAt,
+      updatedAt: stop.updatedAt,
+      locationName: stop.location_name
+    })
+  } catch (error) {
+    console.error('Add segment stop error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to add segment stop' })
+  }
+})
+
+// Delete a segment stop
+app.delete('/api/routes/:routeId/segments/:segmentId/stops/:stopId', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId, stopId } = req.params
+    
+    // Verify segment belongs to route
+    const segmentCheck = await pool.query(
+      'SELECT id FROM route_segments WHERE id = $1 AND route_id = $2',
+      [segmentId, routeId]
+    )
+    if (segmentCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Segment not found' })
+    }
+    
+    // Verify stop belongs to segment
+    const stopCheck = await pool.query(
+      'SELECT id FROM route_segment_stops WHERE id = $1 AND segment_id = $2',
+      [stopId, segmentId]
+    )
+    if (stopCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Stop not found' })
+    }
+    
+    await pool.query('DELETE FROM route_segment_stops WHERE id = $1', [stopId])
+    
+    res.status(204).send()
+  } catch (error) {
+    console.error('Delete segment stop error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to delete segment stop' })
+  }
+})
+
+// Reorder segment stops
+app.put('/api/routes/:routeId/segments/:segmentId/stops/reorder', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId } = req.params
+    const { stopOrders } = req.body // Array of { id, stopOrder }
+    
+    // Verify segment belongs to route
+    const segmentCheck = await pool.query(
+      'SELECT id FROM route_segments WHERE id = $1 AND route_id = $2',
+      [segmentId, routeId]
+    )
+    if (segmentCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Segment not found' })
+    }
+    
+    // Update stop orders
+    for (const { id, stopOrder } of stopOrders) {
+      await pool.query(
+        'UPDATE route_segment_stops SET stop_order = $1, "updatedAt" = NOW() WHERE id = $2 AND segment_id = $3',
+        [stopOrder, id, segmentId]
+      )
+    }
+    
+    res.json({ message: 'Stops reordered successfully' })
+  } catch (error) {
+    console.error('Reorder segment stops error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to reorder segment stops' })
   }
 })
 
@@ -3078,17 +3196,19 @@ app.get('/api/routes/:routeId/logistics', async (req, res) => {
         rl.*,
         CASE 
           WHEN rl.entity_type = 'hotel' THEN h.name
-          WHEN rl.entity_type = 'caterer' THEN c.name
           WHEN rl.entity_type = 'third-party' THEN tp.name
-          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE WHEN v."vehicleOwner" = 'company' THEN 'Company' ELSE 'Third Party' END
+          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE 
+            WHEN v."vehicleOwner" = 'company' THEN 'Company'
+            WHEN v."vehicleOwner" = 'hotel' THEN COALESCE(h.name, 'Hotel')
+            ELSE COALESCE(tp.name, 'Third Party')
+          END
           WHEN rl.entity_type = 'location' THEN l.name
           ELSE NULL
         END as entity_name
       FROM route_logistics rl
-      LEFT JOIN hotels h ON rl.entity_type = 'hotel' AND rl.entity_id = h.id
-      LEFT JOIN caterers c ON rl.entity_type = 'caterer' AND rl.entity_id = c.id
-      LEFT JOIN third_parties tp ON rl.entity_type = 'third-party' AND rl.entity_id = tp.id
       LEFT JOIN vehicles v ON rl.entity_type = 'vehicle' AND rl.entity_id = v.id
+      LEFT JOIN hotels h ON (rl.entity_type = 'hotel' AND rl.entity_id = h.id) OR (rl.entity_type = 'vehicle' AND v."hotelId" = h.id)
+      LEFT JOIN third_parties tp ON (rl.entity_type = 'third-party' AND rl.entity_id = tp.id) OR (rl.entity_type = 'vehicle' AND v."thirdPartyId" = tp.id)
       LEFT JOIN locations l ON rl.entity_type = 'location' AND rl.entity_id = l.id
       WHERE rl.route_id = $1
       ORDER BY rl.segment_id, rl.logistics_type`,
@@ -3103,6 +3223,7 @@ app.get('/api/routes/:routeId/logistics', async (req, res) => {
       logisticsType: log.logistics_type,
       entityId: log.entity_id,
       entityType: log.entity_type,
+      itemName: log.item_name,
       quantity: log.quantity,
       cost: log.cost,
       date: log.date,
@@ -3131,23 +3252,30 @@ app.post('/api/routes/:routeId/logistics', async (req, res) => {
   try {
     verifyAuth(req)
     const { routeId } = req.params
-    const { segmentId, logisticsType, entityId, entityType, quantity, cost, date, driverPilotName, isOwnVehicle, vehicleType, notes } = req.body
+    const { segmentId, logisticsType, entityId, entityType, itemName, quantity, cost, date, driverPilotName, isOwnVehicle, vehicleType, notes } = req.body
     
-    if (!logisticsType || !entityId || !entityType) {
-      return res.status(400).json({ message: 'logisticsType, entityId, and entityType are required' })
+    if (!logisticsType || !entityType) {
+      return res.status(400).json({ message: 'logisticsType and entityType are required' })
+    }
+    if (logisticsType !== 'lunch' && logisticsType !== 'extra-cost' && !entityId) {
+      return res.status(400).json({ message: 'entityId is required' })
+    }
+    if ((logisticsType === 'lunch' || logisticsType === 'extra-cost') && !itemName) {
+      return res.status(400).json({ message: 'itemName is required for this type' })
     }
     
     const logisticsId = randomUUID()
     await pool.query(
-      `INSERT INTO route_logistics (id, route_id, segment_id, logistics_type, entity_id, entity_type, quantity, cost, date, driver_pilot_name, is_own_vehicle, vehicle_type, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      `INSERT INTO route_logistics (id, route_id, segment_id, logistics_type, entity_id, entity_type, item_name, quantity, cost, date, driver_pilot_name, is_own_vehicle, vehicle_type, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       [
         logisticsId,
         routeId,
         segmentId || null,
         logisticsType,
-        entityId,
+        entityId || null,
         entityType,
+        itemName || null,
         quantity || 1,
         cost || 0,
         date || null,
@@ -3164,17 +3292,19 @@ app.post('/api/routes/:routeId/logistics', async (req, res) => {
         rl.*,
         CASE 
           WHEN rl.entity_type = 'hotel' THEN h.name
-          WHEN rl.entity_type = 'caterer' THEN c.name
           WHEN rl.entity_type = 'third-party' THEN tp.name
-          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE WHEN v."vehicleOwner" = 'company' THEN 'Company' ELSE 'Third Party' END
+          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE 
+            WHEN v."vehicleOwner" = 'company' THEN 'Company'
+            WHEN v."vehicleOwner" = 'hotel' THEN COALESCE(h.name, 'Hotel')
+            ELSE COALESCE(tp.name, 'Third Party')
+          END
           WHEN rl.entity_type = 'location' THEN l.name
           ELSE NULL
         END as entity_name
       FROM route_logistics rl
-      LEFT JOIN hotels h ON rl.entity_type = 'hotel' AND rl.entity_id = h.id
-      LEFT JOIN caterers c ON rl.entity_type = 'caterer' AND rl.entity_id = c.id
-      LEFT JOIN third_parties tp ON rl.entity_type = 'third-party' AND rl.entity_id = tp.id
       LEFT JOIN vehicles v ON rl.entity_type = 'vehicle' AND rl.entity_id = v.id
+      LEFT JOIN hotels h ON (rl.entity_type = 'hotel' AND rl.entity_id = h.id) OR (rl.entity_type = 'vehicle' AND v."hotelId" = h.id)
+      LEFT JOIN third_parties tp ON (rl.entity_type = 'third-party' AND rl.entity_id = tp.id) OR (rl.entity_type = 'vehicle' AND v."thirdPartyId" = tp.id)
       LEFT JOIN locations l ON rl.entity_type = 'location' AND rl.entity_id = l.id
       WHERE rl.id = $1`,
       [logisticsId]
@@ -3189,6 +3319,7 @@ app.post('/api/routes/:routeId/logistics', async (req, res) => {
       logisticsType: log.logistics_type,
       entityId: log.entity_id,
       entityType: log.entity_type,
+      itemName: log.item_name,
       quantity: log.quantity,
       cost: log.cost,
       date: log.date,
@@ -3217,7 +3348,7 @@ app.put('/api/routes/:routeId/logistics/:id', async (req, res) => {
   try {
     verifyAuth(req)
     const { routeId, id } = req.params
-    const { segmentId, logisticsType, entityId, entityType, quantity, cost, date, driverPilotName, isOwnVehicle, vehicleType, notes } = req.body
+    const { segmentId, logisticsType, entityId, entityType, itemName, quantity, cost, date, driverPilotName, isOwnVehicle, vehicleType, notes } = req.body
     
     const existing = await pool.query('SELECT id FROM route_logistics WHERE id = $1 AND route_id = $2', [id, routeId])
     if (existing.rows.length === 0) {
@@ -3230,20 +3361,22 @@ app.put('/api/routes/:routeId/logistics/:id', async (req, res) => {
            logistics_type = $2,
            entity_id = $3,
            entity_type = $4,
-           quantity = $5,
-           cost = $6,
-           date = $7,
-           driver_pilot_name = $8,
-           is_own_vehicle = $9,
-           vehicle_type = $10,
-           notes = $11,
+           item_name = $5,
+           quantity = $6,
+           cost = $7,
+           date = $8,
+           driver_pilot_name = $9,
+           is_own_vehicle = $10,
+           vehicle_type = $11,
+           notes = $12,
            "updatedAt" = NOW()
-       WHERE id = $12`,
+       WHERE id = $13`,
       [
         segmentId !== undefined ? segmentId : null,
         logisticsType,
-        entityId,
+        entityId || null,
         entityType,
+        itemName || null,
         quantity || 1,
         cost || 0,
         date || null,
@@ -3261,17 +3394,19 @@ app.put('/api/routes/:routeId/logistics/:id', async (req, res) => {
         rl.*,
         CASE 
           WHEN rl.entity_type = 'hotel' THEN h.name
-          WHEN rl.entity_type = 'caterer' THEN c.name
           WHEN rl.entity_type = 'third-party' THEN tp.name
-          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE WHEN v."vehicleOwner" = 'company' THEN 'Company' ELSE 'Third Party' END
+          WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE 
+            WHEN v."vehicleOwner" = 'company' THEN 'Company'
+            WHEN v."vehicleOwner" = 'hotel' THEN COALESCE(h.name, 'Hotel')
+            ELSE COALESCE(tp.name, 'Third Party')
+          END
           WHEN rl.entity_type = 'location' THEN l.name
           ELSE NULL
         END as entity_name
       FROM route_logistics rl
-      LEFT JOIN hotels h ON rl.entity_type = 'hotel' AND rl.entity_id = h.id
-      LEFT JOIN caterers c ON rl.entity_type = 'caterer' AND rl.entity_id = c.id
-      LEFT JOIN third_parties tp ON rl.entity_type = 'third-party' AND rl.entity_id = tp.id
       LEFT JOIN vehicles v ON rl.entity_type = 'vehicle' AND rl.entity_id = v.id
+      LEFT JOIN hotels h ON (rl.entity_type = 'hotel' AND rl.entity_id = h.id) OR (rl.entity_type = 'vehicle' AND v."hotelId" = h.id)
+      LEFT JOIN third_parties tp ON (rl.entity_type = 'third-party' AND rl.entity_id = tp.id) OR (rl.entity_type = 'vehicle' AND v."thirdPartyId" = tp.id)
       LEFT JOIN locations l ON rl.entity_type = 'location' AND rl.entity_id = l.id
       WHERE rl.id = $1`,
       [id]
@@ -3350,13 +3485,50 @@ app.get('/api/routes/:routeId/participants', async (req, res) => {
         g.name as guide_name
       FROM route_participants rp
       LEFT JOIN clients c ON rp.client_id = c.id
-      LEFT JOIN guides g ON rp.guide_id = g.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
       WHERE rp.route_id = $1
       ORDER BY rp.role, rp."createdAt"`,
       [routeId]
     )
     
-    res.json(result.rows)
+    // Get segment assignments for each participant
+    const participants = result.rows.map(participant => {
+      const participantObj = {
+        id: participant.id,
+        routeId: participant.route_id,
+        clientId: participant.client_id,
+        guideId: participant.guide_id,
+        role: participant.role,
+        notes: participant.notes,
+        createdAt: participant.createdAt,
+        updatedAt: participant.updatedAt,
+        clientName: participant.client_name,
+        guideName: participant.guide_name,
+        segmentIds: []
+      }
+      return participantObj
+    })
+    
+    // Fetch segment assignments
+    if (participants.length > 0) {
+      const participantIds = participants.map(p => p.id)
+      const segmentAssignments = await pool.query(
+        `SELECT segment_id, participant_id 
+         FROM route_segment_participants 
+         WHERE participant_id = ANY($1::uuid[])`,
+        [participantIds]
+      )
+      
+      // Map segment IDs to participants
+      segmentAssignments.rows.forEach(assignment => {
+        const participant = participants.find(p => p.id === assignment.participant_id)
+        if (participant && participant.segmentIds) {
+          participant.segmentIds.push(assignment.segment_id)
+        }
+      })
+    }
+    
+    res.json(participants)
   } catch (error) {
     console.error('Get participants error:', error)
     if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
@@ -3372,7 +3544,7 @@ app.post('/api/routes/:routeId/participants', async (req, res) => {
   try {
     verifyAuth(req)
     const { routeId } = req.params
-    const { clientId, guideId, role, notes } = req.body
+    const { clientId, guideId, role, notes, segmentIds } = req.body
     
     if (!role) {
       return res.status(400).json({ message: 'Role is required' })
@@ -3384,6 +3556,9 @@ app.post('/api/routes/:routeId/participants', async (req, res) => {
     }
     if ((role === 'guide-captain' || role === 'guide-tail') && !guideId) {
       return res.status(400).json({ message: 'guideId is required for guide roles' })
+    }
+    if (role === 'staff' && !guideId) {
+      return res.status(400).json({ message: 'guideId is required for staff role' })
     }
     
     const participantId = randomUUID()
@@ -3401,13 +3576,171 @@ app.post('/api/routes/:routeId/participants', async (req, res) => {
       ]
     )
     
-    res.status(201).json(result.rows[0])
+    // Add segment assignments if provided
+    if (segmentIds && Array.isArray(segmentIds) && segmentIds.length > 0) {
+      // Verify segments belong to this route
+      const segmentsCheck = await pool.query(
+        'SELECT id FROM route_segments WHERE id = ANY($1::uuid[]) AND route_id = $2',
+        [segmentIds, routeId]
+      )
+      if (segmentsCheck.rows.length !== segmentIds.length) {
+        return res.status(400).json({ message: 'One or more segments not found or do not belong to this route' })
+      }
+      
+      // Insert segment assignments
+      for (const segmentId of segmentIds) {
+        await pool.query(
+          `INSERT INTO route_segment_participants (id, segment_id, participant_id)
+           VALUES (gen_random_uuid(), $1, $2)
+           ON CONFLICT (segment_id, participant_id) DO NOTHING`,
+          [segmentId, participantId]
+        )
+      }
+    }
+    
+    // Fetch participant with segment IDs
+    const participantResult = await pool.query(
+      `SELECT 
+        rp.*,
+        c.name as client_name,
+        g.name as guide_name
+      FROM route_participants rp
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      WHERE rp.id = $1`,
+      [participantId]
+    )
+    
+    const segmentAssignments = await pool.query(
+      'SELECT segment_id FROM route_segment_participants WHERE participant_id = $1',
+      [participantId]
+    )
+    
+    const participant = participantResult.rows[0]
+    res.status(201).json({
+      id: participant.id,
+      routeId: participant.route_id,
+      clientId: participant.client_id,
+      guideId: participant.guide_id,
+      role: participant.role,
+      notes: participant.notes,
+      createdAt: participant.createdAt,
+      updatedAt: participant.updatedAt,
+      clientName: participant.client_name,
+      guideName: participant.guide_name,
+      segmentIds: segmentAssignments.rows.map(r => r.segment_id)
+    })
   } catch (error) {
     console.error('Create participant error:', error)
     if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
       return res.status(401).json({ message: error.message })
     }
     res.status(500).json({ message: error.message || 'Failed to create participant' })
+  }
+})
+
+// Update participant
+app.put('/api/routes/:routeId/participants/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, id } = req.params
+    const { clientId, guideId, role, notes, segmentIds } = req.body
+
+    if (!role) {
+      return res.status(400).json({ message: 'Role is required' })
+    }
+
+    if (role === 'client' && !clientId) {
+      return res.status(400).json({ message: 'clientId is required for client role' })
+    }
+    if ((role === 'guide-captain' || role === 'guide-tail') && !guideId) {
+      return res.status(400).json({ message: 'guideId is required for guide roles' })
+    }
+    if (role === 'staff' && !guideId) {
+      return res.status(400).json({ message: 'guideId is required for staff role' })
+    }
+
+    const existing = await pool.query('SELECT id FROM route_participants WHERE id = $1 AND route_id = $2', [id, routeId])
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Participant not found' })
+    }
+
+    await pool.query(
+      `UPDATE route_participants
+       SET client_id = $1,
+           guide_id = $2,
+           role = $3,
+           notes = $4,
+           "updatedAt" = NOW()
+       WHERE id = $5`,
+      [
+        clientId || null,
+        guideId || null,
+        role,
+        notes || null,
+        id
+      ]
+    )
+
+    const segmentIdsArray = Array.isArray(segmentIds) ? segmentIds : []
+    if (segmentIdsArray.length > 0) {
+      const segmentsCheck = await pool.query(
+        'SELECT id FROM route_segments WHERE id = ANY($1::uuid[]) AND route_id = $2',
+        [segmentIdsArray, routeId]
+      )
+      if (segmentsCheck.rows.length !== segmentIdsArray.length) {
+        return res.status(400).json({ message: 'One or more segments not found or do not belong to this route' })
+      }
+    }
+
+    await pool.query('DELETE FROM route_segment_participants WHERE participant_id = $1', [id])
+    for (const segmentId of segmentIdsArray) {
+      await pool.query(
+        `INSERT INTO route_segment_participants (id, segment_id, participant_id)
+         VALUES (gen_random_uuid(), $1, $2)
+         ON CONFLICT (segment_id, participant_id) DO NOTHING`,
+        [segmentId, id]
+      )
+    }
+
+    const participantResult = await pool.query(
+      `SELECT 
+        rp.*,
+        c.name as client_name,
+        g.name as guide_name
+      FROM route_participants rp
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      WHERE rp.id = $1`,
+      [id]
+    )
+
+    const segmentAssignments = await pool.query(
+      'SELECT segment_id FROM route_segment_participants WHERE participant_id = $1',
+      [id]
+    )
+
+    const participant = participantResult.rows[0]
+    res.json({
+      id: participant.id,
+      routeId: participant.route_id,
+      clientId: participant.client_id,
+      guideId: participant.guide_id,
+      role: participant.role,
+      notes: participant.notes,
+      createdAt: participant.createdAt,
+      updatedAt: participant.updatedAt,
+      clientName: participant.client_name,
+      guideName: participant.guide_name,
+      segmentIds: segmentAssignments.rows.map(r => r.segment_id)
+    })
+  } catch (error) {
+    console.error('Update participant error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to update participant' })
   }
 })
 
@@ -3432,6 +3765,714 @@ app.delete('/api/routes/:routeId/participants/:id', async (req, res) => {
       return res.status(401).json({ message: error.message })
     }
     res.status(500).json({ message: error.message || 'Failed to delete participant' })
+  }
+})
+
+// Update participant segment assignments
+app.put('/api/routes/:routeId/participants/:id/segments', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, id } = req.params
+    const { segmentIds } = req.body
+    
+    // Ensure segmentIds is an array (default to empty array if not provided or invalid)
+    const segmentIdsArray = Array.isArray(segmentIds) ? segmentIds : []
+    
+    // Verify participant exists and belongs to route
+    const participantCheck = await pool.query(
+      'SELECT id FROM route_participants WHERE id = $1 AND route_id = $2',
+      [id, routeId]
+    )
+    if (participantCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Participant not found' })
+    }
+    
+    // Verify segments belong to this route if provided
+    if (segmentIdsArray.length > 0) {
+      const segmentsCheck = await pool.query(
+        'SELECT id FROM route_segments WHERE id = ANY($1::uuid[]) AND route_id = $2',
+        [segmentIdsArray, routeId]
+      )
+      if (segmentsCheck.rows.length !== segmentIdsArray.length) {
+        return res.status(400).json({ message: 'One or more segments not found or do not belong to this route' })
+      }
+    }
+    
+    // Remove all existing segment assignments
+    await pool.query(
+      'DELETE FROM route_segment_participants WHERE participant_id = $1',
+      [id]
+    )
+    
+    // Add new segment assignments if provided
+    if (segmentIdsArray.length > 0) {
+      for (const segmentId of segmentIdsArray) {
+        await pool.query(
+          `INSERT INTO route_segment_participants (id, segment_id, participant_id)
+           VALUES (gen_random_uuid(), $1, $2)
+           ON CONFLICT (segment_id, participant_id) DO NOTHING`,
+          [segmentId, id]
+        )
+      }
+    }
+    
+    // Fetch updated participant with segment IDs
+    const participantResult = await pool.query(
+      `SELECT 
+        rp.*,
+        c.name as client_name,
+        g.name as guide_name
+      FROM route_participants rp
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      WHERE rp.id = $1`,
+      [id]
+    )
+    
+    if (participantResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Participant not found after update' })
+    }
+    
+    const segmentAssignments = await pool.query(
+      'SELECT segment_id FROM route_segment_participants WHERE participant_id = $1',
+      [id]
+    )
+    
+    const participant = participantResult.rows[0]
+    res.json({
+      id: participant.id,
+      routeId: participant.route_id,
+      clientId: participant.client_id,
+      guideId: participant.guide_id,
+      role: participant.role,
+      notes: participant.notes,
+      createdAt: participant.createdAt,
+      updatedAt: participant.updatedAt,
+      clientName: participant.client_name,
+      guideName: participant.guide_name,
+      segmentIds: segmentAssignments.rows.map(r => r.segment_id)
+    })
+  } catch (error) {
+    console.error('Update participant segments error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to update participant segments' })
+  }
+})
+
+// Get participants for a specific segment
+app.get('/api/routes/:routeId/segments/:segmentId/participants', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId } = req.params
+    
+    // Verify segment belongs to route
+    const segmentCheck = await pool.query(
+      'SELECT id FROM route_segments WHERE id = $1 AND route_id = $2',
+      [segmentId, routeId]
+    )
+    if (segmentCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Segment not found' })
+    }
+    
+    // Get participants for this segment:
+    // Only participants explicitly assigned to this segment
+    // (Participants with no assignments are NOT on any segments by default)
+    const result = await pool.query(
+      `SELECT DISTINCT
+        rp.*,
+        c.name as client_name,
+        g.name as guide_name
+      FROM route_participants rp
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      INNER JOIN route_segment_participants rsp ON rp.id = rsp.participant_id
+      WHERE rp.route_id = $1
+        AND rsp.segment_id = $2
+      ORDER BY rp.role, rp."createdAt"`,
+      [routeId, segmentId]
+    )
+    
+    // Convert to camelCase
+    const participants = result.rows.map(participant => ({
+      id: participant.id,
+      routeId: participant.route_id,
+      clientId: participant.client_id,
+      guideId: participant.guide_id,
+      role: participant.role,
+      notes: participant.notes,
+      createdAt: participant.createdAt,
+      updatedAt: participant.updatedAt,
+      clientName: participant.client_name,
+      guideName: participant.guide_name
+    }))
+    
+    res.json(participants)
+  } catch (error) {
+    console.error('Get segment participants error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch segment participants' })
+  }
+})
+
+// Add participant to a segment
+app.post('/api/routes/:routeId/segments/:segmentId/participants', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId } = req.params
+    const { participantId } = req.body
+    
+    if (!participantId) {
+      return res.status(400).json({ message: 'participantId is required' })
+    }
+    
+    // Verify segment belongs to route
+    const segmentCheck = await pool.query(
+      'SELECT id FROM route_segments WHERE id = $1 AND route_id = $2',
+      [segmentId, routeId]
+    )
+    if (segmentCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Segment not found' })
+    }
+    
+    // Verify participant belongs to route
+    const participantCheck = await pool.query(
+      'SELECT id FROM route_participants WHERE id = $1 AND route_id = $2',
+      [participantId, routeId]
+    )
+    if (participantCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Participant not found in route' })
+    }
+    
+    // Add segment assignment
+    await pool.query(
+      `INSERT INTO route_segment_participants (id, segment_id, participant_id)
+       VALUES (gen_random_uuid(), $1, $2)
+       ON CONFLICT (segment_id, participant_id) DO NOTHING
+       RETURNING id`,
+      [segmentId, participantId]
+    )
+    
+    res.status(201).json({ message: 'Participant added to segment successfully' })
+  } catch (error) {
+    console.error('Add participant to segment error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to add participant to segment' })
+  }
+})
+
+// Remove participant from a segment
+app.delete('/api/routes/:routeId/segments/:segmentId/participants/:participantId', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId, participantId } = req.params
+    
+    // Verify segment belongs to route
+    const segmentCheck = await pool.query(
+      'SELECT id FROM route_segments WHERE id = $1 AND route_id = $2',
+      [segmentId, routeId]
+    )
+    if (segmentCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Segment not found' })
+    }
+    
+    // Remove segment assignment
+    const result = await pool.query(
+      'DELETE FROM route_segment_participants WHERE segment_id = $1 AND participant_id = $2 RETURNING id',
+      [segmentId, participantId]
+    )
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Participant not found in segment' })
+    }
+    
+    res.json({ message: 'Participant removed from segment successfully' })
+  } catch (error) {
+    console.error('Remove participant from segment error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to remove participant from segment' })
+  }
+})
+
+// ============================================
+// SEGMENT ACCOMMODATIONS API ENDPOINTS
+// ============================================
+
+// Get accommodations for a segment
+app.get('/api/routes/:routeId/segments/:segmentId/accommodations', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId } = req.params
+
+    const segmentCheck = await pool.query(
+      'SELECT id FROM route_segments WHERE id = $1 AND route_id = $2',
+      [segmentId, routeId]
+    )
+    if (segmentCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Segment not found' })
+    }
+
+    const accommodationsResult = await pool.query(
+      `SELECT 
+        a.*,
+        h.name as hotel_name
+      FROM route_segment_accommodations a
+      JOIN hotels h ON a.hotel_id = h.id
+      WHERE a.segment_id = $1
+      ORDER BY a.group_type, h.name`,
+      [segmentId]
+    )
+
+    const accommodationIds = accommodationsResult.rows.map(row => row.id)
+    const roomsResult = accommodationIds.length > 0 ? await pool.query(
+      `SELECT *
+      FROM route_segment_accommodation_rooms
+      WHERE accommodation_id = ANY($1::uuid[])
+      ORDER BY "createdAt"`,
+      [accommodationIds]
+    ) : { rows: [] }
+
+    const roomIds = roomsResult.rows.map(row => row.id)
+    const roomParticipantsResult = roomIds.length > 0 ? await pool.query(
+      `SELECT room_id, participant_id
+      FROM route_segment_accommodation_room_participants
+      WHERE room_id = ANY($1::uuid[])`,
+      [roomIds]
+    ) : { rows: [] }
+
+    const participantIds = [...new Set(roomParticipantsResult.rows.map(row => row.participant_id))]
+    const participantsResult = participantIds.length > 0 ? await pool.query(
+      `SELECT 
+        rp.*,
+        c.name as client_name,
+        g.name as guide_name
+      FROM route_participants rp
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      WHERE rp.id = ANY($1::uuid[])`,
+      [participantIds]
+    ) : { rows: [] }
+
+    const participantsById = new Map(
+      participantsResult.rows.map(participant => ([
+        participant.id,
+        {
+          id: participant.id,
+          routeId: participant.route_id,
+          clientId: participant.client_id,
+          guideId: participant.guide_id,
+          role: participant.role,
+          notes: participant.notes,
+          createdAt: participant.createdAt,
+          updatedAt: participant.updatedAt,
+          clientName: participant.client_name,
+          guideName: participant.guide_name
+        }
+      ]))
+    )
+
+    const roomParticipantsByRoom = new Map()
+    roomParticipantsResult.rows.forEach(row => {
+      if (!roomParticipantsByRoom.has(row.room_id)) {
+        roomParticipantsByRoom.set(row.room_id, [])
+      }
+      roomParticipantsByRoom.get(row.room_id).push(row.participant_id)
+    })
+
+    const roomsByAccommodation = new Map()
+    roomsResult.rows.forEach(room => {
+      const participantIdsForRoom = roomParticipantsByRoom.get(room.id) || []
+      const roomParticipants = participantIdsForRoom
+        .map(id => participantsById.get(id))
+        .filter(Boolean)
+      const roomData = {
+        id: room.id,
+        accommodationId: room.accommodation_id,
+        roomType: room.room_type,
+        roomLabel: room.room_label,
+        isCouple: room.is_couple,
+        notes: room.notes,
+        createdAt: room.createdAt,
+        updatedAt: room.updatedAt,
+        participants: roomParticipants
+      }
+      if (!roomsByAccommodation.has(room.accommodation_id)) {
+        roomsByAccommodation.set(room.accommodation_id, [])
+      }
+      roomsByAccommodation.get(room.accommodation_id).push(roomData)
+    })
+
+    const accommodations = accommodationsResult.rows.map(acc => ({
+      id: acc.id,
+      segmentId: acc.segment_id,
+      hotelId: acc.hotel_id,
+      groupType: acc.group_type,
+      notes: acc.notes,
+      createdAt: acc.createdAt,
+      updatedAt: acc.updatedAt,
+      hotelName: acc.hotel_name,
+      rooms: roomsByAccommodation.get(acc.id) || []
+    }))
+
+    res.json(accommodations)
+  } catch (error) {
+    console.error('Get accommodations error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch accommodations' })
+  }
+})
+
+// Add hotel to segment accommodations
+app.post('/api/routes/:routeId/segments/:segmentId/accommodations', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId } = req.params
+    const { hotelId, groupType, notes } = req.body
+
+    if (!hotelId || !groupType) {
+      return res.status(400).json({ message: 'hotelId and groupType are required' })
+    }
+    if (!['client', 'staff'].includes(groupType)) {
+      return res.status(400).json({ message: 'groupType must be client or staff' })
+    }
+
+    const segmentCheck = await pool.query(
+      'SELECT id FROM route_segments WHERE id = $1 AND route_id = $2',
+      [segmentId, routeId]
+    )
+    if (segmentCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Segment not found' })
+    }
+
+    const hotelCheck = await pool.query('SELECT id FROM hotels WHERE id = $1', [hotelId])
+    if (hotelCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Hotel not found' })
+    }
+
+    const accommodationId = randomUUID()
+    await pool.query(
+      `INSERT INTO route_segment_accommodations (id, segment_id, hotel_id, group_type, notes)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [accommodationId, segmentId, hotelId, groupType, notes || null]
+    )
+
+    const result = await pool.query(
+      `SELECT 
+        a.*,
+        h.name as hotel_name
+      FROM route_segment_accommodations a
+      JOIN hotels h ON a.hotel_id = h.id
+      WHERE a.id = $1`,
+      [accommodationId]
+    )
+
+    const accommodation = result.rows[0]
+    res.status(201).json({
+      id: accommodation.id,
+      segmentId: accommodation.segment_id,
+      hotelId: accommodation.hotel_id,
+      groupType: accommodation.group_type,
+      notes: accommodation.notes,
+      createdAt: accommodation.createdAt,
+      updatedAt: accommodation.updatedAt,
+      hotelName: accommodation.hotel_name,
+      rooms: []
+    })
+  } catch (error) {
+    console.error('Add accommodation error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    if (error.code === '23505') {
+      return res.status(409).json({ message: 'Hotel already added for this group' })
+    }
+    res.status(500).json({ message: error.message || 'Failed to add accommodation' })
+  }
+})
+
+// Remove hotel from segment accommodations
+app.delete('/api/routes/:routeId/segments/:segmentId/accommodations/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId, id } = req.params
+
+    const existing = await pool.query(
+      `SELECT a.id
+      FROM route_segment_accommodations a
+      JOIN route_segments rs ON a.segment_id = rs.id
+      WHERE a.id = $1 AND a.segment_id = $2 AND rs.route_id = $3`,
+      [id, segmentId, routeId]
+    )
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Accommodation not found' })
+    }
+
+    await pool.query('DELETE FROM route_segment_accommodations WHERE id = $1', [id])
+    res.json({ message: 'Accommodation removed successfully' })
+  } catch (error) {
+    console.error('Remove accommodation error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to remove accommodation' })
+  }
+})
+
+// Add room to a segment accommodation
+app.post('/api/routes/:routeId/segments/:segmentId/accommodations/:id/rooms', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId, id } = req.params
+    const { roomType, roomLabel, isCouple, participantIds } = req.body
+
+    if (!roomType) {
+      return res.status(400).json({ message: 'roomType is required' })
+    }
+
+    const accommodationCheck = await pool.query(
+      `SELECT a.id
+      FROM route_segment_accommodations a
+      JOIN route_segments rs ON a.segment_id = rs.id
+      WHERE a.id = $1 AND a.segment_id = $2 AND rs.route_id = $3`,
+      [id, segmentId, routeId]
+    )
+    if (accommodationCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Accommodation not found' })
+    }
+
+    const participantIdsArray = Array.isArray(participantIds) ? participantIds : []
+    if (participantIdsArray.length > 0) {
+      const participantCheck = await pool.query(
+        'SELECT id FROM route_participants WHERE id = ANY($1::uuid[]) AND route_id = $2',
+        [participantIdsArray, routeId]
+      )
+      if (participantCheck.rows.length !== participantIdsArray.length) {
+        return res.status(400).json({ message: 'One or more participants are invalid for this route' })
+      }
+    }
+
+    const roomId = randomUUID()
+    await pool.query(
+      `INSERT INTO route_segment_accommodation_rooms (id, accommodation_id, room_type, room_label, is_couple, notes)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [roomId, id, roomType, roomLabel || null, isCouple || false, null]
+    )
+
+    if (participantIdsArray.length > 0) {
+      for (const participantId of participantIdsArray) {
+        await pool.query(
+          `INSERT INTO route_segment_accommodation_room_participants (id, room_id, participant_id)
+           VALUES (gen_random_uuid(), $1, $2)
+           ON CONFLICT (room_id, participant_id) DO NOTHING`,
+          [roomId, participantId]
+        )
+      }
+    }
+
+    const roomResult = await pool.query(
+      `SELECT *
+      FROM route_segment_accommodation_rooms
+      WHERE id = $1`,
+      [roomId]
+    )
+
+    const roomParticipantsResult = await pool.query(
+      `SELECT 
+        rp.*,
+        c.name as client_name,
+        g.name as guide_name
+      FROM route_segment_accommodation_room_participants rrp
+      JOIN route_participants rp ON rrp.participant_id = rp.id
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      WHERE rrp.room_id = $1`,
+      [roomId]
+    )
+
+    const room = roomResult.rows[0]
+    res.status(201).json({
+      id: room.id,
+      accommodationId: room.accommodation_id,
+      roomType: room.room_type,
+      roomLabel: room.room_label,
+      isCouple: room.is_couple,
+      notes: room.notes,
+      createdAt: room.createdAt,
+      updatedAt: room.updatedAt,
+      participants: roomParticipantsResult.rows.map(participant => ({
+        id: participant.id,
+        routeId: participant.route_id,
+        clientId: participant.client_id,
+        guideId: participant.guide_id,
+        role: participant.role,
+        notes: participant.notes,
+        createdAt: participant.createdAt,
+        updatedAt: participant.updatedAt,
+        clientName: participant.client_name,
+        guideName: participant.guide_name
+      }))
+    })
+  } catch (error) {
+    console.error('Add accommodation room error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to add room' })
+  }
+})
+
+// Update room details and participants
+app.put('/api/routes/:routeId/segments/:segmentId/accommodations/:id/rooms/:roomId', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId, id, roomId } = req.params
+    const { roomType, roomLabel, isCouple, participantIds } = req.body
+
+    const roomCheck = await pool.query(
+      `SELECT r.*
+      FROM route_segment_accommodation_rooms r
+      JOIN route_segment_accommodations a ON r.accommodation_id = a.id
+      JOIN route_segments rs ON a.segment_id = rs.id
+      WHERE r.id = $1 AND a.id = $2 AND a.segment_id = $3 AND rs.route_id = $4`,
+      [roomId, id, segmentId, routeId]
+    )
+    if (roomCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Room not found' })
+    }
+
+    const existingRoom = roomCheck.rows[0]
+    const nextRoomType = roomType || existingRoom.room_type
+    const nextRoomLabel = roomLabel !== undefined ? roomLabel : existingRoom.room_label
+    const nextIsCouple = typeof isCouple === 'boolean' ? isCouple : existingRoom.is_couple
+
+    await pool.query(
+      `UPDATE route_segment_accommodation_rooms
+       SET room_type = $1, room_label = $2, is_couple = $3, "updatedAt" = NOW()
+       WHERE id = $4`,
+      [nextRoomType, nextRoomLabel || null, nextIsCouple, roomId]
+    )
+
+    const participantIdsArray = Array.isArray(participantIds) ? participantIds : null
+    if (participantIdsArray) {
+      const participantCheck = await pool.query(
+        'SELECT id FROM route_participants WHERE id = ANY($1::uuid[]) AND route_id = $2',
+        [participantIdsArray, routeId]
+      )
+      if (participantCheck.rows.length !== participantIdsArray.length) {
+        return res.status(400).json({ message: 'One or more participants are invalid for this route' })
+      }
+
+      await pool.query(
+        'DELETE FROM route_segment_accommodation_room_participants WHERE room_id = $1',
+        [roomId]
+      )
+      for (const participantId of participantIdsArray) {
+        await pool.query(
+          `INSERT INTO route_segment_accommodation_room_participants (id, room_id, participant_id)
+           VALUES (gen_random_uuid(), $1, $2)
+           ON CONFLICT (room_id, participant_id) DO NOTHING`,
+          [roomId, participantId]
+        )
+      }
+    }
+
+    const roomResult = await pool.query(
+      `SELECT *
+      FROM route_segment_accommodation_rooms
+      WHERE id = $1`,
+      [roomId]
+    )
+
+    const roomParticipantsResult = await pool.query(
+      `SELECT 
+        rp.*,
+        c.name as client_name,
+        g.name as guide_name
+      FROM route_segment_accommodation_room_participants rrp
+      JOIN route_participants rp ON rrp.participant_id = rp.id
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      WHERE rrp.room_id = $1`,
+      [roomId]
+    )
+
+    const room = roomResult.rows[0]
+    res.json({
+      id: room.id,
+      accommodationId: room.accommodation_id,
+      roomType: room.room_type,
+      roomLabel: room.room_label,
+      isCouple: room.is_couple,
+      notes: room.notes,
+      createdAt: room.createdAt,
+      updatedAt: room.updatedAt,
+      participants: roomParticipantsResult.rows.map(participant => ({
+        id: participant.id,
+        routeId: participant.route_id,
+        clientId: participant.client_id,
+        guideId: participant.guide_id,
+        role: participant.role,
+        notes: participant.notes,
+        createdAt: participant.createdAt,
+        updatedAt: participant.updatedAt,
+        clientName: participant.client_name,
+        guideName: participant.guide_name
+      }))
+    })
+  } catch (error) {
+    console.error('Update accommodation room error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to update room' })
+  }
+})
+
+// Remove room from segment accommodation
+app.delete('/api/routes/:routeId/segments/:segmentId/accommodations/:id/rooms/:roomId', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, segmentId, id, roomId } = req.params
+
+    const roomCheck = await pool.query(
+      `SELECT r.id
+      FROM route_segment_accommodation_rooms r
+      JOIN route_segment_accommodations a ON r.accommodation_id = a.id
+      JOIN route_segments rs ON a.segment_id = rs.id
+      WHERE r.id = $1 AND a.id = $2 AND a.segment_id = $3 AND rs.route_id = $4`,
+      [roomId, id, segmentId, routeId]
+    )
+    if (roomCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Room not found' })
+    }
+
+    await pool.query('DELETE FROM route_segment_accommodation_rooms WHERE id = $1', [roomId])
+    res.json({ message: 'Room removed successfully' })
+  } catch (error) {
+    console.error('Remove accommodation room error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to remove room' })
   }
 })
 
@@ -3546,6 +4587,786 @@ app.post('/api/routes/:routeId/transactions', async (req, res) => {
       return res.status(401).json({ message: error.message })
     }
     res.status(500).json({ message: error.message || 'Failed to create transaction' })
+  }
+})
+
+// ========== TRANSFER ENDPOINTS ==========
+
+// Get all transfers for a route
+app.get('/api/routes/:routeId/transfers', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId } = req.params
+    
+    const transfersResult = await pool.query(
+      `SELECT 
+        rt.*,
+        l1.name as from_location_name,
+        l2.name as to_location_name
+      FROM route_transfers rt
+      LEFT JOIN locations l1 ON rt.from_location_id = l1.id
+      LEFT JOIN locations l2 ON rt.to_location_id = l2.id
+      WHERE rt.route_id = $1
+      ORDER BY rt.transfer_date, rt."createdAt"`,
+      [routeId]
+    )
+    
+    // Get vehicles for each transfer
+    const vehiclesResult = await pool.query(
+      `SELECT 
+        rtv.*,
+        v.type as vehicle_type,
+        CASE 
+          WHEN v."vehicleOwner" = 'company' THEN 'Company'
+          WHEN v."vehicleOwner" = 'hotel' THEN h.name
+          ELSE tp.name
+        END as vehicle_owner,
+        tp.name as third_party_name,
+        h.name as hotel_name
+      FROM route_transfer_vehicles rtv
+      LEFT JOIN vehicles v ON rtv.vehicle_id = v.id
+      LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+      LEFT JOIN hotels h ON v."hotelId" = h.id
+      WHERE rtv.transfer_id = ANY($1::uuid[])`,
+      [transfersResult.rows.map(t => t.id)]
+    )
+    
+    // Get participants for each transfer
+    const participantsResult = await pool.query(
+      `SELECT 
+        rtp.*,
+        rp.role,
+        COALESCE(c.name, g.name, 'Staff') as participant_name
+      FROM route_transfer_participants rtp
+      LEFT JOIN route_participants rp ON rtp.participant_id = rp.id
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      WHERE rtp.transfer_id = ANY($1::uuid[])`,
+      [transfersResult.rows.map(t => t.id)]
+    )
+    
+    // Convert to camelCase and group
+    const transfers = transfersResult.rows.map(transfer => {
+      const vehicles = vehiclesResult.rows
+        .filter(v => v.transfer_id === transfer.id)
+        .map(v => ({
+          id: v.id,
+          transferId: v.transfer_id,
+          vehicleId: v.vehicle_id,
+          driverPilotName: v.driver_pilot_name,
+          quantity: v.quantity,
+          cost: v.cost,
+          isOwnVehicle: v.is_own_vehicle,
+          notes: v.notes,
+          createdAt: v.createdAt,
+          updatedAt: v.updatedAt,
+          vehicleName: `${v.vehicle_type} - ${v.vehicle_owner || 'Unknown'}`,
+          vehicleType: v.vehicle_type,
+          thirdPartyName: v.third_party_name,
+          hotelName: v.hotel_name
+        }))
+      
+      const participants = participantsResult.rows
+        .filter(p => p.transfer_id === transfer.id)
+        .map(p => ({
+          id: p.id,
+          transferId: p.transfer_id,
+          participantId: p.participant_id,
+          createdAt: p.createdAt,
+          participantName: p.participant_name,
+          participantRole: p.role
+        }))
+      
+      return {
+        id: transfer.id,
+        routeId: transfer.route_id,
+        transferDate: transfer.transfer_date,
+        fromLocationId: transfer.from_location_id,
+        toLocationId: transfer.to_location_id,
+        totalCost: parseFloat(transfer.total_cost),
+        notes: transfer.notes,
+        createdAt: transfer.createdAt,
+        updatedAt: transfer.updatedAt,
+        fromLocationName: transfer.from_location_name,
+        toLocationName: transfer.to_location_name,
+        vehicles,
+        participants
+      }
+    })
+    
+    res.json(transfers)
+  } catch (error) {
+    console.error('Get transfers error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch transfers' })
+  }
+})
+
+// Get a single transfer
+app.get('/api/routes/:routeId/transfers/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, id } = req.params
+    
+    const transferResult = await pool.query(
+      `SELECT 
+        rt.*,
+        l1.name as from_location_name,
+        l2.name as to_location_name
+      FROM route_transfers rt
+      LEFT JOIN locations l1 ON rt.from_location_id = l1.id
+      LEFT JOIN locations l2 ON rt.to_location_id = l2.id
+      WHERE rt.id = $1 AND rt.route_id = $2`,
+      [id, routeId]
+    )
+    
+    if (transferResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Transfer not found' })
+    }
+    
+    const transfer = transferResult.rows[0]
+    
+    // Get vehicles
+    const vehiclesResult = await pool.query(
+      `SELECT 
+        rtv.*,
+        v.type as vehicle_type,
+        CASE 
+          WHEN v."vehicleOwner" = 'company' THEN 'Company'
+          WHEN v."vehicleOwner" = 'hotel' THEN h.name
+          ELSE tp.name
+        END as vehicle_owner,
+        tp.name as third_party_name,
+        h.name as hotel_name
+      FROM route_transfer_vehicles rtv
+      LEFT JOIN vehicles v ON rtv.vehicle_id = v.id
+      LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+      LEFT JOIN hotels h ON v."hotelId" = h.id
+      WHERE rtv.transfer_id = $1`,
+      [id]
+    )
+    
+    // Get participants
+    const participantsResult = await pool.query(
+      `SELECT 
+        rtp.*,
+        rp.role,
+        COALESCE(c.name, g.name, 'Staff') as participant_name
+      FROM route_transfer_participants rtp
+      LEFT JOIN route_participants rp ON rtp.participant_id = rp.id
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      WHERE rtp.transfer_id = $1`,
+      [id]
+    )
+    
+    const vehicles = vehiclesResult.rows.map(v => ({
+      id: v.id,
+      transferId: v.transfer_id,
+      vehicleId: v.vehicle_id,
+      driverPilotName: v.driver_pilot_name,
+      quantity: v.quantity,
+      cost: v.cost,
+      isOwnVehicle: v.is_own_vehicle,
+      notes: v.notes,
+      createdAt: v.createdAt,
+      updatedAt: v.updatedAt,
+      vehicleName: `${v.vehicle_type} - ${v.vehicle_owner === 'Company' ? 'Company' : (v.third_party_name || 'Third Party')}`,
+      vehicleType: v.vehicle_type,
+      thirdPartyName: v.third_party_name
+    }))
+    
+    const participants = participantsResult.rows.map(p => ({
+      id: p.id,
+      transferId: p.transfer_id,
+      participantId: p.participant_id,
+      createdAt: p.createdAt,
+      participantName: p.participant_name,
+      participantRole: p.role
+    }))
+    
+    res.json({
+      id: transfer.id,
+      routeId: transfer.route_id,
+      transferDate: transfer.transfer_date,
+      fromLocationId: transfer.from_location_id,
+      toLocationId: transfer.to_location_id,
+      totalCost: parseFloat(transfer.total_cost),
+      notes: transfer.notes,
+      createdAt: transfer.createdAt,
+      updatedAt: transfer.updatedAt,
+      fromLocationName: transfer.from_location_name,
+      toLocationName: transfer.to_location_name,
+      vehicles,
+      participants
+    })
+  } catch (error) {
+    console.error('Get transfer error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to fetch transfer' })
+  }
+})
+
+// Create a new transfer
+app.post('/api/routes/:routeId/transfers', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId } = req.params
+    const { transferDate, fromLocationId, toLocationId, notes, vehicles, participants } = req.body
+    
+    if (!transferDate || !fromLocationId || !toLocationId) {
+      return res.status(400).json({ message: 'transferDate, fromLocationId, and toLocationId are required' })
+    }
+    
+    if (fromLocationId === toLocationId) {
+      return res.status(400).json({ message: 'fromLocationId and toLocationId must be different' })
+    }
+    
+    const transferId = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO route_transfers (id, route_id, transfer_date, from_location_id, to_location_id, notes)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [transferId, routeId, transferDate, fromLocationId, toLocationId, notes || null]
+    )
+    
+    // Add vehicles if provided
+    if (vehicles && Array.isArray(vehicles) && vehicles.length > 0) {
+      for (const vehicle of vehicles) {
+        if (!vehicle.vehicleId) continue
+        await pool.query(
+          `INSERT INTO route_transfer_vehicles (id, transfer_id, vehicle_id, driver_pilot_name, quantity, cost, is_own_vehicle, notes)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)`,
+          [
+            transferId,
+            vehicle.vehicleId,
+            vehicle.driverPilotName || null,
+            vehicle.quantity || 1,
+            vehicle.cost || 0,
+            vehicle.isOwnVehicle || false,
+            vehicle.notes || null
+          ]
+        )
+      }
+    }
+    
+    // Add participants if provided
+    if (participants && Array.isArray(participants) && participants.length > 0) {
+      for (const participantId of participants) {
+        if (!participantId) continue
+        await pool.query(
+          `INSERT INTO route_transfer_participants (id, transfer_id, participant_id)
+           VALUES (gen_random_uuid(), $1, $2)
+           ON CONFLICT (transfer_id, participant_id) DO NOTHING`,
+          [transferId, participantId]
+        )
+      }
+    }
+    
+    // Fetch the complete transfer with relationships
+    const fullTransferResult = await pool.query(
+      `SELECT 
+        rt.*,
+        l1.name as from_location_name,
+        l2.name as to_location_name
+      FROM route_transfers rt
+      LEFT JOIN locations l1 ON rt.from_location_id = l1.id
+      LEFT JOIN locations l2 ON rt.to_location_id = l2.id
+      WHERE rt.id = $1`,
+      [transferId]
+    )
+    
+    const vehiclesResult = await pool.query(
+      `SELECT 
+        rtv.*,
+        v.type as vehicle_type,
+        CASE 
+          WHEN v."vehicleOwner" = 'company' THEN 'Company'
+          WHEN v."vehicleOwner" = 'hotel' THEN h.name
+          ELSE tp.name
+        END as vehicle_owner,
+        tp.name as third_party_name,
+        h.name as hotel_name
+      FROM route_transfer_vehicles rtv
+      LEFT JOIN vehicles v ON rtv.vehicle_id = v.id
+      LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+      LEFT JOIN hotels h ON v."hotelId" = h.id
+      WHERE rtv.transfer_id = $1`,
+      [transferId]
+    )
+    
+    const participantsResult = await pool.query(
+      `SELECT 
+        rtp.*,
+        rp.role,
+        COALESCE(c.name, g.name, 'Staff') as participant_name
+      FROM route_transfer_participants rtp
+      LEFT JOIN route_participants rp ON rtp.participant_id = rp.id
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      WHERE rtp.transfer_id = $1`,
+      [transferId]
+    )
+    
+    const transfer = fullTransferResult.rows[0]
+    const transferVehicles = vehiclesResult.rows.map(v => ({
+      id: v.id,
+      transferId: v.transfer_id,
+      vehicleId: v.vehicle_id,
+      driverPilotName: v.driver_pilot_name,
+      quantity: v.quantity,
+      cost: v.cost,
+      isOwnVehicle: v.is_own_vehicle,
+      notes: v.notes,
+      createdAt: v.createdAt,
+      updatedAt: v.updatedAt,
+      vehicleName: `${v.vehicle_type} - ${v.vehicle_owner === 'Company' ? 'Company' : (v.third_party_name || 'Third Party')}`,
+      vehicleType: v.vehicle_type,
+      thirdPartyName: v.third_party_name
+    }))
+    
+    const transferParticipants = participantsResult.rows.map(p => ({
+      id: p.id,
+      transferId: p.transfer_id,
+      participantId: p.participant_id,
+      createdAt: p.createdAt,
+      participantName: p.participant_name,
+      participantRole: p.role
+    }))
+    
+    res.status(201).json({
+      id: transfer.id,
+      routeId: transfer.route_id,
+      transferDate: transfer.transfer_date,
+      fromLocationId: transfer.from_location_id,
+      toLocationId: transfer.to_location_id,
+      totalCost: parseFloat(transfer.total_cost),
+      notes: transfer.notes,
+      createdAt: transfer.createdAt,
+      updatedAt: transfer.updatedAt,
+      fromLocationName: transfer.from_location_name,
+      toLocationName: transfer.to_location_name,
+      vehicles: transferVehicles,
+      participants: transferParticipants
+    })
+  } catch (error) {
+    console.error('Create transfer error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to create transfer' })
+  }
+})
+
+// Update a transfer
+app.put('/api/routes/:routeId/transfers/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, id } = req.params
+    const { transferDate, fromLocationId, toLocationId, notes, vehicles, participants } = req.body
+    
+    if (!transferDate || !fromLocationId || !toLocationId) {
+      return res.status(400).json({ message: 'transferDate, fromLocationId, and toLocationId are required' })
+    }
+    
+    if (fromLocationId === toLocationId) {
+      return res.status(400).json({ message: 'fromLocationId and toLocationId must be different' })
+    }
+    
+    const result = await pool.query(
+      `UPDATE route_transfers
+       SET transfer_date = $1, from_location_id = $2, to_location_id = $3, notes = $4, "updatedAt" = NOW()
+       WHERE id = $5 AND route_id = $6
+       RETURNING *`,
+      [transferDate, fromLocationId, toLocationId, notes || null, id, routeId]
+    )
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Transfer not found' })
+    }
+    
+    // Delete existing vehicles and participants
+    await pool.query('DELETE FROM route_transfer_vehicles WHERE transfer_id = $1', [id])
+    await pool.query('DELETE FROM route_transfer_participants WHERE transfer_id = $1', [id])
+    
+    // Add vehicles if provided
+    if (vehicles && Array.isArray(vehicles) && vehicles.length > 0) {
+      for (const vehicle of vehicles) {
+        if (!vehicle.vehicleId) continue
+        await pool.query(
+          `INSERT INTO route_transfer_vehicles (id, transfer_id, vehicle_id, driver_pilot_name, quantity, cost, is_own_vehicle, notes)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)`,
+          [
+            id,
+            vehicle.vehicleId,
+            vehicle.driverPilotName || null,
+            vehicle.quantity || 1,
+            vehicle.cost || 0,
+            vehicle.isOwnVehicle || false,
+            vehicle.notes || null
+          ]
+        )
+      }
+    }
+    
+    // Add participants if provided
+    if (participants && Array.isArray(participants) && participants.length > 0) {
+      for (const participantId of participants) {
+        if (!participantId) continue
+        await pool.query(
+          `INSERT INTO route_transfer_participants (id, transfer_id, participant_id)
+           VALUES (gen_random_uuid(), $1, $2)
+           ON CONFLICT (transfer_id, participant_id) DO NOTHING`,
+          [id, participantId]
+        )
+      }
+    }
+    
+    // Fetch the complete transfer with relationships
+    const fullTransferResult = await pool.query(
+      `SELECT 
+        rt.*,
+        l1.name as from_location_name,
+        l2.name as to_location_name
+      FROM route_transfers rt
+      LEFT JOIN locations l1 ON rt.from_location_id = l1.id
+      LEFT JOIN locations l2 ON rt.to_location_id = l2.id
+      WHERE rt.id = $1`,
+      [id]
+    )
+    
+    const vehiclesResult = await pool.query(
+      `SELECT 
+        rtv.*,
+        v.type as vehicle_type,
+        CASE 
+          WHEN v."vehicleOwner" = 'company' THEN 'Company'
+          WHEN v."vehicleOwner" = 'hotel' THEN h.name
+          ELSE tp.name
+        END as vehicle_owner,
+        tp.name as third_party_name,
+        h.name as hotel_name
+      FROM route_transfer_vehicles rtv
+      LEFT JOIN vehicles v ON rtv.vehicle_id = v.id
+      LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+      LEFT JOIN hotels h ON v."hotelId" = h.id
+      WHERE rtv.transfer_id = $1`,
+      [id]
+    )
+    
+    const participantsResult = await pool.query(
+      `SELECT 
+        rtp.*,
+        rp.role,
+        COALESCE(c.name, g.name, 'Staff') as participant_name
+      FROM route_transfer_participants rtp
+      LEFT JOIN route_participants rp ON rtp.participant_id = rp.id
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      WHERE rtp.transfer_id = $1`,
+      [id]
+    )
+    
+    const transfer = fullTransferResult.rows[0]
+    const transferVehicles = vehiclesResult.rows.map(v => ({
+      id: v.id,
+      transferId: v.transfer_id,
+      vehicleId: v.vehicle_id,
+      driverPilotName: v.driver_pilot_name,
+      quantity: v.quantity,
+      cost: v.cost,
+      isOwnVehicle: v.is_own_vehicle,
+      notes: v.notes,
+      createdAt: v.createdAt,
+      updatedAt: v.updatedAt,
+      vehicleName: `${v.vehicle_type} - ${v.vehicle_owner === 'Company' ? 'Company' : (v.third_party_name || 'Third Party')}`,
+      vehicleType: v.vehicle_type,
+      thirdPartyName: v.third_party_name
+    }))
+    
+    const transferParticipants = participantsResult.rows.map(p => ({
+      id: p.id,
+      transferId: p.transfer_id,
+      participantId: p.participant_id,
+      createdAt: p.createdAt,
+      participantName: p.participant_name,
+      participantRole: p.role
+    }))
+    
+    res.json({
+      id: transfer.id,
+      routeId: transfer.route_id,
+      transferDate: transfer.transfer_date,
+      fromLocationId: transfer.from_location_id,
+      toLocationId: transfer.to_location_id,
+      totalCost: parseFloat(transfer.total_cost),
+      notes: transfer.notes,
+      createdAt: transfer.createdAt,
+      updatedAt: transfer.updatedAt,
+      fromLocationName: transfer.from_location_name,
+      toLocationName: transfer.to_location_name,
+      vehicles: transferVehicles,
+      participants: transferParticipants
+    })
+  } catch (error) {
+    console.error('Update transfer error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to update transfer' })
+  }
+})
+
+// Delete a transfer
+app.delete('/api/routes/:routeId/transfers/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, id } = req.params
+    
+    const result = await pool.query(
+      'DELETE FROM route_transfers WHERE id = $1 AND route_id = $2 RETURNING id',
+      [id, routeId]
+    )
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Transfer not found' })
+    }
+    
+    res.json({ message: 'Transfer deleted successfully' })
+  } catch (error) {
+    console.error('Delete transfer error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to delete transfer' })
+  }
+})
+
+// Add vehicle to transfer
+app.post('/api/routes/:routeId/transfers/:transferId/vehicles', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, transferId } = req.params
+    const { vehicleId, driverPilotName, quantity, cost, isOwnVehicle, notes } = req.body
+    
+    if (!vehicleId) {
+      return res.status(400).json({ message: 'vehicleId is required' })
+    }
+    
+    // Verify transfer exists and belongs to route
+    const transferCheck = await pool.query(
+      'SELECT id FROM route_transfers WHERE id = $1 AND route_id = $2',
+      [transferId, routeId]
+    )
+    if (transferCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Transfer not found' })
+    }
+    
+    const vehicleId_uuid = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO route_transfer_vehicles (id, transfer_id, vehicle_id, driver_pilot_name, quantity, cost, is_own_vehicle, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [vehicleId_uuid, transferId, vehicleId, driverPilotName || null, quantity || 1, cost || 0, isOwnVehicle || false, notes || null]
+    )
+    
+    // Fetch with vehicle details
+    const vehicleResult = await pool.query(
+      `SELECT 
+        rtv.*,
+        v.type as vehicle_type,
+        CASE 
+          WHEN v."vehicleOwner" = 'company' THEN 'Company'
+          WHEN v."vehicleOwner" = 'hotel' THEN h.name
+          ELSE tp.name
+        END as vehicle_owner,
+        tp.name as third_party_name,
+        h.name as hotel_name
+      FROM route_transfer_vehicles rtv
+      LEFT JOIN vehicles v ON rtv.vehicle_id = v.id
+      LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+      LEFT JOIN hotels h ON v."hotelId" = h.id
+      WHERE rtv.id = $1`,
+      [vehicleId_uuid]
+    )
+    
+    const v = vehicleResult.rows[0]
+    res.status(201).json({
+      id: v.id,
+      transferId: v.transfer_id,
+      vehicleId: v.vehicle_id,
+      driverPilotName: v.driver_pilot_name,
+      quantity: v.quantity,
+      cost: v.cost,
+      isOwnVehicle: v.is_own_vehicle,
+      notes: v.notes,
+      createdAt: v.createdAt,
+      updatedAt: v.updatedAt,
+      vehicleName: `${v.vehicle_type} - ${v.vehicle_owner === 'Company' ? 'Company' : (v.third_party_name || 'Third Party')}`,
+      vehicleType: v.vehicle_type,
+      thirdPartyName: v.third_party_name
+    })
+  } catch (error) {
+    console.error('Add vehicle to transfer error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to add vehicle to transfer' })
+  }
+})
+
+// Remove vehicle from transfer
+app.delete('/api/routes/:routeId/transfers/:transferId/vehicles/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, transferId, id } = req.params
+    
+    // Verify transfer belongs to route
+    const transferCheck = await pool.query(
+      'SELECT id FROM route_transfers WHERE id = $1 AND route_id = $2',
+      [transferId, routeId]
+    )
+    if (transferCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Transfer not found' })
+    }
+    
+    const result = await pool.query(
+      'DELETE FROM route_transfer_vehicles WHERE id = $1 AND transfer_id = $2 RETURNING id',
+      [id, transferId]
+    )
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Vehicle not found in transfer' })
+    }
+    
+    res.json({ message: 'Vehicle removed from transfer successfully' })
+  } catch (error) {
+    console.error('Remove vehicle from transfer error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to remove vehicle from transfer' })
+  }
+})
+
+// Add participant to transfer
+app.post('/api/routes/:routeId/transfers/:transferId/participants', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, transferId } = req.params
+    const { participantId } = req.body
+    
+    if (!participantId) {
+      return res.status(400).json({ message: 'participantId is required' })
+    }
+    
+    // Verify transfer exists and belongs to route
+    const transferCheck = await pool.query(
+      'SELECT id FROM route_transfers WHERE id = $1 AND route_id = $2',
+      [transferId, routeId]
+    )
+    if (transferCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Transfer not found' })
+    }
+    
+    // Verify participant belongs to route
+    const participantCheck = await pool.query(
+      'SELECT id FROM route_participants WHERE id = $1 AND route_id = $2',
+      [participantId, routeId]
+    )
+    if (participantCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Participant not found in route' })
+    }
+    
+    const participantId_uuid = randomUUID()
+    const result = await pool.query(
+      `INSERT INTO route_transfer_participants (id, transfer_id, participant_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (transfer_id, participant_id) DO NOTHING
+       RETURNING *`,
+      [participantId_uuid, transferId, participantId]
+    )
+    
+    if (result.rows.length === 0) {
+      return res.status(409).json({ message: 'Participant already in transfer' })
+    }
+    
+    // Fetch with participant details
+    const participantResult = await pool.query(
+      `SELECT 
+        rtp.*,
+        rp.role,
+        COALESCE(c.name, g.name, 'Staff') as participant_name
+      FROM route_transfer_participants rtp
+      LEFT JOIN route_participants rp ON rtp.participant_id = rp.id
+      LEFT JOIN clients c ON rp.client_id = c.id
+      LEFT JOIN staff g ON rp.guide_id = g.id
+      WHERE rtp.id = $1`,
+      [participantId_uuid]
+    )
+    
+    const p = participantResult.rows[0]
+    res.status(201).json({
+      id: p.id,
+      transferId: p.transfer_id,
+      participantId: p.participant_id,
+      createdAt: p.createdAt,
+      participantName: p.participant_name,
+      participantRole: p.role
+    })
+  } catch (error) {
+    console.error('Add participant to transfer error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to add participant to transfer' })
+  }
+})
+
+// Remove participant from transfer
+app.delete('/api/routes/:routeId/transfers/:transferId/participants/:id', async (req, res) => {
+  await initDb()
+  try {
+    verifyAuth(req)
+    const { routeId, transferId, id } = req.params
+    
+    // Verify transfer belongs to route
+    const transferCheck = await pool.query(
+      'SELECT id FROM route_transfers WHERE id = $1 AND route_id = $2',
+      [transferId, routeId]
+    )
+    if (transferCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Transfer not found' })
+    }
+    
+    const result = await pool.query(
+      'DELETE FROM route_transfer_participants WHERE id = $1 AND transfer_id = $2 RETURNING id',
+      [id, transferId]
+    )
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Participant not found in transfer' })
+    }
+    
+    res.json({ message: 'Participant removed from transfer successfully' })
+  } catch (error) {
+    console.error('Remove participant from transfer error:', error)
+    if (error.message === 'Unauthorized' || error.message === 'Invalid token') {
+      return res.status(401).json({ message: error.message })
+    }
+    res.status(500).json({ message: error.message || 'Failed to remove participant from transfer' })
   }
 })
 
