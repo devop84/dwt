@@ -13,6 +13,7 @@ export function SegmentDetails() {
   const [logistics, setLogistics] = useState<RouteLogistics[]>([])
   const [participants, setParticipants] = useState<RouteParticipant[]>([])
   const [stops, setStops] = useState<RouteSegmentStop[]>([])
+  const [editingStop, setEditingStop] = useState<RouteSegmentStop | null>(null)
   const [accommodations, setAccommodations] = useState<RouteSegmentAccommodation[]>([])
   const [hotels, setHotels] = useState<Hotel[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -181,23 +182,37 @@ export function SegmentDetails() {
   }
 
   const handleAddStop = () => {
+    setEditingStop(null)
     setShowStopForm(true)
   }
 
   const handleSaveStop = async (locationId: string, notes: string | null) => {
     if (!routeId || !segmentId || !locationId) return
     try {
-      const maxOrder = stops.length > 0 ? Math.max(...stops.map(s => s.stopOrder)) : 0
-      await routeSegmentStopsApi.add(routeId, segmentId, {
-        locationId,
-        stopOrder: maxOrder + 1,
-        notes: notes || null
-      })
+      if (editingStop) {
+        await routeSegmentStopsApi.update(routeId, segmentId, editingStop.id, {
+          locationId,
+          notes: notes || null
+        })
+      } else {
+        const maxOrder = stops.length > 0 ? Math.max(...stops.map(s => s.stopOrder)) : 0
+        await routeSegmentStopsApi.add(routeId, segmentId, {
+          locationId,
+          stopOrder: maxOrder + 1,
+          notes: notes || null
+        })
+      }
       await loadData()
       setShowStopForm(false)
+      setEditingStop(null)
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to add stop')
     }
+  }
+
+  const handleEditStop = (stop: RouteSegmentStop) => {
+    setEditingStop(stop)
+    setShowStopForm(true)
   }
 
   const handleDeleteStop = async (stopId: string) => {
@@ -922,20 +937,36 @@ export function SegmentDetails() {
                           Provider: {log.entityName || 'No provider'} | Cost: {formatCurrency(log.cost)}
                         </p>
                       </div>
-                      <button
-                        onClick={() => handleDeleteLogistics(log.id)}
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          fontSize: '0.75rem',
-                          backgroundColor: '#fee2e2',
-                          color: '#991b1b',
-                          border: 'none',
-                          borderRadius: '0.375rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Remove
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => openEditLogistics(log)}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.75rem',
+                            backgroundColor: '#f3f4f6',
+                            color: '#374151',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '0.375rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteLogistics(log.id)}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.75rem',
+                            backgroundColor: '#fee2e2',
+                            color: '#991b1b',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1088,6 +1119,21 @@ export function SegmentDetails() {
                           }}
                         >
                           ↓
+                        </button>
+                        <button
+                          onClick={() => handleEditStop(stop)}
+                          style={{
+                            padding: '0.375rem 0.75rem',
+                            backgroundColor: '#f3f4f6',
+                            color: '#374151',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '0.25rem',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: '500'
+                          }}
+                        >
+                          Edit
                         </button>
                         <button
                           onClick={() => handleDeleteStop(stop.id)}
@@ -1433,7 +1479,7 @@ export function SegmentDetails() {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#111827', margin: 0 }}>Add Stop</h2>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#111827', margin: 0 }}>{editingStop ? 'Edit Stop' : 'Add Stop'}</h2>
               <button
                 onClick={() => setShowStopForm(false)}
                 style={{
@@ -1453,7 +1499,11 @@ export function SegmentDetails() {
             <StopForm
               locations={locations}
               onSave={handleSaveStop}
-              onClose={() => setShowStopForm(false)}
+              onClose={() => {
+                setShowStopForm(false)
+                setEditingStop(null)
+              }}
+              initialStop={editingStop || undefined}
             />
           </div>
         </div>
@@ -1467,12 +1517,23 @@ interface StopFormProps {
   locations: Location[]
   onSave: (locationId: string, notes: string | null) => Promise<void>
   onClose: () => void
+  initialStop?: RouteSegmentStop
 }
 
-function StopForm({ locations, onSave, onClose }: StopFormProps) {
+function StopForm({ locations, onSave, onClose, initialStop }: StopFormProps) {
   const [locationId, setLocationId] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!initialStop) {
+      setLocationId('')
+      setNotes('')
+      return
+    }
+    setLocationId(initialStop.locationId)
+    setNotes(initialStop.notes || '')
+  }, [initialStop])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -268,6 +268,10 @@ export const routeSegmentStopsApi = {
     const { data } = await api.post<RouteSegmentStop>(`/routes/${routeId}/segments/${segmentId}/stops`, stop)
     return data
   },
+  update: async (routeId: string, segmentId: string, stopId: string, stop: Partial<Omit<RouteSegmentStop, 'id' | 'segmentId' | 'createdAt' | 'updatedAt' | 'locationName'>>): Promise<RouteSegmentStop> => {
+    const { data } = await api.put<RouteSegmentStop>(`/routes/${routeId}/segments/${segmentId}/stops/${stopId}`, stop)
+    return data
+  },
   delete: async (routeId: string, segmentId: string, stopId: string): Promise<void> => {
     await api.delete(`/routes/${routeId}/segments/${segmentId}/stops/${stopId}`)
   },

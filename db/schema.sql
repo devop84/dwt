@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
 CREATE TABLE IF NOT EXISTS third_parties (
   id UUID PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
+  location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
   "contactNumber" VARCHAR(50),
   email VARCHAR(255),
   note TEXT,

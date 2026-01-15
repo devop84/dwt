@@ -85,22 +85,44 @@ export function LogisticsForm({ logisticsType, hotels, vehicles, thirdParties, l
   useEffect(() => {
     if (logisticsType !== 'lunch') return
     const nextEntityType = lunchProviderType === 'hotel' ? 'hotel' : 'third-party'
-    setFormData(prev => ({
-      ...prev,
-      entityType: nextEntityType,
-      entityId: lunchProviderType === 'self' ? '' : prev.entityId
-    }))
-  }, [lunchProviderType, logisticsType])
+    setFormData(prev => {
+      let nextEntityId = prev.entityId
+      if (lunchProviderType === 'self') {
+        nextEntityId = ''
+      } else if (!nextEntityId && initialData?.entityId) {
+        const initialMatchesType = initialData.entityType === nextEntityType || !initialData.entityType
+        if (initialMatchesType) {
+          nextEntityId = initialData.entityId
+        }
+      }
+      return {
+        ...prev,
+        entityType: nextEntityType,
+        entityId: nextEntityId
+      }
+    })
+  }, [lunchProviderType, logisticsType, initialData])
 
   useEffect(() => {
     if (logisticsType !== 'extra-cost') return
     const nextEntityType = extraProviderType === 'hotel' ? 'hotel' : 'third-party'
-    setFormData(prev => ({
-      ...prev,
-      entityType: nextEntityType,
-      entityId: extraProviderType === 'none' ? '' : prev.entityId
-    }))
-  }, [extraProviderType, logisticsType])
+    setFormData(prev => {
+      let nextEntityId = prev.entityId
+      if (extraProviderType === 'none') {
+        nextEntityId = ''
+      } else if (!nextEntityId && initialData?.entityId) {
+        const initialMatchesType = initialData.entityType === nextEntityType || !initialData.entityType
+        if (initialMatchesType) {
+          nextEntityId = initialData.entityId
+        }
+      }
+      return {
+        ...prev,
+        entityType: nextEntityType,
+        entityId: nextEntityId
+      }
+    })
+  }, [extraProviderType, logisticsType, initialData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -221,15 +243,20 @@ export function LogisticsForm({ logisticsType, hotels, vehicles, thirdParties, l
         onClick={(e) => e.stopPropagation()}
       >
         <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827', margin: '0 0 1.5rem 0' }}>
-          {mode === 'edit'
-            ? (logisticsType === 'support-vehicle' ? 'Edit Vehicle' : `Edit ${logisticsType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}`)
-            : (logisticsType === 'support-vehicle' ? 'Add Vehicle' : `Add ${logisticsType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}`)}
+          {(() => {
+            const label = logisticsType === 'lunch'
+              ? 'Item'
+              : logisticsType === 'extra-cost'
+                ? 'Extra'
+                : logisticsType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())
+            return mode === 'edit' ? `Edit ${label}` : `Add ${label}`
+          })()}
         </h3>
         <form onSubmit={handleSubmit}>
           {logisticsType === 'lunch' && (
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                Provider
+                Provider Type
               </label>
               <select
                 value={lunchProviderType}
@@ -252,7 +279,7 @@ export function LogisticsForm({ logisticsType, hotels, vehicles, thirdParties, l
           {logisticsType === 'extra-cost' && (
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                Provider
+                Provider Type
               </label>
               <select
                 value={extraProviderType}
@@ -273,43 +300,46 @@ export function LogisticsForm({ logisticsType, hotels, vehicles, thirdParties, l
             </div>
           )}
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-              {logisticsType === 'lunch' || logisticsType === 'extra-cost'
-                ? 'Provider (optional)'
-                : formData.entityType === 'hotel'
-                  ? 'Hotel'
-                  : formData.entityType === 'vehicle'
-                    ? 'Vehicle'
-                    : formData.entityType === 'third-party'
-                      ? 'Third Party'
-                      : 'Location'}
-            </label>
-            <select
-              value={formData.entityId}
-              onChange={(e) => setFormData({ ...formData, entityId: e.target.value })}
-              required={logisticsType === 'lunch'
-                ? lunchProviderType !== 'self'
-                : logisticsType === 'extra-cost'
-                  ? extraProviderType !== 'none'
-                  : true}
-              disabled={(logisticsType === 'lunch' && lunchProviderType === 'self') || (logisticsType === 'extra-cost' && extraProviderType === 'none')}
-              style={{
-                width: '100%',
-                padding: '0.625rem 0.875rem',
-                fontSize: '0.875rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem',
-                outline: 'none',
-                backgroundColor: (logisticsType === 'lunch' && lunchProviderType === 'self') || (logisticsType === 'extra-cost' && extraProviderType === 'none') ? '#f9fafb' : 'white'
-              }}
-            >
-              <option value="">{logisticsType === 'lunch' ? 'Self purchase' : logisticsType === 'extra-cost' ? 'No provider' : 'Select...'}</option>
-              {getEntityOptions().map(opt => (
-                <option key={opt.id} value={opt.id}>{opt.name}</option>
-              ))}
-            </select>
-          </div>
+          {((logisticsType !== 'lunch' || lunchProviderType !== 'self') && (logisticsType !== 'extra-cost' || extraProviderType !== 'none')) && (
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
+                {logisticsType === 'lunch'
+                  ? 'Provider Name'
+                  : logisticsType === 'extra-cost'
+                    ? 'Provider Name'
+                    : formData.entityType === 'hotel'
+                      ? 'Hotel'
+                      : formData.entityType === 'vehicle'
+                        ? 'Vehicle'
+                        : formData.entityType === 'third-party'
+                          ? 'Third Party'
+                          : 'Location'}
+              </label>
+              <select
+                value={formData.entityId}
+                onChange={(e) => setFormData({ ...formData, entityId: e.target.value })}
+                required={logisticsType === 'lunch'
+                  ? true
+                  : logisticsType === 'extra-cost'
+                    ? true
+                    : true}
+                style={{
+                  width: '100%',
+                  padding: '0.625rem 0.875rem',
+                  fontSize: '0.875rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem',
+                  outline: 'none',
+                  backgroundColor: 'white'
+                }}
+              >
+                <option value="">Select...</option>
+                {getEntityOptions().map(opt => (
+                  <option key={opt.id} value={opt.id}>{opt.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {(logisticsType === 'lunch' || logisticsType === 'extra-cost') && (
             <div style={{ marginBottom: '1rem' }}>

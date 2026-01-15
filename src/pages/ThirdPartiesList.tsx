@@ -1,16 +1,17 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { thirdPartiesApi } from '../lib/api'
-import type { ThirdParty } from '../types'
+import { thirdPartiesApi, locationsApi } from '../lib/api'
+import type { ThirdParty, Location } from '../types'
 import { ThirdPartyForm } from '../components/ThirdPartyForm'
 
-type FilterColumn = 'all' | 'name' | 'contactNumber' | 'email' | 'note'
-type SortColumn = 'name' | 'contactNumber' | 'email' | 'note'
+type FilterColumn = 'all' | 'name' | 'locationName' | 'contactNumber' | 'email' | 'note'
+type SortColumn = 'name' | 'locationName' | 'contactNumber' | 'email' | 'note'
 type SortDirection = 'asc' | 'desc' | null
 
 export function ThirdPartiesList() {
   const navigate = useNavigate()
   const [thirdParties, setThirdParties] = useState<ThirdParty[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -22,6 +23,7 @@ export function ThirdPartiesList() {
 
   useEffect(() => {
     loadThirdParties()
+    loadLocations()
   }, [])
 
   const loadThirdParties = async () => {
@@ -45,6 +47,15 @@ export function ThirdPartiesList() {
     }
   }
 
+  const loadLocations = async () => {
+    try {
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
+    } catch {
+      setLocations([])
+    }
+  }
+
   // Filter and sort third parties
   const filteredThirdParties = useMemo(() => {
     let result = [...thirdParties]
@@ -57,6 +68,7 @@ export function ThirdPartiesList() {
         if (filterColumn === 'all') {
           return (
             thirdParty.name.toLowerCase().includes(search) ||
+            (thirdParty.locationName && thirdParty.locationName.toLowerCase().includes(search)) ||
             (thirdParty.contactNumber && thirdParty.contactNumber.toLowerCase().includes(search)) ||
             (thirdParty.email && thirdParty.email.toLowerCase().includes(search)) ||
             (thirdParty.note && thirdParty.note.toLowerCase().includes(search))
@@ -67,6 +79,8 @@ export function ThirdPartiesList() {
               return thirdParty.name.toLowerCase().includes(search)
             case 'contactNumber':
               return thirdParty.contactNumber?.toLowerCase().includes(search) ?? false
+            case 'locationName':
+              return thirdParty.locationName?.toLowerCase().includes(search) ?? false
             case 'email':
               return thirdParty.email?.toLowerCase().includes(search) ?? false
             case 'note':
@@ -92,6 +106,10 @@ export function ThirdPartiesList() {
           case 'contactNumber':
             aValue = a.contactNumber?.toLowerCase() || ''
             bValue = b.contactNumber?.toLowerCase() || ''
+            break
+          case 'locationName':
+            aValue = a.locationName?.toLowerCase() || ''
+            bValue = b.locationName?.toLowerCase() || ''
             break
           case 'email':
             aValue = a.email?.toLowerCase() || ''
@@ -382,6 +400,7 @@ export function ThirdPartiesList() {
           >
             <option value="all">All Columns</option>
             <option value="name">Name</option>
+            <option value="locationName">Location</option>
             <option value="contactNumber">Contact Number</option>
             <option value="email">Email</option>
             <option value="note">Note</option>
@@ -481,6 +500,33 @@ export function ThirdPartiesList() {
                     }}
                   >
                     Name{getSortIndicator('name')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('locationName')}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      textAlign: 'left',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      color: sortColumn === 'locationName' ? '#3b82f6' : '#6b7280',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      transition: 'color 0.2s, background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (sortColumn !== 'locationName') {
+                        e.currentTarget.style.backgroundColor = '#f3f4f6'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (sortColumn !== 'locationName') {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }
+                    }}
+                  >
+                    Location{getSortIndicator('locationName')}
                   </th>
                   <th
                     onClick={() => handleSort('contactNumber')}
@@ -591,6 +637,13 @@ export function ThirdPartiesList() {
                       fontSize: '0.875rem',
                       color: '#6b7280'
                     }}>
+                      {thirdParty.locationName || '-'}
+                    </td>
+                    <td style={{
+                      padding: '0.75rem 1rem',
+                      fontSize: '0.875rem',
+                      color: '#6b7280'
+                    }}>
                       {thirdParty.contactNumber || '-'}
                     </td>
                     <td style={{
@@ -621,6 +674,7 @@ export function ThirdPartiesList() {
       {showForm && (
         <ThirdPartyForm
           thirdParty={editingThirdParty}
+          locations={locations}
           onClose={handleCloseForm}
           onSave={handleSaveThirdParty}
         />

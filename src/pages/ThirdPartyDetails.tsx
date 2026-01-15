@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { thirdPartiesApi } from '../lib/api'
-import type { ThirdParty } from '../types'
+import { thirdPartiesApi, locationsApi } from '../lib/api'
+import type { ThirdParty, Location } from '../types'
 import { ThirdPartyForm } from '../components/ThirdPartyForm'
 import { AccountsCards } from '../components/AccountsCards'
 
@@ -9,6 +9,7 @@ export function ThirdPartyDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [thirdParty, setThirdParty] = useState<ThirdParty | null>(null)
+  const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditForm, setShowEditForm] = useState(false)
@@ -17,6 +18,7 @@ export function ThirdPartyDetails() {
   useEffect(() => {
     if (id) {
       loadThirdParty()
+      loadLocations()
     }
   }, [id])
 
@@ -31,6 +33,15 @@ export function ThirdPartyDetails() {
       console.error('Error loading third party:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadLocations = async () => {
+    try {
+      const data = await locationsApi.getAll()
+      setLocations(Array.isArray(data) ? data : [])
+    } catch {
+      setLocations([])
     }
   }
 
@@ -311,6 +322,27 @@ export function ThirdPartyDetails() {
                 letterSpacing: '0.05em',
                 marginBottom: '0.5rem'
               }}>
+                Location
+              </label>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#111827',
+                margin: 0
+              }}>
+                {thirdParty.locationName || '-'}
+              </p>
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '0.5rem'
+              }}>
                 Email
               </label>
               <p style={{
@@ -375,6 +407,7 @@ export function ThirdPartyDetails() {
       {showEditForm && (
         <ThirdPartyForm
           thirdParty={thirdParty}
+          locations={locations}
           onClose={() => setShowEditForm(false)}
           onSave={handleSave}
         />

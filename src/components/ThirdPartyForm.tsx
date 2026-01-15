@@ -1,15 +1,17 @@
 import { useState, useEffect, FormEvent } from 'react'
-import type { ThirdParty } from '../types'
+import type { ThirdParty, Location } from '../types'
 
 interface ThirdPartyFormProps {
   thirdParty?: ThirdParty | null
+  locations: Location[]
   onClose: () => void
   onSave: (thirdParty: Omit<ThirdParty, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
 }
 
-export function ThirdPartyForm({ thirdParty, onClose, onSave }: ThirdPartyFormProps) {
+export function ThirdPartyForm({ thirdParty, locations, onClose, onSave }: ThirdPartyFormProps) {
   const [formData, setFormData] = useState({
     name: '',
+    locationId: '',
     contactNumber: '',
     email: '',
     note: '',
@@ -21,11 +23,20 @@ export function ThirdPartyForm({ thirdParty, onClose, onSave }: ThirdPartyFormPr
     if (thirdParty) {
       setFormData({
         name: thirdParty.name || '',
+        locationId: thirdParty.locationId || '',
         contactNumber: thirdParty.contactNumber || '',
         email: thirdParty.email || '',
         note: thirdParty.note || '',
       })
+      return
     }
+    setFormData({
+      name: '',
+      locationId: '',
+      contactNumber: '',
+      email: '',
+      note: '',
+    })
   }, [thirdParty])
 
   const handleSubmit = async (e: FormEvent) => {
@@ -41,6 +52,7 @@ export function ThirdPartyForm({ thirdParty, onClose, onSave }: ThirdPartyFormPr
     try {
       await onSave({
         name: formData.name.trim(),
+        locationId: formData.locationId || null,
         contactNumber: formData.contactNumber.trim() || null,
         email: formData.email.trim() || null,
         note: formData.note.trim() || null,
@@ -172,6 +184,48 @@ export function ThirdPartyForm({ thirdParty, onClose, onSave }: ThirdPartyFormPr
                 e.currentTarget.style.boxShadow = 'none'
               }}
             />
+          </div>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="locationId" style={{
+              display: 'block',
+              marginBottom: '0.5rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#374151'
+            }}>
+              Location
+            </label>
+            <select
+              id="locationId"
+              value={formData.locationId}
+              onChange={(e) => handleChange('locationId', e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.625rem 0.875rem',
+                fontSize: '0.875rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+                outline: 'none',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+                backgroundColor: 'white'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#3b82f6'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#d1d5db'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+            >
+              <option value="">No location</option>
+              {locations.map(location => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div style={{ marginBottom: '1rem' }}>

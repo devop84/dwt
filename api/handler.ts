@@ -606,38 +606,95 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       if (!id) {
         if (req.method === 'GET') {
           const thirdParties = await query(`
-            SELECT id, name, "contactNumber", email, note, "createdAt", "updatedAt"
-            FROM third_parties
-            ORDER BY "createdAt" DESC
+            SELECT 
+              tp.id,
+              tp.name,
+              tp.location_id,
+              tp."contactNumber",
+              tp.email,
+              tp.note,
+              tp."createdAt",
+              tp."updatedAt",
+              l.name as location_name
+            FROM third_parties tp
+            LEFT JOIN locations l ON tp.location_id = l.id
+            ORDER BY tp."createdAt" DESC
           `)
-          res.status(200).json(thirdParties)
+          const formatted = thirdParties.map((tp: any) => ({
+            id: tp.id,
+            name: tp.name,
+            locationId: tp.location_id,
+            contactNumber: tp.contactNumber,
+            email: tp.email,
+            note: tp.note,
+            createdAt: tp.createdAt,
+            updatedAt: tp.updatedAt,
+            locationName: tp.location_name
+          }))
+          res.status(200).json(formatted)
         } else if (req.method === 'POST') {
-          const { name, contactNumber, email, note } = req.body
+          const { name, locationId, contactNumber, email, note } = req.body
           if (!name) {
             res.status(400).json({ message: 'Name is required' })
             return
           }
           const thirdPartyId = randomUUID()
-          const result = await query(
-            `INSERT INTO third_parties (id, name, "contactNumber", email, note)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING id, name, "contactNumber", email, note, "createdAt", "updatedAt"`,
-            [thirdPartyId, name, contactNumber || null, email || null, note || null]
+          await query(
+            `INSERT INTO third_parties (id, name, location_id, "contactNumber", email, note)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [thirdPartyId, name, locationId || null, contactNumber || null, email || null, note || null]
           )
-          res.status(201).json(result[0])
+          const created = await queryOne(
+            `SELECT 
+              tp.*,
+              l.name as location_name
+            FROM third_parties tp
+            LEFT JOIN locations l ON tp.location_id = l.id
+            WHERE tp.id = $1`,
+            [thirdPartyId]
+          )
+          res.status(201).json({
+            id: created.id,
+            name: created.name,
+            locationId: created.location_id,
+            contactNumber: created.contactNumber,
+            email: created.email,
+            note: created.note,
+            createdAt: created.createdAt,
+            updatedAt: created.updatedAt,
+            locationName: created.location_name
+          })
         } else {
           res.status(405).json({ message: 'Method not allowed' })
         }
       } else {
         if (req.method === 'GET') {
-          const thirdParty = await queryOne('SELECT * FROM third_parties WHERE id = $1', [id])
+          const thirdParty = await queryOne(
+            `SELECT 
+              tp.*,
+              l.name as location_name
+            FROM third_parties tp
+            LEFT JOIN locations l ON tp.location_id = l.id
+            WHERE tp.id = $1`,
+            [id]
+          )
           if (!thirdParty) {
             res.status(404).json({ message: 'Third party not found' })
             return
           }
-          res.status(200).json(thirdParty)
+          res.status(200).json({
+            id: thirdParty.id,
+            name: thirdParty.name,
+            locationId: thirdParty.location_id,
+            contactNumber: thirdParty.contactNumber,
+            email: thirdParty.email,
+            note: thirdParty.note,
+            createdAt: thirdParty.createdAt,
+            updatedAt: thirdParty.updatedAt,
+            locationName: thirdParty.location_name
+          })
         } else if (req.method === 'PUT') {
-          const { name, contactNumber, email, note } = req.body
+          const { name, locationId, contactNumber, email, note } = req.body
           if (!name) {
             res.status(400).json({ message: 'Name is required' })
             return
@@ -647,12 +704,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             res.status(404).json({ message: 'Third party not found' })
             return
           }
-          const result = await query(
-            `UPDATE third_parties SET name = $1, "contactNumber" = $2, email = $3, note = $4, "updatedAt" = NOW()
-             WHERE id = $5 RETURNING *`,
-            [name, contactNumber || null, email || null, note || null, id]
+          await query(
+            `UPDATE third_parties SET name = $1, location_id = $2, "contactNumber" = $3, email = $4, note = $5, "updatedAt" = NOW()
+             WHERE id = $6`,
+            [name, locationId || null, contactNumber || null, email || null, note || null, id]
           )
-          res.status(200).json(result[0])
+          const updated = await queryOne(
+            `SELECT 
+              tp.*,
+              l.name as location_name
+            FROM third_parties tp
+            LEFT JOIN locations l ON tp.location_id = l.id
+            WHERE tp.id = $1`,
+            [id]
+          )
+          res.status(200).json({
+            id: updated.id,
+            name: updated.name,
+            locationId: updated.location_id,
+            contactNumber: updated.contactNumber,
+            email: updated.email,
+            note: updated.note,
+            createdAt: updated.createdAt,
+            updatedAt: updated.updatedAt,
+            locationName: updated.location_name
+          })
         } else if (req.method === 'DELETE') {
           const existing = await queryOne('SELECT id FROM third_parties WHERE id = $1', [id])
           if (!existing) {
@@ -1475,6 +1551,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           }
 
           if (stopSubRoute === null) {
+            if (req.method === 'PUT') {
+              const { locationId, notes } = req.body
+              const existing = await queryOne('SELECT id FROM route_segment_stops WHERE id = $1 AND segment_id = $2', [stopId, segmentId])
+              if (!existing) {
+                res.status(404).json({ message: 'Stop not found' })
+                return
+              }
+              if (!locationId) {
+                res.status(400).json({ message: 'Location ID is required' })
+                return
+              }
+              await query(
+                `UPDATE route_segment_stops
+                 SET location_id = $1, notes = $2, "updatedAt" = NOW()
+                 WHERE id = $3 AND segment_id = $4`,
+                [locationId, notes || null, stopId, segmentId]
+              )
+              const updated = await query(
+                `SELECT 
+                  rss.*,
+                  l.name as location_name
+                FROM route_segment_stops rss
+                LEFT JOIN locations l ON rss.location_id = l.id
+                WHERE rss.id = $1`,
+                [stopId]
+              )
+              res.status(200).json(updated[0])
+              return
+            }
             if (req.method === 'DELETE') {
               const existing = await queryOne('SELECT id FROM route_segment_stops WHERE id = $1 AND segment_id = $2', [stopId, segmentId])
               if (!existing) {

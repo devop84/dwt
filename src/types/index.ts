@@ -83,11 +83,13 @@ export interface Vehicle {
 export interface ThirdParty {
   id: string
   name: string
+  locationId: string | null
   contactNumber: string | null
   email: string | null
   note: string | null
   createdAt: string
   updatedAt: string
+  locationName?: string
 }
 
 export type EntityType = 'client' | 'hotel' | 'staff' | 'driver' | 'company' | 'third-party' | 'vehicle'
