@@ -1173,7 +1173,7 @@ app.get('/api/staff/:id', async (req, res) => {
     )
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Guide not found' })
+      return res.status(404).json({ message: 'Staff not found' })
     }
 
     res.json(result.rows[0])
@@ -1214,7 +1214,7 @@ app.put('/api/staff/:id', async (req, res) => {
     // Check if guide exists
     const existing = await pool.query('SELECT id FROM staff WHERE id = $1', [id])
     if (existing.rows.length === 0) {
-      return res.status(404).json({ message: 'Guide not found' })
+      return res.status(404).json({ message: 'Staff not found' })
     }
 
     const result = await pool.query(
@@ -1254,7 +1254,7 @@ app.delete('/api/staff/:id', async (req, res) => {
     // Check if guide exists
     const existing = await pool.query('SELECT id FROM staff WHERE id = $1', [id])
     if (existing.rows.length === 0) {
-      return res.status(404).json({ message: 'Guide not found' })
+      return res.status(404).json({ message: 'Staff not found' })
     }
 
     await pool.query('DELETE FROM staff WHERE id = $1', [id])

@@ -29,7 +29,11 @@ export function AccountsList() {
     try {
       setLoading(true)
       setError(null)
-      const allAccounts = await accountsApi.getAll()
+      const [allAccounts, staffList] = await Promise.all([
+        accountsApi.getAll(),
+        staffApi.getAll().catch(() => [])
+      ])
+      const staffMap = new Map(staffList.map((staff) => [staff.id, staff.name]))
       
       // Load entity names for each account
       const accountsWithNames = await Promise.all(
@@ -46,8 +50,7 @@ export function AccountsList() {
                 entityName = hotel.name
                 break
               case 'staff':
-                const staff = await staffApi.getById(account.entityId)
-                entityName = staff.name
+                entityName = staffMap.get(account.entityId) || ''
                 break
               case 'third-party':
                 const thirdParty = await thirdPartiesApi.getById(account.entityId!)

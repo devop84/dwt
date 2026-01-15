@@ -149,16 +149,6 @@ export function RoutesList() {
     navigate('/routes/new')
   }
 
-  const handleDuplicate = async (e: React.MouseEvent, routeId: string) => {
-    e.stopPropagation()
-    try {
-      const newRoute = await routesApi.duplicate(routeId)
-      navigate(`/routes/${newRoute.id}`)
-    } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to duplicate route')
-    }
-  }
-
   if (loading) {
     return (
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -318,9 +308,6 @@ export function RoutesList() {
                   <th onClick={() => handleSort('estimatedCost')} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: sortColumn === 'estimatedCost' ? '#3b82f6' : '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', userSelect: 'none' }}>
                     Estimated Cost{getSortIndicator('estimatedCost')}
                   </th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Actions
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -362,31 +349,6 @@ export function RoutesList() {
                     </td>
                     <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
                       {formatCurrency(route.estimatedCost)}
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={(e) => handleDuplicate(e, route.id)}
-                        style={{
-                          padding: '0.25rem 0.75rem',
-                          fontSize: '0.75rem',
-                          color: '#3b82f6',
-                          backgroundColor: 'transparent',
-                          border: '1px solid #3b82f6',
-                          borderRadius: '0.375rem',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.backgroundColor = '#3b82f6'
-                          e.currentTarget.style.color = 'white'
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent'
-                          e.currentTarget.style.color = '#3b82f6'
-                        }}
-                      >
-                        Duplicate
-                      </button>
                     </td>
                   </tr>
                 ))}
