@@ -923,6 +923,1838 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return
     }
 
+    // Routes
+    if (route === 'routes') {
+      // /routes
+      if (!id) {
+        if (req.method === 'GET') {
+          const { status, startDate, endDate } = req.query as { status?: string, startDate?: string, endDate?: string }
+          let sql = `
+            SELECT 
+              id, name, description, start_date, end_date, duration, status,
+              total_distance, estimated_cost, actual_cost, currency, notes,
+              "createdAt", "updatedAt"
+            FROM routes
+            WHERE 1=1
+          `
+          const params: any[] = []
+          let paramCount = 1
+          if (status) {
+            sql += ` AND status = $${paramCount++}`
+            params.push(status)
+          }
+          if (startDate) {
+            sql += ` AND start_date >= $${paramCount++}`
+            params.push(startDate)
+          }
+          if (endDate) {
+            sql += ` AND end_date <= $${paramCount++}`
+            params.push(endDate)
+          }
+          sql += ` ORDER BY "createdAt" DESC`
+          const rows = await query(sql, params.length > 0 ? params : undefined)
+          const routes = rows.map((routeRow: any) => ({
+            id: routeRow.id,
+            name: routeRow.name,
+            description: routeRow.description,
+            startDate: routeRow.start_date,
+            endDate: routeRow.end_date,
+            duration: routeRow.duration,
+            status: routeRow.status,
+            totalDistance: routeRow.total_distance,
+            estimatedCost: routeRow.estimated_cost,
+            actualCost: routeRow.actual_cost,
+            currency: routeRow.currency,
+            notes: routeRow.notes,
+            createdAt: routeRow.createdAt,
+            updatedAt: routeRow.updatedAt
+          }))
+          res.status(200).json(routes)
+          return
+        }
+        if (req.method === 'POST') {
+          const { name, description, startDate, endDate, duration, status, totalDistance, estimatedCost, actualCost, currency, notes } = req.body
+          if (!name) {
+            res.status(400).json({ message: 'Route name is required' })
+            return
+          }
+          const routeId = randomUUID()
+          const result = await query(
+            `INSERT INTO routes (id, name, description, start_date, end_date, duration, status, total_distance, estimated_cost, actual_cost, currency, notes)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+             RETURNING *`,
+            [
+              routeId,
+              name,
+              description || null,
+              startDate || null,
+              endDate || null,
+              duration || null,
+              status || 'draft',
+              totalDistance || 0,
+              estimatedCost || 0,
+              actualCost || 0,
+              currency || 'BRL',
+              notes || null
+            ]
+          )
+          res.status(201).json(result[0])
+          return
+        }
+        res.status(405).json({ message: 'Method not allowed' })
+        return
+      }
+
+      const subRoute = pathArray.length > 2 ? pathArray[2] : null
+
+      // /routes/:id
+      if (!subRoute) {
+        if (req.method === 'GET') {
+          const routeRow = await queryOne('SELECT * FROM routes WHERE id = $1', [id])
+          if (!routeRow) {
+            res.status(404).json({ message: 'Route not found' })
+            return
+          }
+          const routeData = {
+            id: routeRow.id,
+            name: routeRow.name,
+            description: routeRow.description,
+            startDate: routeRow.start_date,
+            endDate: routeRow.end_date,
+            duration: routeRow.duration,
+            status: routeRow.status,
+            totalDistance: routeRow.total_distance,
+            estimatedCost: routeRow.estimated_cost,
+            actualCost: routeRow.actual_cost,
+            currency: routeRow.currency,
+            notes: routeRow.notes,
+            createdAt: routeRow.createdAt,
+            updatedAt: routeRow.updatedAt
+          }
+
+          const segmentsResult = await query(
+            `SELECT 
+              rs.*,
+              l1.name as from_destination_name,
+              l2.name as to_destination_name
+            FROM route_segments rs
+            LEFT JOIN locations l1 ON rs.from_destination_id = l1.id
+            LEFT JOIN locations l2 ON rs.to_destination_id = l2.id
+            WHERE rs.route_id = $1
+            ORDER BY rs.segment_order, rs.day_number`,
+            [id]
+          )
+
+          const segmentIds = segmentsResult.map((s: any) => s.id)
+          const stopsResult = segmentIds.length > 0 ? await query(
+            `SELECT 
+              rss.*,
+              l.name as location_name
+            FROM route_segment_stops rss
+            LEFT JOIN locations l ON rss.location_id = l.id
+            WHERE rss.segment_id = ANY($1::uuid[])
+            ORDER BY rss.segment_id, rss.stop_order`,
+            [segmentIds]
+          ) : []
+
+          const logisticsResult = await query(
+            `SELECT 
+              rl.*,
+              CASE 
+                WHEN rl.entity_type = 'hotel' THEN h.name
+                WHEN rl.entity_type = 'third-party' THEN tp.name
+                WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE 
+                  WHEN v."vehicleOwner" = 'company' THEN 'Company'
+                  WHEN v."vehicleOwner" = 'hotel' THEN COALESCE(h.name, 'Hotel')
+                  ELSE COALESCE(tp.name, 'Third Party')
+                END
+                WHEN rl.entity_type = 'location' THEN l.name
+                ELSE NULL
+              END as entity_name
+            FROM route_logistics rl
+            LEFT JOIN vehicles v ON rl.entity_type = 'vehicle' AND rl.entity_id = v.id
+            LEFT JOIN hotels h ON (rl.entity_type = 'hotel' AND rl.entity_id = h.id) OR (rl.entity_type = 'vehicle' AND v."hotelId" = h.id)
+            LEFT JOIN third_parties tp ON (rl.entity_type = 'third-party' AND rl.entity_id = tp.id) OR (rl.entity_type = 'vehicle' AND v."thirdPartyId" = tp.id)
+            LEFT JOIN locations l ON rl.entity_type = 'location' AND rl.entity_id = l.id
+            WHERE rl.route_id = $1`,
+            [id]
+          )
+
+          const participantsResult = await query(
+            `SELECT 
+              rp.*,
+              c.name as client_name,
+              g.name as guide_name
+            FROM route_participants rp
+            LEFT JOIN clients c ON rp.client_id = c.id
+            LEFT JOIN staff g ON rp.guide_id = g.id
+            WHERE rp.route_id = $1`,
+            [id]
+          )
+
+          const transactionsResult = await query(
+            `SELECT 
+              rt.*,
+              a1."accountHolderName" as from_account_name,
+              a2."accountHolderName" as to_account_name
+            FROM route_transactions rt
+            LEFT JOIN accounts a1 ON rt.from_account_id = a1.id
+            LEFT JOIN accounts a2 ON rt.to_account_id = a2.id
+            WHERE rt.route_id = $1
+            ORDER BY rt.transaction_date DESC, rt."createdAt" DESC`,
+            [id]
+          )
+
+          const segments = segmentsResult.map((seg: any) => {
+            const stops = stopsResult
+              .filter((stop: any) => stop.segment_id === seg.id)
+              .map((stop: any) => ({
+                id: stop.id,
+                segmentId: stop.segment_id,
+                locationId: stop.location_id,
+                stopOrder: stop.stop_order,
+                notes: stop.notes,
+                createdAt: stop.createdAt,
+                updatedAt: stop.updatedAt,
+                locationName: stop.location_name
+              }))
+              .sort((a: any, b: any) => a.stopOrder - b.stopOrder)
+
+            return {
+              id: seg.id,
+              routeId: seg.route_id,
+              dayNumber: seg.day_number,
+              segmentDate: seg.segment_date,
+              fromDestinationId: seg.from_destination_id,
+              toDestinationId: seg.to_destination_id,
+              distance: seg.distance,
+              segmentOrder: seg.segment_order,
+              notes: seg.notes,
+              createdAt: seg.createdAt,
+              updatedAt: seg.updatedAt,
+              fromDestinationName: seg.from_destination_name,
+              toDestinationName: seg.to_destination_name,
+              stops
+            }
+          })
+
+          const logistics = logisticsResult.map((log: any) => ({
+            id: log.id,
+            routeId: log.route_id,
+            segmentId: log.segment_id,
+            entityType: log.entity_type,
+            entityId: log.entity_id,
+            quantity: log.quantity,
+            unitCost: log.unit_cost,
+            totalCost: log.total_cost,
+            notes: log.notes,
+            createdAt: log.createdAt,
+            updatedAt: log.updatedAt,
+            entityName: log.entity_name
+          }))
+
+          const participants = participantsResult.map((p: any) => ({
+            id: p.id,
+            routeId: p.route_id,
+            clientId: p.client_id,
+            guideId: p.guide_id,
+            role: p.role,
+            isOptional: p.is_optional,
+            notes: p.notes,
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt,
+            clientName: p.client_name,
+            guideName: p.guide_name
+          }))
+
+          const transactions = transactionsResult.map((t: any) => ({
+            id: t.id,
+            routeId: t.route_id,
+            transactionDate: t.transaction_date,
+            amount: t.amount,
+            currency: t.currency,
+            paymentMethod: t.payment_method,
+            type: t.type,
+            description: t.description,
+            fromAccountId: t.from_account_id,
+            toAccountId: t.to_account_id,
+            createdAt: t.createdAt,
+            updatedAt: t.updatedAt,
+            fromAccountName: t.from_account_name,
+            toAccountName: t.to_account_name
+          }))
+
+          res.status(200).json({
+            ...routeData,
+            segments,
+            logistics,
+            participants,
+            transactions
+          })
+          return
+        }
+        if (req.method === 'PUT') {
+          const { name, description, startDate, endDate, duration, status, totalDistance, estimatedCost, actualCost, currency, notes } = req.body
+          const existing = await queryOne('SELECT id FROM routes WHERE id = $1', [id])
+          if (!existing) {
+            res.status(404).json({ message: 'Route not found' })
+            return
+          }
+          const result = await query(
+            `UPDATE routes 
+             SET name = $1, description = $2, start_date = $3, end_date = $4, duration = $5, status = $6, total_distance = $7, estimated_cost = $8, actual_cost = $9, currency = $10, notes = $11, "updatedAt" = NOW()
+             WHERE id = $12 RETURNING *`,
+            [
+              name,
+              description || null,
+              startDate || null,
+              endDate || null,
+              duration || null,
+              status || 'draft',
+              totalDistance || 0,
+              estimatedCost || 0,
+              actualCost || 0,
+              currency || 'BRL',
+              notes || null,
+              id
+            ]
+          )
+          res.status(200).json(result[0])
+          return
+        }
+        if (req.method === 'DELETE') {
+          const existing = await queryOne('SELECT id FROM routes WHERE id = $1', [id])
+          if (!existing) {
+            res.status(404).json({ message: 'Route not found' })
+            return
+          }
+          await query('DELETE FROM routes WHERE id = $1', [id])
+          res.status(200).json({ message: 'Route deleted successfully' })
+          return
+        }
+        res.status(405).json({ message: 'Method not allowed' })
+        return
+      }
+
+      // /routes/:id/duplicate
+      if (subRoute === 'duplicate') {
+        if (req.method !== 'POST') {
+          res.status(405).json({ message: 'Method not allowed' })
+          return
+        }
+        const { name } = req.body
+        const routeRow = await queryOne('SELECT * FROM routes WHERE id = $1', [id])
+        if (!routeRow) {
+          res.status(404).json({ message: 'Route not found' })
+          return
+        }
+        const newRouteId = randomUUID()
+        const result = await query(
+          `INSERT INTO routes (id, name, description, start_date, end_date, duration, status, total_distance, estimated_cost, actual_cost, currency, notes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           RETURNING *`,
+          [
+            newRouteId,
+            name || `${routeRow.name} (Copy)`,
+            routeRow.description,
+            routeRow.start_date,
+            routeRow.end_date,
+            routeRow.duration,
+            routeRow.status,
+            routeRow.total_distance,
+            routeRow.estimated_cost,
+            routeRow.actual_cost,
+            routeRow.currency,
+            routeRow.notes
+          ]
+        )
+        res.status(201).json(result[0])
+        return
+      }
+
+      // /routes/:routeId/segments...
+      if (subRoute === 'segments') {
+        const segmentId = pathArray.length > 3 ? pathArray[3] : null
+        const segmentSubRoute = pathArray.length > 4 ? pathArray[4] : null
+
+        if (!segmentId) {
+          if (req.method === 'GET') {
+            const segments = await query(
+              `SELECT 
+                rs.*,
+                l1.name as from_destination_name,
+                l2.name as to_destination_name
+              FROM route_segments rs
+              LEFT JOIN locations l1 ON rs.from_destination_id = l1.id
+              LEFT JOIN locations l2 ON rs.to_destination_id = l2.id
+              WHERE rs.route_id = $1
+              ORDER BY rs.segment_order, rs.day_number`,
+              [id]
+            )
+
+            const segmentIds = segments.map((s: any) => s.id)
+            const stopsResult = segmentIds.length > 0 ? await query(
+              `SELECT 
+                rss.*,
+                l.name as location_name
+              FROM route_segment_stops rss
+              LEFT JOIN locations l ON rss.location_id = l.id
+              WHERE rss.segment_id = ANY($1::uuid[])
+              ORDER BY rss.segment_id, rss.stop_order`,
+              [segmentIds]
+            ) : []
+
+            const formatted = segments.map((seg: any) => {
+              const stops = stopsResult
+                .filter((stop: any) => stop.segment_id === seg.id)
+                .map((stop: any) => ({
+                  id: stop.id,
+                  segmentId: stop.segment_id,
+                  locationId: stop.location_id,
+                  stopOrder: stop.stop_order,
+                  notes: stop.notes,
+                  createdAt: stop.createdAt,
+                  updatedAt: stop.updatedAt,
+                  locationName: stop.location_name
+                }))
+                .sort((a: any, b: any) => a.stopOrder - b.stopOrder)
+
+              return {
+                id: seg.id,
+                routeId: seg.route_id,
+                dayNumber: seg.day_number,
+                segmentDate: seg.segment_date,
+                fromDestinationId: seg.from_destination_id,
+                toDestinationId: seg.to_destination_id,
+                distance: seg.distance,
+                segmentOrder: seg.segment_order,
+                notes: seg.notes,
+                createdAt: seg.createdAt,
+                updatedAt: seg.updatedAt,
+                fromDestinationName: seg.from_destination_name,
+                toDestinationName: seg.to_destination_name,
+                stops
+              }
+            })
+            res.status(200).json(formatted)
+            return
+          }
+          if (req.method === 'POST') {
+            const { dayNumber, fromDestinationId, toDestinationId, distance, segmentOrder, notes } = req.body
+
+            const maxDayResult = await query(
+              'SELECT COALESCE(MAX(day_number), 0) as max_day FROM route_segments WHERE route_id = $1',
+              [id]
+            )
+            const maxDay = parseInt(maxDayResult[0]?.max_day) || 0
+            const dayNum = dayNumber || maxDay + 1
+            const segOrder = segmentOrder !== undefined ? segmentOrder : maxDay
+
+            const routeResult = await query('SELECT start_date FROM routes WHERE id = $1', [id])
+            const startDate = routeResult[0]?.start_date
+            let segmentDateStr = null
+            if (startDate) {
+              const segmentDate = new Date(startDate)
+              segmentDate.setDate(segmentDate.getDate() + dayNum - 1)
+              segmentDateStr = segmentDate.toISOString().split('T')[0]
+            }
+
+            const newSegmentId = randomUUID()
+            await query(
+              `INSERT INTO route_segments (id, route_id, day_number, segment_date, from_destination_id, to_destination_id, distance, segment_order, notes)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+              [
+                newSegmentId,
+                id,
+                dayNum,
+                segmentDateStr,
+                fromDestinationId || null,
+                toDestinationId || null,
+                distance || 0,
+                segOrder,
+                notes || null
+              ]
+            )
+
+            const result = await query(
+              `SELECT 
+                rs.*,
+                l1.name as from_destination_name,
+                l2.name as to_destination_name
+              FROM route_segments rs
+              LEFT JOIN locations l1 ON rs.from_destination_id = l1.id
+              LEFT JOIN locations l2 ON rs.to_destination_id = l2.id
+              WHERE rs.id = $1`,
+              [newSegmentId]
+            )
+
+            const stopsResult = await query(
+              `SELECT 
+                rss.*,
+                l.name as location_name
+              FROM route_segment_stops rss
+              LEFT JOIN locations l ON rss.location_id = l.id
+              WHERE rss.segment_id = $1
+              ORDER BY rss.stop_order`,
+              [newSegmentId]
+            )
+
+            const seg = result[0]
+            const stops = stopsResult.map((stop: any) => ({
+              id: stop.id,
+              segmentId: stop.segment_id,
+              locationId: stop.location_id,
+              stopOrder: stop.stop_order,
+              notes: stop.notes,
+              createdAt: stop.createdAt,
+              updatedAt: stop.updatedAt,
+              locationName: stop.location_name
+            }))
+
+            res.status(201).json({
+              id: seg.id,
+              routeId: seg.route_id,
+              dayNumber: seg.day_number,
+              segmentDate: seg.segment_date,
+              fromDestinationId: seg.from_destination_id,
+              toDestinationId: seg.to_destination_id,
+              distance: seg.distance,
+              segmentOrder: seg.segment_order,
+              notes: seg.notes,
+              createdAt: seg.createdAt,
+              updatedAt: seg.updatedAt,
+              fromDestinationName: seg.from_destination_name,
+              toDestinationName: seg.to_destination_name,
+              stops
+            })
+            return
+          }
+          res.status(405).json({ message: 'Method not allowed' })
+          return
+        }
+
+        if (segmentId === 'reorder') {
+          if (req.method !== 'PUT') {
+            res.status(405).json({ message: 'Method not allowed' })
+            return
+          }
+          const { segmentOrders } = req.body
+          if (!Array.isArray(segmentOrders)) {
+            res.status(400).json({ message: 'segmentOrders must be an array' })
+            return
+          }
+          for (const item of segmentOrders) {
+            await query(
+              `UPDATE route_segments SET segment_order = $1 WHERE id = $2 AND route_id = $3`,
+              [item.segmentOrder, item.id, id]
+            )
+          }
+          res.status(200).json({ message: 'Segment order updated successfully' })
+          return
+        }
+
+        if (segmentSubRoute === 'stops') {
+          const stopId = pathArray.length > 5 ? pathArray[5] : null
+          const stopSubRoute = pathArray.length > 6 ? pathArray[6] : null
+
+          if (!stopId) {
+            if (req.method === 'GET') {
+              const stops = await query(
+                `SELECT 
+                  rss.*,
+                  l.name as location_name
+                FROM route_segment_stops rss
+                LEFT JOIN locations l ON rss.location_id = l.id
+                WHERE rss.segment_id = $1
+                ORDER BY rss.stop_order`,
+                [segmentId]
+              )
+              const formatted = stops.map((stop: any) => ({
+                id: stop.id,
+                segmentId: stop.segment_id,
+                locationId: stop.location_id,
+                stopOrder: stop.stop_order,
+                notes: stop.notes,
+                createdAt: stop.createdAt,
+                updatedAt: stop.updatedAt,
+                locationName: stop.location_name
+              }))
+              res.status(200).json(formatted)
+              return
+            }
+            if (req.method === 'POST') {
+              const { locationId, stopOrder, notes } = req.body
+              if (!locationId) {
+                res.status(400).json({ message: 'Location ID is required' })
+                return
+              }
+              const stopId = randomUUID()
+              const result = await query(
+                `INSERT INTO route_segment_stops (id, segment_id, location_id, stop_order, notes)
+                 VALUES ($1, $2, $3, $4, $5)
+                 RETURNING *`,
+                [stopId, segmentId, locationId, stopOrder || 1, notes || null]
+              )
+              res.status(201).json(result[0])
+              return
+            }
+            res.status(405).json({ message: 'Method not allowed' })
+            return
+          }
+
+          if (stopId === 'reorder') {
+            if (req.method !== 'PUT') {
+              res.status(405).json({ message: 'Method not allowed' })
+              return
+            }
+            const { stopOrders } = req.body
+            if (!Array.isArray(stopOrders)) {
+              res.status(400).json({ message: 'stopOrders must be an array' })
+              return
+            }
+            for (const item of stopOrders) {
+              await query(
+                `UPDATE route_segment_stops SET stop_order = $1 WHERE id = $2 AND segment_id = $3`,
+                [item.stopOrder, item.id, segmentId]
+              )
+            }
+            res.status(200).json({ message: 'Stop order updated successfully' })
+            return
+          }
+
+          if (stopSubRoute === null) {
+            if (req.method === 'DELETE') {
+              const existing = await queryOne('SELECT id FROM route_segment_stops WHERE id = $1 AND segment_id = $2', [stopId, segmentId])
+              if (!existing) {
+                res.status(404).json({ message: 'Stop not found' })
+                return
+              }
+              await query('DELETE FROM route_segment_stops WHERE id = $1', [stopId])
+              res.status(200).json({ message: 'Stop deleted successfully' })
+              return
+            }
+            res.status(405).json({ message: 'Method not allowed' })
+            return
+          }
+        }
+
+        if (segmentSubRoute === 'participants') {
+          const participantId = pathArray.length > 5 ? pathArray[5] : null
+          if (!participantId) {
+            if (req.method === 'GET') {
+              const participants = await query(
+                `SELECT 
+                  rp.*,
+                  c.name as client_name,
+                  g.name as guide_name
+                FROM route_segment_participants rsp
+                JOIN route_participants rp ON rsp.participant_id = rp.id
+                LEFT JOIN clients c ON rp.client_id = c.id
+                LEFT JOIN staff g ON rp.guide_id = g.id
+                WHERE rsp.segment_id = $1`,
+                [segmentId]
+              )
+              const formatted = participants.map((p: any) => ({
+                id: p.id,
+                routeId: p.route_id,
+                clientId: p.client_id,
+                guideId: p.guide_id,
+                role: p.role,
+                isOptional: p.is_optional,
+                notes: p.notes,
+                createdAt: p.createdAt,
+                updatedAt: p.updatedAt,
+                clientName: p.client_name,
+                guideName: p.guide_name
+              }))
+              res.status(200).json(formatted)
+              return
+            }
+            if (req.method === 'POST') {
+              const { participantId } = req.body
+              if (!participantId) {
+                res.status(400).json({ message: 'Participant ID is required' })
+                return
+              }
+              const result = await query(
+                `INSERT INTO route_segment_participants (segment_id, participant_id)
+                 VALUES ($1, $2)
+                 ON CONFLICT (segment_id, participant_id) DO NOTHING
+                 RETURNING *`,
+                [segmentId, participantId]
+              )
+              if (result.length === 0) {
+                res.status(409).json({ message: 'Participant already in segment' })
+                return
+              }
+              res.status(201).json({ message: 'Participant added to segment' })
+              return
+            }
+            res.status(405).json({ message: 'Method not allowed' })
+            return
+          }
+          if (req.method === 'DELETE') {
+            await query('DELETE FROM route_segment_participants WHERE segment_id = $1 AND participant_id = $2', [segmentId, participantId])
+            res.status(200).json({ message: 'Participant removed from segment' })
+            return
+          }
+          res.status(405).json({ message: 'Method not allowed' })
+          return
+        }
+
+        if (segmentSubRoute === 'accommodations') {
+          const accommodationId = pathArray.length > 5 ? pathArray[5] : null
+          const accommodationSubRoute = pathArray.length > 6 ? pathArray[6] : null
+
+          if (!accommodationId) {
+            if (req.method === 'GET') {
+              const accommodations = await query(
+                `SELECT 
+                  rsa.*,
+                  h.name as hotel_name
+                FROM route_segment_accommodations rsa
+                LEFT JOIN hotels h ON rsa.hotel_id = h.id
+                WHERE rsa.segment_id = $1
+                ORDER BY rsa."createdAt" ASC`,
+                [segmentId]
+              )
+              const rooms = await query(
+                `SELECT * FROM route_segment_accommodation_rooms WHERE accommodation_id IN (
+                  SELECT id FROM route_segment_accommodations WHERE segment_id = $1
+                )`,
+                [segmentId]
+              )
+              const roomParticipants = await query(
+                `SELECT 
+                  rsarp.*,
+                  rp.role,
+                  COALESCE(c.name, g.name, 'Staff') as participant_name
+                FROM route_segment_accommodation_room_participants rsarp
+                LEFT JOIN route_participants rp ON rsarp.participant_id = rp.id
+                LEFT JOIN clients c ON rp.client_id = c.id
+                LEFT JOIN staff g ON rp.guide_id = g.id
+                WHERE rsarp.room_id IN (
+                  SELECT id FROM route_segment_accommodation_rooms WHERE accommodation_id IN (
+                    SELECT id FROM route_segment_accommodations WHERE segment_id = $1
+                  )
+                )`,
+                [segmentId]
+              )
+              const formatted = accommodations.map((acc: any) => ({
+                id: acc.id,
+                segmentId: acc.segment_id,
+                hotelId: acc.hotel_id,
+                clientType: acc.client_type,
+                notes: acc.notes,
+                createdAt: acc.createdAt,
+                updatedAt: acc.updatedAt,
+                hotelName: acc.hotel_name,
+                rooms: rooms
+                  .filter((room: any) => room.accommodation_id === acc.id)
+                  .map((room: any) => ({
+                    id: room.id,
+                    accommodationId: room.accommodation_id,
+                    roomType: room.room_type,
+                    roomNumber: room.room_number,
+                    capacity: room.capacity,
+                    costPerNight: room.cost_per_night,
+                    notes: room.notes,
+                    createdAt: room.createdAt,
+                    updatedAt: room.updatedAt,
+                    participants: roomParticipants
+                      .filter((rp: any) => rp.room_id === room.id)
+                      .map((rp: any) => ({
+                        id: rp.id,
+                        roomId: rp.room_id,
+                        participantId: rp.participant_id,
+                        isCouple: rp.is_couple,
+                        createdAt: rp.createdAt,
+                        participantName: rp.participant_name,
+                        participantRole: rp.role
+                      }))
+                  }))
+              }))
+              res.status(200).json(formatted)
+              return
+            }
+            if (req.method === 'POST') {
+              const { hotelId, clientType, notes } = req.body
+              if (!hotelId || !clientType) {
+                res.status(400).json({ message: 'Hotel and client type are required' })
+                return
+              }
+              const accommodationId = randomUUID()
+              const result = await query(
+                `INSERT INTO route_segment_accommodations (id, segment_id, hotel_id, client_type, notes)
+                 VALUES ($1, $2, $3, $4, $5)
+                 RETURNING *`,
+                [accommodationId, segmentId, hotelId, clientType, notes || null]
+              )
+              res.status(201).json(result[0])
+              return
+            }
+            res.status(405).json({ message: 'Method not allowed' })
+            return
+          }
+
+          if (accommodationSubRoute === 'rooms') {
+            const roomId = pathArray.length > 7 ? pathArray[7] : null
+            if (!roomId) {
+              if (req.method === 'POST') {
+                const { roomType, roomNumber, capacity, costPerNight, notes, participants } = req.body
+                const roomId = randomUUID()
+                const result = await query(
+                  `INSERT INTO route_segment_accommodation_rooms (id, accommodation_id, room_type, room_number, capacity, cost_per_night, notes)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7)
+                   RETURNING *`,
+                  [roomId, accommodationId, roomType, roomNumber || null, capacity || null, costPerNight || 0, notes || null]
+                )
+                if (Array.isArray(participants) && participants.length > 0) {
+                  for (const p of participants) {
+                    await query(
+                      `INSERT INTO route_segment_accommodation_room_participants (room_id, participant_id, is_couple)
+                       VALUES ($1, $2, $3)`,
+                      [roomId, p.participantId, p.isCouple || false]
+                    )
+                  }
+                }
+                res.status(201).json(result[0])
+                return
+              }
+              res.status(405).json({ message: 'Method not allowed' })
+              return
+            }
+
+            if (req.method === 'PUT') {
+              const { roomType, roomNumber, capacity, costPerNight, notes, participants } = req.body
+              const existing = await queryOne(
+                `SELECT id FROM route_segment_accommodation_rooms WHERE id = $1 AND accommodation_id = $2`,
+                [roomId, accommodationId]
+              )
+              if (!existing) {
+                res.status(404).json({ message: 'Room not found' })
+                return
+              }
+              const result = await query(
+                `UPDATE route_segment_accommodation_rooms
+                 SET room_type = $1, room_number = $2, capacity = $3, cost_per_night = $4, notes = $5, "updatedAt" = NOW()
+                 WHERE id = $6 RETURNING *`,
+                [roomType, roomNumber || null, capacity || null, costPerNight || 0, notes || null, roomId]
+              )
+              await query(`DELETE FROM route_segment_accommodation_room_participants WHERE room_id = $1`, [roomId])
+              if (Array.isArray(participants) && participants.length > 0) {
+                for (const p of participants) {
+                  await query(
+                    `INSERT INTO route_segment_accommodation_room_participants (room_id, participant_id, is_couple)
+                     VALUES ($1, $2, $3)`,
+                    [roomId, p.participantId, p.isCouple || false]
+                  )
+                }
+              }
+              res.status(200).json(result[0])
+              return
+            }
+
+            if (req.method === 'DELETE') {
+              const existing = await queryOne(
+                `SELECT id FROM route_segment_accommodation_rooms WHERE id = $1 AND accommodation_id = $2`,
+                [roomId, accommodationId]
+              )
+              if (!existing) {
+                res.status(404).json({ message: 'Room not found' })
+                return
+              }
+              await query(`DELETE FROM route_segment_accommodation_rooms WHERE id = $1`, [roomId])
+              res.status(200).json({ message: 'Room deleted successfully' })
+              return
+            }
+
+            res.status(405).json({ message: 'Method not allowed' })
+            return
+          }
+
+          if (req.method === 'DELETE' && accommodationSubRoute === null) {
+            const existing = await queryOne(
+              `SELECT id FROM route_segment_accommodations WHERE id = $1 AND segment_id = $2`,
+              [accommodationId, segmentId]
+            )
+            if (!existing) {
+              res.status(404).json({ message: 'Accommodation not found' })
+              return
+            }
+            await query(`DELETE FROM route_segment_accommodations WHERE id = $1`, [accommodationId])
+            res.status(200).json({ message: 'Accommodation deleted successfully' })
+            return
+          }
+
+          res.status(405).json({ message: 'Method not allowed' })
+          return
+        }
+
+        if (req.method === 'PUT' || req.method === 'DELETE') {
+          if (req.method === 'PUT') {
+            const { dayNumber, segmentDate, fromDestinationId, toDestinationId, distance, segmentOrder, notes } = req.body
+            const existing = await queryOne(
+              `SELECT id FROM route_segments WHERE id = $1 AND route_id = $2`,
+              [segmentId, id]
+            )
+            if (!existing) {
+              res.status(404).json({ message: 'Segment not found' })
+              return
+            }
+            const result = await query(
+              `UPDATE route_segments 
+               SET day_number = $1, segment_date = $2, from_destination_id = $3, to_destination_id = $4, distance = $5, segment_order = $6, notes = $7, "updatedAt" = NOW()
+               WHERE id = $8 RETURNING *`,
+              [
+                dayNumber || 1,
+                segmentDate || null,
+                fromDestinationId || null,
+                toDestinationId || null,
+                distance || 0,
+                segmentOrder || 1,
+                notes || null,
+                segmentId
+              ]
+            )
+            res.status(200).json(result[0])
+            return
+          }
+          if (req.method === 'DELETE') {
+            const existing = await queryOne(
+              `SELECT id FROM route_segments WHERE id = $1 AND route_id = $2`,
+              [segmentId, id]
+            )
+            if (!existing) {
+              res.status(404).json({ message: 'Segment not found' })
+              return
+            }
+            await query(`DELETE FROM route_segments WHERE id = $1`, [segmentId])
+            res.status(200).json({ message: 'Segment deleted successfully' })
+            return
+          }
+        }
+      }
+
+      // /routes/:routeId/logistics
+      if (subRoute === 'logistics') {
+        const logisticsId = pathArray.length > 3 ? pathArray[3] : null
+        if (!logisticsId) {
+          if (req.method === 'GET') {
+            const logistics = await query(
+              `SELECT 
+                rl.*,
+                CASE 
+                  WHEN rl.entity_type = 'hotel' THEN h.name
+                  WHEN rl.entity_type = 'third-party' THEN tp.name
+                  WHEN rl.entity_type = 'vehicle' THEN v.type || ' - ' || CASE 
+                    WHEN v."vehicleOwner" = 'company' THEN 'Company'
+                    WHEN v."vehicleOwner" = 'hotel' THEN COALESCE(h.name, 'Hotel')
+                    ELSE COALESCE(tp.name, 'Third Party')
+                  END
+                  WHEN rl.entity_type = 'location' THEN l.name
+                  ELSE NULL
+                END as entity_name
+              FROM route_logistics rl
+              LEFT JOIN vehicles v ON rl.entity_type = 'vehicle' AND rl.entity_id = v.id
+              LEFT JOIN hotels h ON (rl.entity_type = 'hotel' AND rl.entity_id = h.id) OR (rl.entity_type = 'vehicle' AND v."hotelId" = h.id)
+              LEFT JOIN third_parties tp ON (rl.entity_type = 'third-party' AND rl.entity_id = tp.id) OR (rl.entity_type = 'vehicle' AND v."thirdPartyId" = tp.id)
+              LEFT JOIN locations l ON rl.entity_type = 'location' AND rl.entity_id = l.id
+              WHERE rl.route_id = $1`,
+              [id]
+            )
+            const formatted = logistics.map((log: any) => ({
+              id: log.id,
+              routeId: log.route_id,
+              segmentId: log.segment_id,
+              entityType: log.entity_type,
+              entityId: log.entity_id,
+              quantity: log.quantity,
+              unitCost: log.unit_cost,
+              totalCost: log.total_cost,
+              notes: log.notes,
+              createdAt: log.createdAt,
+              updatedAt: log.updatedAt,
+              entityName: log.entity_name
+            }))
+            res.status(200).json(formatted)
+            return
+          }
+          if (req.method === 'POST') {
+            const { segmentId, entityType, entityId, quantity, unitCost, totalCost, notes } = req.body
+            if (!entityType || !entityId) {
+              res.status(400).json({ message: 'Entity type and ID are required' })
+              return
+            }
+            const logisticsId = randomUUID()
+            const result = await query(
+              `INSERT INTO route_logistics (id, route_id, segment_id, entity_type, entity_id, quantity, unit_cost, total_cost, notes)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               RETURNING *`,
+              [
+                logisticsId,
+                id,
+                segmentId || null,
+                entityType,
+                entityId,
+                quantity || 1,
+                unitCost || 0,
+                totalCost || 0,
+                notes || null
+              ]
+            )
+            res.status(201).json(result[0])
+            return
+          }
+          res.status(405).json({ message: 'Method not allowed' })
+          return
+        }
+
+        if (req.method === 'PUT') {
+          const { segmentId, entityType, entityId, quantity, unitCost, totalCost, notes } = req.body
+          const existing = await queryOne(
+            `SELECT id FROM route_logistics WHERE id = $1 AND route_id = $2`,
+            [logisticsId, id]
+          )
+          if (!existing) {
+            res.status(404).json({ message: 'Logistics not found' })
+            return
+          }
+          const result = await query(
+            `UPDATE route_logistics 
+             SET segment_id = $1, entity_type = $2, entity_id = $3, quantity = $4, unit_cost = $5, total_cost = $6, notes = $7, "updatedAt" = NOW()
+             WHERE id = $8 RETURNING *`,
+            [
+              segmentId || null,
+              entityType,
+              entityId,
+              quantity || 1,
+              unitCost || 0,
+              totalCost || 0,
+              notes || null,
+              logisticsId
+            ]
+          )
+          res.status(200).json(result[0])
+          return
+        }
+
+        if (req.method === 'DELETE') {
+          const existing = await queryOne('SELECT id FROM route_logistics WHERE id = $1 AND route_id = $2', [logisticsId, id])
+          if (!existing) {
+            res.status(404).json({ message: 'Logistics not found' })
+            return
+          }
+          await query(`DELETE FROM route_logistics WHERE id = $1`, [logisticsId])
+          res.status(200).json({ message: 'Logistics deleted successfully' })
+          return
+        }
+
+        res.status(405).json({ message: 'Method not allowed' })
+        return
+      }
+
+      // /routes/:routeId/participants
+      if (subRoute === 'participants') {
+        const participantId = pathArray.length > 3 ? pathArray[3] : null
+        const participantSubRoute = pathArray.length > 4 ? pathArray[4] : null
+
+        if (!participantId) {
+          if (req.method === 'GET') {
+            const participants = await query(
+              `SELECT 
+                rp.*,
+                c.name as client_name,
+                g.name as guide_name
+              FROM route_participants rp
+              LEFT JOIN clients c ON rp.client_id = c.id
+              LEFT JOIN staff g ON rp.guide_id = g.id
+              WHERE rp.route_id = $1`,
+              [id]
+            )
+            const formatted = participants.map((p: any) => ({
+              id: p.id,
+              routeId: p.route_id,
+              clientId: p.client_id,
+              guideId: p.guide_id,
+              role: p.role,
+              isOptional: p.is_optional,
+              notes: p.notes,
+              createdAt: p.createdAt,
+              updatedAt: p.updatedAt,
+              clientName: p.client_name,
+              guideName: p.guide_name
+            }))
+            res.status(200).json(formatted)
+            return
+          }
+          if (req.method === 'POST') {
+            const { clientId, guideId, role, isOptional, notes } = req.body
+            if (!clientId && !guideId) {
+              res.status(400).json({ message: 'Client or Staff is required' })
+              return
+            }
+            if (clientId && guideId) {
+              res.status(400).json({ message: 'Cannot assign both client and staff to the same participant' })
+              return
+            }
+            const participantId = randomUUID()
+            const result = await query(
+              `INSERT INTO route_participants (id, route_id, client_id, guide_id, role, is_optional, notes)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               RETURNING *`,
+              [
+                participantId,
+                id,
+                clientId || null,
+                guideId || null,
+                role || null,
+                isOptional || false,
+                notes || null
+              ]
+            )
+            res.status(201).json(result[0])
+            return
+          }
+          res.status(405).json({ message: 'Method not allowed' })
+          return
+        }
+
+        if (participantSubRoute === 'segments') {
+          if (req.method !== 'PUT') {
+            res.status(405).json({ message: 'Method not allowed' })
+            return
+          }
+          const { segmentIds } = req.body
+          if (!Array.isArray(segmentIds)) {
+            res.status(400).json({ message: 'segmentIds must be an array' })
+            return
+          }
+          await query(`DELETE FROM route_segment_participants WHERE participant_id = $1`, [participantId])
+          for (const segmentId of segmentIds) {
+            await query(
+              `INSERT INTO route_segment_participants (segment_id, participant_id)
+               VALUES ($1, $2)
+               ON CONFLICT (segment_id, participant_id) DO NOTHING`,
+              [segmentId, participantId]
+            )
+          }
+          res.status(200).json({ message: 'Participant segments updated successfully' })
+          return
+        }
+
+        if (req.method === 'PUT') {
+          const { clientId, guideId, role, isOptional, notes } = req.body
+          const existing = await queryOne(
+            `SELECT id FROM route_participants WHERE id = $1 AND route_id = $2`,
+            [participantId, id]
+          )
+          if (!existing) {
+            res.status(404).json({ message: 'Participant not found' })
+            return
+          }
+          const result = await query(
+            `UPDATE route_participants
+             SET client_id = $1, guide_id = $2, role = $3, is_optional = $4, notes = $5, "updatedAt" = NOW()
+             WHERE id = $6 RETURNING *`,
+            [
+              clientId || null,
+              guideId || null,
+              role || null,
+              isOptional || false,
+              notes || null,
+              participantId
+            ]
+          )
+          res.status(200).json(result[0])
+          return
+        }
+
+        if (req.method === 'DELETE') {
+          const existing = await queryOne(
+            `SELECT id FROM route_participants WHERE id = $1 AND route_id = $2`,
+            [participantId, id]
+          )
+          if (!existing) {
+            res.status(404).json({ message: 'Participant not found' })
+            return
+          }
+          await query(`DELETE FROM route_participants WHERE id = $1`, [participantId])
+          res.status(200).json({ message: 'Participant removed successfully' })
+          return
+        }
+
+        res.status(405).json({ message: 'Method not allowed' })
+        return
+      }
+
+      // /routes/:routeId/transactions
+      if (subRoute === 'transactions') {
+        if (req.method === 'GET') {
+          const transactions = await query(
+            `SELECT 
+              rt.*,
+              a1."accountHolderName" as from_account_name,
+              a2."accountHolderName" as to_account_name
+            FROM route_transactions rt
+            LEFT JOIN accounts a1 ON rt.from_account_id = a1.id
+            LEFT JOIN accounts a2 ON rt.to_account_id = a2.id
+            WHERE rt.route_id = $1
+            ORDER BY rt.transaction_date DESC, rt."createdAt" DESC`,
+            [id]
+          )
+          const formatted = transactions.map((t: any) => ({
+            id: t.id,
+            routeId: t.route_id,
+            transactionDate: t.transaction_date,
+            amount: t.amount,
+            currency: t.currency,
+            paymentMethod: t.payment_method,
+            type: t.type,
+            description: t.description,
+            fromAccountId: t.from_account_id,
+            toAccountId: t.to_account_id,
+            createdAt: t.createdAt,
+            updatedAt: t.updatedAt,
+            fromAccountName: t.from_account_name,
+            toAccountName: t.to_account_name
+          }))
+          res.status(200).json(formatted)
+          return
+        }
+
+        if (req.method === 'POST') {
+          const { transactionDate, amount, currency, paymentMethod, type, description, fromAccountId, toAccountId } = req.body
+          if (!transactionDate || !amount || !type) {
+            res.status(400).json({ message: 'Transaction date, amount and type are required' })
+            return
+          }
+          const transactionId = randomUUID()
+          const result = await query(
+            `INSERT INTO route_transactions (id, route_id, transaction_date, amount, currency, payment_method, type, description, from_account_id, to_account_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             RETURNING *`,
+            [
+              transactionId,
+              id,
+              transactionDate,
+              amount,
+              currency || 'BRL',
+              paymentMethod || null,
+              type,
+              description || null,
+              fromAccountId || null,
+              toAccountId || null
+            ]
+          )
+          res.status(201).json(result[0])
+          return
+        }
+
+        res.status(405).json({ message: 'Method not allowed' })
+        return
+      }
+
+      // /routes/:routeId/transfers
+      if (subRoute === 'transfers') {
+        const transferId = pathArray.length > 3 ? pathArray[3] : null
+        const transferSubRoute = pathArray.length > 4 ? pathArray[4] : null
+
+        if (!transferId) {
+          if (req.method === 'GET') {
+            const transfersResult = await query(
+              `SELECT 
+                rt.*,
+                l1.name as from_location_name,
+                l2.name as to_location_name
+              FROM route_transfers rt
+              LEFT JOIN locations l1 ON rt.from_location_id = l1.id
+              LEFT JOIN locations l2 ON rt.to_location_id = l2.id
+              WHERE rt.route_id = $1
+              ORDER BY rt.transfer_date, rt."createdAt"`,
+              [id]
+            )
+
+            const transferIds = transfersResult.map((t: any) => t.id)
+            const vehiclesResult = transferIds.length > 0 ? await query(
+              `SELECT 
+                rtv.*,
+                v.type as vehicle_type,
+                CASE 
+                  WHEN v."vehicleOwner" = 'company' THEN 'Company'
+                  WHEN v."vehicleOwner" = 'hotel' THEN h.name
+                  ELSE tp.name
+                END as vehicle_owner,
+                tp.name as third_party_name,
+                h.name as hotel_name
+              FROM route_transfer_vehicles rtv
+              LEFT JOIN vehicles v ON rtv.vehicle_id = v.id
+              LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+              LEFT JOIN hotels h ON v."hotelId" = h.id
+              WHERE rtv.transfer_id = ANY($1::uuid[])`,
+              [transferIds]
+            ) : []
+
+            const participantsResult = transferIds.length > 0 ? await query(
+              `SELECT 
+                rtp.*,
+                rp.role,
+                COALESCE(c.name, g.name, 'Staff') as participant_name
+              FROM route_transfer_participants rtp
+              LEFT JOIN route_participants rp ON rtp.participant_id = rp.id
+              LEFT JOIN clients c ON rp.client_id = c.id
+              LEFT JOIN staff g ON rp.guide_id = g.id
+              WHERE rtp.transfer_id = ANY($1::uuid[])`,
+              [transferIds]
+            ) : []
+
+            const transfers = transfersResult.map((transfer: any) => {
+              const vehicles = vehiclesResult
+                .filter((v: any) => v.transfer_id === transfer.id)
+                .map((v: any) => ({
+                  id: v.id,
+                  transferId: v.transfer_id,
+                  vehicleId: v.vehicle_id,
+                  driverPilotName: v.driver_pilot_name,
+                  quantity: v.quantity,
+                  cost: v.cost,
+                  isOwnVehicle: v.is_own_vehicle,
+                  notes: v.notes,
+                  createdAt: v.createdAt,
+                  updatedAt: v.updatedAt,
+                  vehicleName: `${v.vehicle_type} - ${v.vehicle_owner || 'Unknown'}`,
+                  vehicleType: v.vehicle_type,
+                  thirdPartyName: v.third_party_name,
+                  hotelName: v.hotel_name
+                }))
+
+              const participants = participantsResult
+                .filter((p: any) => p.transfer_id === transfer.id)
+                .map((p: any) => ({
+                  id: p.id,
+                  transferId: p.transfer_id,
+                  participantId: p.participant_id,
+                  createdAt: p.createdAt,
+                  participantName: p.participant_name,
+                  participantRole: p.role
+                }))
+
+              return {
+                id: transfer.id,
+                routeId: transfer.route_id,
+                transferDate: transfer.transfer_date,
+                fromLocationId: transfer.from_location_id,
+                toLocationId: transfer.to_location_id,
+                totalCost: parseFloat(transfer.total_cost),
+                notes: transfer.notes,
+                createdAt: transfer.createdAt,
+                updatedAt: transfer.updatedAt,
+                fromLocationName: transfer.from_location_name,
+                toLocationName: transfer.to_location_name,
+                vehicles,
+                participants
+              }
+            })
+
+            res.status(200).json(transfers)
+            return
+          }
+          if (req.method === 'POST') {
+            const { transferDate, fromLocationId, toLocationId, notes, vehicles, participants } = req.body
+            if (!transferDate || !fromLocationId || !toLocationId) {
+              res.status(400).json({ message: 'transferDate, fromLocationId, and toLocationId are required' })
+              return
+            }
+            if (fromLocationId === toLocationId) {
+              res.status(400).json({ message: 'fromLocationId and toLocationId must be different' })
+              return
+            }
+
+            const newTransferId = randomUUID()
+            await query(
+              `INSERT INTO route_transfers (id, route_id, transfer_date, from_location_id, to_location_id, notes)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [newTransferId, id, transferDate, fromLocationId, toLocationId, notes || null]
+            )
+
+            if (vehicles && Array.isArray(vehicles) && vehicles.length > 0) {
+              for (const vehicle of vehicles) {
+                if (!vehicle.vehicleId) continue
+                await query(
+                  `INSERT INTO route_transfer_vehicles (id, transfer_id, vehicle_id, driver_pilot_name, quantity, cost, is_own_vehicle, notes)
+                   VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)`,
+                  [
+                    newTransferId,
+                    vehicle.vehicleId,
+                    vehicle.driverPilotName || null,
+                    vehicle.quantity || 1,
+                    vehicle.cost || 0,
+                    vehicle.isOwnVehicle || false,
+                    vehicle.notes || null
+                  ]
+                )
+              }
+            }
+
+            if (participants && Array.isArray(participants) && participants.length > 0) {
+              for (const participantId of participants) {
+                if (!participantId) continue
+                await query(
+                  `INSERT INTO route_transfer_participants (id, transfer_id, participant_id)
+                   VALUES (gen_random_uuid(), $1, $2)
+                   ON CONFLICT (transfer_id, participant_id) DO NOTHING`,
+                  [newTransferId, participantId]
+                )
+              }
+            }
+
+            const fullTransferResult = await query(
+              `SELECT 
+                rt.*,
+                l1.name as from_location_name,
+                l2.name as to_location_name
+              FROM route_transfers rt
+              LEFT JOIN locations l1 ON rt.from_location_id = l1.id
+              LEFT JOIN locations l2 ON rt.to_location_id = l2.id
+              WHERE rt.id = $1`,
+              [newTransferId]
+            )
+
+            const vehiclesResult = await query(
+              `SELECT 
+                rtv.*,
+                v.type as vehicle_type,
+                CASE 
+                  WHEN v."vehicleOwner" = 'company' THEN 'Company'
+                  WHEN v."vehicleOwner" = 'hotel' THEN h.name
+                  ELSE tp.name
+                END as vehicle_owner,
+                tp.name as third_party_name,
+                h.name as hotel_name
+              FROM route_transfer_vehicles rtv
+              LEFT JOIN vehicles v ON rtv.vehicle_id = v.id
+              LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+              LEFT JOIN hotels h ON v."hotelId" = h.id
+              WHERE rtv.transfer_id = $1`,
+              [newTransferId]
+            )
+
+            const participantsResult = await query(
+              `SELECT 
+                rtp.*,
+                rp.role,
+                COALESCE(c.name, g.name, 'Staff') as participant_name
+              FROM route_transfer_participants rtp
+              LEFT JOIN route_participants rp ON rtp.participant_id = rp.id
+              LEFT JOIN clients c ON rp.client_id = c.id
+              LEFT JOIN staff g ON rp.guide_id = g.id
+              WHERE rtp.transfer_id = $1`,
+              [newTransferId]
+            )
+
+            const transfer = fullTransferResult[0]
+            const transferVehicles = vehiclesResult.map((v: any) => ({
+              id: v.id,
+              transferId: v.transfer_id,
+              vehicleId: v.vehicle_id,
+              driverPilotName: v.driver_pilot_name,
+              quantity: v.quantity,
+              cost: v.cost,
+              isOwnVehicle: v.is_own_vehicle,
+              notes: v.notes,
+              createdAt: v.createdAt,
+              updatedAt: v.updatedAt,
+              vehicleName: `${v.vehicle_type} - ${v.vehicle_owner === 'Company' ? 'Company' : (v.third_party_name || 'Third Party')}`,
+              vehicleType: v.vehicle_type,
+              thirdPartyName: v.third_party_name
+            }))
+
+            const transferParticipants = participantsResult.map((p: any) => ({
+              id: p.id,
+              transferId: p.transfer_id,
+              participantId: p.participant_id,
+              createdAt: p.createdAt,
+              participantName: p.participant_name,
+              participantRole: p.role
+            }))
+
+            res.status(201).json({
+              id: transfer.id,
+              routeId: transfer.route_id,
+              transferDate: transfer.transfer_date,
+              fromLocationId: transfer.from_location_id,
+              toLocationId: transfer.to_location_id,
+              totalCost: parseFloat(transfer.total_cost),
+              notes: transfer.notes,
+              createdAt: transfer.createdAt,
+              updatedAt: transfer.updatedAt,
+              fromLocationName: transfer.from_location_name,
+              toLocationName: transfer.to_location_name,
+              vehicles: transferVehicles,
+              participants: transferParticipants
+            })
+            return
+          }
+          res.status(405).json({ message: 'Method not allowed' })
+          return
+        }
+
+        if (transferSubRoute === 'vehicles') {
+          const transferVehicleId = pathArray.length > 5 ? pathArray[5] : null
+          if (!transferVehicleId) {
+            if (req.method !== 'POST') {
+              res.status(405).json({ message: 'Method not allowed' })
+              return
+            }
+            const { vehicleId, driverPilotName, quantity, cost, isOwnVehicle, notes } = req.body
+            if (!vehicleId) {
+              res.status(400).json({ message: 'vehicleId is required' })
+              return
+            }
+            const transferCheck = await queryOne(
+              'SELECT id FROM route_transfers WHERE id = $1 AND route_id = $2',
+              [transferId, id]
+            )
+            if (!transferCheck) {
+              res.status(404).json({ message: 'Transfer not found' })
+              return
+            }
+
+            const newVehicleId = randomUUID()
+            await query(
+              `INSERT INTO route_transfer_vehicles (id, transfer_id, vehicle_id, driver_pilot_name, quantity, cost, is_own_vehicle, notes)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              [newVehicleId, transferId, vehicleId, driverPilotName || null, quantity || 1, cost || 0, isOwnVehicle || false, notes || null]
+            )
+
+            const vehicleResult = await query(
+              `SELECT 
+                rtv.*,
+                v.type as vehicle_type,
+                CASE 
+                  WHEN v."vehicleOwner" = 'company' THEN 'Company'
+                  WHEN v."vehicleOwner" = 'hotel' THEN h.name
+                  ELSE tp.name
+                END as vehicle_owner,
+                tp.name as third_party_name,
+                h.name as hotel_name
+              FROM route_transfer_vehicles rtv
+              LEFT JOIN vehicles v ON rtv.vehicle_id = v.id
+              LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+              LEFT JOIN hotels h ON v."hotelId" = h.id
+              WHERE rtv.id = $1`,
+              [newVehicleId]
+            )
+            const v = vehicleResult[0]
+            res.status(201).json({
+              id: v.id,
+              transferId: v.transfer_id,
+              vehicleId: v.vehicle_id,
+              driverPilotName: v.driver_pilot_name,
+              quantity: v.quantity,
+              cost: v.cost,
+              isOwnVehicle: v.is_own_vehicle,
+              notes: v.notes,
+              createdAt: v.createdAt,
+              updatedAt: v.updatedAt,
+              vehicleName: `${v.vehicle_type} - ${v.vehicle_owner === 'Company' ? 'Company' : (v.third_party_name || 'Third Party')}`,
+              vehicleType: v.vehicle_type,
+              thirdPartyName: v.third_party_name
+            })
+            return
+          }
+
+          if (req.method === 'DELETE') {
+            const transferCheck = await queryOne(
+              'SELECT id FROM route_transfers WHERE id = $1 AND route_id = $2',
+              [transferId, id]
+            )
+            if (!transferCheck) {
+              res.status(404).json({ message: 'Transfer not found' })
+              return
+            }
+            const result = await query(
+              'DELETE FROM route_transfer_vehicles WHERE id = $1 AND transfer_id = $2 RETURNING id',
+              [transferVehicleId, transferId]
+            )
+            if (result.length === 0) {
+              res.status(404).json({ message: 'Vehicle not found in transfer' })
+              return
+            }
+            res.status(200).json({ message: 'Vehicle removed from transfer successfully' })
+            return
+          }
+
+          res.status(405).json({ message: 'Method not allowed' })
+          return
+        }
+
+        if (transferSubRoute === 'participants') {
+          const transferParticipantId = pathArray.length > 5 ? pathArray[5] : null
+          if (!transferParticipantId) {
+            if (req.method !== 'POST') {
+              res.status(405).json({ message: 'Method not allowed' })
+              return
+            }
+            const { participantId } = req.body
+            if (!participantId) {
+              res.status(400).json({ message: 'participantId is required' })
+              return
+            }
+            const transferCheck = await queryOne(
+              'SELECT id FROM route_transfers WHERE id = $1 AND route_id = $2',
+              [transferId, id]
+            )
+            if (!transferCheck) {
+              res.status(404).json({ message: 'Transfer not found' })
+              return
+            }
+            const participantCheck = await queryOne(
+              'SELECT id FROM route_participants WHERE id = $1 AND route_id = $2',
+              [participantId, id]
+            )
+            if (!participantCheck) {
+              res.status(404).json({ message: 'Participant not found in route' })
+              return
+            }
+            const participantId_uuid = randomUUID()
+            const result = await query(
+              `INSERT INTO route_transfer_participants (id, transfer_id, participant_id)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (transfer_id, participant_id) DO NOTHING
+               RETURNING *`,
+              [participantId_uuid, transferId, participantId]
+            )
+            if (result.length === 0) {
+              res.status(409).json({ message: 'Participant already in transfer' })
+              return
+            }
+            const participantResult = await queryOne(
+              `SELECT 
+                rtp.*,
+                rp.role,
+                COALESCE(c.name, g.name, 'Staff') as participant_name
+              FROM route_transfer_participants rtp
+              LEFT JOIN route_participants rp ON rtp.participant_id = rp.id
+              LEFT JOIN clients c ON rp.client_id = c.id
+              LEFT JOIN staff g ON rp.guide_id = g.id
+              WHERE rtp.id = $1`,
+              [participantId_uuid]
+            )
+            const p = participantResult
+            res.status(201).json({
+              id: p.id,
+              transferId: p.transfer_id,
+              participantId: p.participant_id,
+              createdAt: p.createdAt,
+              participantName: p.participant_name,
+              participantRole: p.role
+            })
+            return
+          }
+
+          if (req.method === 'DELETE') {
+            const transferCheck = await queryOne(
+              'SELECT id FROM route_transfers WHERE id = $1 AND route_id = $2',
+              [transferId, id]
+            )
+            if (!transferCheck) {
+              res.status(404).json({ message: 'Transfer not found' })
+              return
+            }
+            const result = await query(
+              'DELETE FROM route_transfer_participants WHERE id = $1 AND transfer_id = $2 RETURNING id',
+              [transferParticipantId, transferId]
+            )
+            if (result.length === 0) {
+              res.status(404).json({ message: 'Participant not found in transfer' })
+              return
+            }
+            res.status(200).json({ message: 'Participant removed from transfer successfully' })
+            return
+          }
+
+          res.status(405).json({ message: 'Method not allowed' })
+          return
+        }
+
+        if (transferSubRoute === null) {
+          if (req.method === 'GET') {
+            const transferResult = await query(
+              `SELECT 
+                rt.*,
+                l1.name as from_location_name,
+                l2.name as to_location_name
+              FROM route_transfers rt
+              LEFT JOIN locations l1 ON rt.from_location_id = l1.id
+              LEFT JOIN locations l2 ON rt.to_location_id = l2.id
+              WHERE rt.id = $1 AND rt.route_id = $2`,
+              [transferId, id]
+            )
+            if (transferResult.length === 0) {
+              res.status(404).json({ message: 'Transfer not found' })
+              return
+            }
+            const transfer = transferResult[0]
+
+            const vehiclesResult = await query(
+              `SELECT 
+                rtv.*,
+                v.type as vehicle_type,
+                CASE 
+                  WHEN v."vehicleOwner" = 'company' THEN 'Company'
+                  WHEN v."vehicleOwner" = 'hotel' THEN h.name
+                  ELSE tp.name
+                END as vehicle_owner,
+                tp.name as third_party_name,
+                h.name as hotel_name
+              FROM route_transfer_vehicles rtv
+              LEFT JOIN vehicles v ON rtv.vehicle_id = v.id
+              LEFT JOIN third_parties tp ON v."thirdPartyId" = tp.id
+              LEFT JOIN hotels h ON v."hotelId" = h.id
+              WHERE rtv.transfer_id = $1`,
+              [transferId]
+            )
+
+            const participantsResult = await query(
+              `SELECT 
+                rtp.*,
+                rp.role,
+                COALESCE(c.name, g.name, 'Staff') as participant_name
+              FROM route_transfer_participants rtp
+              LEFT JOIN route_participants rp ON rtp.participant_id = rp.id
+              LEFT JOIN clients c ON rp.client_id = c.id
+              LEFT JOIN staff g ON rp.guide_id = g.id
+              WHERE rtp.transfer_id = $1`,
+              [transferId]
+            )
+
+            const vehicles = vehiclesResult.map((v: any) => ({
+              id: v.id,
+              transferId: v.transfer_id,
+              vehicleId: v.vehicle_id,
+              driverPilotName: v.driver_pilot_name,
+              quantity: v.quantity,
+              cost: v.cost,
+              isOwnVehicle: v.is_own_vehicle,
+              notes: v.notes,
+              createdAt: v.createdAt,
+              updatedAt: v.updatedAt,
+              vehicleName: `${v.vehicle_type} - ${v.vehicle_owner === 'Company' ? 'Company' : (v.third_party_name || 'Third Party')}`,
+              vehicleType: v.vehicle_type,
+              thirdPartyName: v.third_party_name
+            }))
+
+            const participants = participantsResult.map((p: any) => ({
+              id: p.id,
+              transferId: p.transfer_id,
+              participantId: p.participant_id,
+              createdAt: p.createdAt,
+              participantName: p.participant_name,
+              participantRole: p.role
+            }))
+
+            res.status(200).json({
+              id: transfer.id,
+              routeId: transfer.route_id,
+              transferDate: transfer.transfer_date,
+              fromLocationId: transfer.from_location_id,
+              toLocationId: transfer.to_location_id,
+              totalCost: parseFloat(transfer.total_cost),
+              notes: transfer.notes,
+              createdAt: transfer.createdAt,
+              updatedAt: transfer.updatedAt,
+              fromLocationName: transfer.from_location_name,
+              toLocationName: transfer.to_location_name,
+              vehicles,
+              participants
+            })
+            return
+          }
+
+          if (req.method === 'PUT') {
+            const { transferDate, fromLocationId, toLocationId, notes, vehicles, participants } = req.body
+            if (!transferDate || !fromLocationId || !toLocationId) {
+              res.status(400).json({ message: 'transferDate, fromLocationId, and toLocationId are required' })
+              return
+            }
+            if (fromLocationId === toLocationId) {
+              res.status(400).json({ message: 'fromLocationId and toLocationId must be different' })
+              return
+            }
+            const result = await query(
+              `UPDATE route_transfers
+               SET transfer_date = $1, from_location_id = $2, to_location_id = $3, notes = $4, "updatedAt" = NOW()
+               WHERE id = $5 AND route_id = $6
+               RETURNING *`,
+              [transferDate, fromLocationId, toLocationId, notes || null, transferId, id]
+            )
+            if (result.length === 0) {
+              res.status(404).json({ message: 'Transfer not found' })
+              return
+            }
+
+            await query('DELETE FROM route_transfer_vehicles WHERE transfer_id = $1', [transferId])
+            await query('DELETE FROM route_transfer_participants WHERE transfer_id = $1', [transferId])
+
+            if (vehicles && Array.isArray(vehicles) && vehicles.length > 0) {
+              for (const vehicle of vehicles) {
+                if (!vehicle.vehicleId) continue
+                await query(
+                  `INSERT INTO route_transfer_vehicles (id, transfer_id, vehicle_id, driver_pilot_name, quantity, cost, is_own_vehicle, notes)
+                   VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)`,
+                  [
+                    transferId,
+                    vehicle.vehicleId,
+                    vehicle.driverPilotName || null,
+                    vehicle.quantity || 1,
+                    vehicle.cost || 0,
+                    vehicle.isOwnVehicle || false,
+                    vehicle.notes || null
+                  ]
+                )
+              }
+            }
+
+            if (participants && Array.isArray(participants) && participants.length > 0) {
+              for (const participantId of participants) {
+                if (!participantId) continue
+                await query(
+                  `INSERT INTO route_transfer_participants (id, transfer_id, participant_id)
+                   VALUES (gen_random_uuid(), $1, $2)
+                   ON CONFLICT (transfer_id, participant_id) DO NOTHING`,
+                  [transferId, participantId]
+                )
+              }
+            }
+
+            const updatedTransfer = result[0]
+            res.status(200).json(updatedTransfer)
+            return
+          }
+
+          if (req.method === 'DELETE') {
+            const result = await query(
+              'DELETE FROM route_transfers WHERE id = $1 AND route_id = $2 RETURNING id',
+              [transferId, id]
+            )
+            if (result.length === 0) {
+              res.status(404).json({ message: 'Transfer not found' })
+              return
+            }
+            res.status(200).json({ message: 'Transfer deleted successfully' })
+            return
+          }
+        }
+
+        res.status(405).json({ message: 'Method not allowed' })
+        return
+      }
+
+      res.status(404).json({ message: 'Route not found', route, pathArray })
+      return
+    }
+
     res.status(404).json({ message: 'Route not found', route, pathArray })
   } catch (error: any) {
     console.error('API Handler Error:', error)
