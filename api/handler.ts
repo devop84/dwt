@@ -1089,11 +1089,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             id: log.id,
             routeId: log.route_id,
             segmentId: log.segment_id,
+            logisticsType: log.logistics_type,
             entityType: log.entity_type,
             entityId: log.entity_id,
+            itemName: log.item_name,
             quantity: log.quantity,
-            unitCost: log.unit_cost,
-            totalCost: log.total_cost,
+            cost: log.cost,
+            date: log.date,
+            driverPilotName: log.driver_pilot_name,
+            isOwnVehicle: log.is_own_vehicle,
+            vehicleType: log.vehicle_type,
             notes: log.notes,
             createdAt: log.createdAt,
             updatedAt: log.updatedAt,
@@ -1814,11 +1819,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
               id: log.id,
               routeId: log.route_id,
               segmentId: log.segment_id,
+              logisticsType: log.logistics_type,
               entityType: log.entity_type,
               entityId: log.entity_id,
+              itemName: log.item_name,
               quantity: log.quantity,
-              unitCost: log.unit_cost,
-              totalCost: log.total_cost,
+              cost: log.cost,
+              date: log.date,
+              driverPilotName: log.driver_pilot_name,
+              isOwnVehicle: log.is_own_vehicle,
+              vehicleType: log.vehicle_type,
               notes: log.notes,
               createdAt: log.createdAt,
               updatedAt: log.updatedAt,
@@ -1828,25 +1838,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             return
           }
           if (req.method === 'POST') {
-            const { segmentId, entityType, entityId, quantity, unitCost, totalCost, notes } = req.body
-            if (!entityType || !entityId) {
-              res.status(400).json({ message: 'Entity type and ID are required' })
+            const { segmentId, logisticsType, entityId, entityType, itemName, quantity, cost, date, driverPilotName, isOwnVehicle, vehicleType, notes } = req.body
+            if (!logisticsType || !entityType) {
+              res.status(400).json({ message: 'logisticsType and entityType are required' })
+              return
+            }
+            if (logisticsType !== 'lunch' && logisticsType !== 'extra-cost' && !entityId) {
+              res.status(400).json({ message: 'entityId is required' })
+              return
+            }
+            if ((logisticsType === 'lunch' || logisticsType === 'extra-cost') && !itemName) {
+              res.status(400).json({ message: 'itemName is required for this type' })
               return
             }
             const logisticsId = randomUUID()
             const result = await query(
-              `INSERT INTO route_logistics (id, route_id, segment_id, entity_type, entity_id, quantity, unit_cost, total_cost, notes)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+              `INSERT INTO route_logistics (id, route_id, segment_id, logistics_type, entity_id, entity_type, item_name, quantity, cost, date, driver_pilot_name, is_own_vehicle, vehicle_type, notes)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                RETURNING *`,
               [
                 logisticsId,
                 id,
                 segmentId || null,
+                logisticsType,
+                entityId || null,
                 entityType,
-                entityId,
+                itemName || null,
                 quantity || 1,
-                unitCost || 0,
-                totalCost || 0,
+                cost || 0,
+                date || null,
+                driverPilotName || null,
+                isOwnVehicle || false,
+                vehicleType || null,
                 notes || null
               ]
             )
@@ -1858,7 +1881,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         }
 
         if (req.method === 'PUT') {
-          const { segmentId, entityType, entityId, quantity, unitCost, totalCost, notes } = req.body
+          const { segmentId, logisticsType, entityId, entityType, itemName, quantity, cost, date, driverPilotName, isOwnVehicle, vehicleType, notes } = req.body
           const existing = await queryOne(
             `SELECT id FROM route_logistics WHERE id = $1 AND route_id = $2`,
             [logisticsId, id]
@@ -1869,15 +1892,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           }
           const result = await query(
             `UPDATE route_logistics 
-             SET segment_id = $1, entity_type = $2, entity_id = $3, quantity = $4, unit_cost = $5, total_cost = $6, notes = $7, "updatedAt" = NOW()
-             WHERE id = $8 RETURNING *`,
+             SET segment_id = $1, logistics_type = $2, entity_id = $3, entity_type = $4, item_name = $5, quantity = $6, cost = $7, date = $8, driver_pilot_name = $9, is_own_vehicle = $10, vehicle_type = $11, notes = $12, "updatedAt" = NOW()
+             WHERE id = $13 RETURNING *`,
             [
               segmentId || null,
+              logisticsType,
+              entityId || null,
               entityType,
-              entityId,
+              itemName || null,
               quantity || 1,
-              unitCost || 0,
-              totalCost || 0,
+              cost || 0,
+              date || null,
+              driverPilotName || null,
+              isOwnVehicle || false,
+              vehicleType || null,
               notes || null,
               logisticsId
             ]
