@@ -136,7 +136,7 @@ export function LogisticsForm({ logisticsType, hotels, vehicles, thirdParties, l
             ? (extraProviderType === 'hotel' ? 'hotel' : 'third-party')
             : formData.entityType,
         itemName: logisticsType === 'lunch' || logisticsType === 'extra-cost' ? formData.itemName.trim() : null,
-        quantity: logisticsType === 'support-vehicle' ? 1 : formData.quantity,
+        quantity: logisticsType === 'support-vehicle' || logisticsType === 'extra-cost' ? 1 : formData.quantity,
         cost: formData.cost,
         date: null,
         driverPilotName: logisticsType === 'support-vehicle' ? formData.driverPilotName || null : null,
@@ -354,7 +354,7 @@ export function LogisticsForm({ logisticsType, hotels, vehicles, thirdParties, l
             </div>
           )}
 
-          {logisticsType !== 'support-vehicle' && (
+          {logisticsType !== 'support-vehicle' && logisticsType !== 'extra-cost' && (
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
                 Quantity
@@ -379,7 +379,7 @@ export function LogisticsForm({ logisticsType, hotels, vehicles, thirdParties, l
 
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-              Cost{logisticsType !== 'support-vehicle' ? ' (per unit)' : ''}
+              {logisticsType === 'extra-cost' ? 'Cost' : `Cost${logisticsType !== 'support-vehicle' ? ' (per unit)' : ''}`}
             </label>
             <input
               type="number"

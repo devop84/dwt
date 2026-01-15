@@ -367,7 +367,7 @@ export function RouteDetails() {
               transition: 'all 0.2s'
             }}
           >
-            Segments
+            {`Segments (${sortedSegments.length})`}
           </button>
           <button
             onClick={() => setActiveTab('participants')}
@@ -383,7 +383,7 @@ export function RouteDetails() {
               transition: 'all 0.2s'
             }}
           >
-            Participants
+            {`Participants (${participants.length})`}
           </button>
           <button
             onClick={() => setActiveTab('transactions')}
@@ -399,7 +399,7 @@ export function RouteDetails() {
               transition: 'all 0.2s'
             }}
           >
-            Transactions
+            {`Transactions (${transactions.length})`}
           </button>
           <button
             onClick={() => setActiveTab('airport-transfers')}
@@ -415,7 +415,7 @@ export function RouteDetails() {
               transition: 'all 0.2s'
             }}
           >
-            Transfers
+            {`Transfers (${transfers.length})`}
           </button>
         </div>
 

@@ -501,7 +501,7 @@ export function SegmentDetails() {
               transition: 'all 0.2s'
             }}
           >
-            Vehicles
+            {`Vehicles (${logisticsByCategory.vehicles.length})`}
           </button>
           <button
             onClick={() => setActiveTab('accommodations')}
@@ -517,7 +517,7 @@ export function SegmentDetails() {
               transition: 'all 0.2s'
             }}
           >
-            Accommodations
+            {`Accommodations (${accommodations.length})`}
           </button>
           <button
             onClick={() => setActiveTab('catering')}
@@ -533,7 +533,7 @@ export function SegmentDetails() {
               transition: 'all 0.2s'
             }}
           >
-            Food and Beverages
+            {`Food and Beverages (${logisticsByCategory.catering.length})`}
           </button>
           <button
             onClick={() => setActiveTab('extras')}
@@ -549,7 +549,7 @@ export function SegmentDetails() {
               transition: 'all 0.2s'
             }}
           >
-            Extras
+            {`Extras (${logisticsByCategory.extras.length})`}
           </button>
           <button
             onClick={() => setActiveTab('participants')}
@@ -565,7 +565,7 @@ export function SegmentDetails() {
               transition: 'all 0.2s'
             }}
           >
-            Participants
+            {`Participants (${participants.length})`}
           </button>
           <button
             onClick={() => setActiveTab('stops')}
@@ -581,7 +581,7 @@ export function SegmentDetails() {
               transition: 'all 0.2s'
             }}
           >
-            Stops
+            {`Stops (${stops.length})`}
           </button>
           <button
             onClick={() => setActiveTab('tasks')}
@@ -597,7 +597,7 @@ export function SegmentDetails() {
               transition: 'all 0.2s'
             }}
           >
-            Tasks
+            {`Tasks (0)`}
           </button>
         </div>
 
@@ -903,7 +903,7 @@ export function SegmentDetails() {
                           <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>{log.notes}</p>
                         )}
                         <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
-                          Provider: {log.entityName || 'No provider'} | Quantity: {log.quantity} | Cost: {formatCurrency(log.cost * log.quantity)}
+                          Provider: {log.entityName || 'No provider'} | Cost: {formatCurrency(log.cost)}
                         </p>
                       </div>
                       <button
