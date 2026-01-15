@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { routesApi, routeSegmentsApi, routeParticipantsApi, routeTransactionsApi, routeTransfersApi, locationsApi, staffApi, clientsApi, vehiclesApi } from '../lib/api'
-import type { Route, RouteSegment, RouteParticipant, RouteTransaction, RouteTransfer, Location, Staff, Client, Vehicle } from '../types'
+import { routesApi, routeSegmentsApi, routeParticipantsApi, routeTransfersApi, locationsApi, staffApi, clientsApi, vehiclesApi } from '../lib/api'
+import type { Route, RouteSegment, RouteParticipant, RouteTransfer, Location, Staff, Client, Vehicle } from '../types'
 import { RouteForm } from '../components/RouteForm'
 import { SegmentForm } from '../components/SegmentForm'
 import { TransferForm } from '../components/TransferForm'
 
-type TabType = 'segments' | 'participants' | 'transactions' | 'airport-transfers'
+type TabType = 'segments' | 'participants' | 'airport-transfers'
 
 export function RouteDetails() {
   const { id } = useParams<{ id: string }>()
@@ -14,7 +14,6 @@ export function RouteDetails() {
   const [route, setRoute] = useState<Route | null>(null)
   const [segments, setSegments] = useState<RouteSegment[]>([])
   const [participants, setParticipants] = useState<RouteParticipant[]>([])
-  const [transactions, setTransactions] = useState<RouteTransaction[]>([])
   const [transfers, setTransfers] = useState<RouteTransfer[]>([])
   const [showTransferForm, setShowTransferForm] = useState(false)
   const [editingTransfer, setEditingTransfer] = useState<RouteTransfer | null>(null)
@@ -61,15 +60,13 @@ export function RouteDetails() {
     if (!id) return
     try {
       setLoading(true)
-      const [data, transactionsData, transfersData] = await Promise.all([
+      const [data, transfersData] = await Promise.all([
         routesApi.getById(id),
-        routeTransactionsApi.getAll(id).catch(() => []), // Transactions might not exist yet
         routeTransfersApi.getAll(id).catch(() => []) // Transfers might not exist yet
       ])
       setRoute(data)
       setSegments(data.segments || [])
       setParticipants(data.participants || [])
-      setTransactions(transactionsData || [])
       setTransfers(transfersData || [])
       
     } catch (err: any) {
@@ -386,22 +383,6 @@ export function RouteDetails() {
             {`Participants (${participants.length})`}
           </button>
           <button
-            onClick={() => setActiveTab('transactions')}
-            style={{
-              padding: '1rem 1.5rem',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              color: activeTab === 'transactions' ? '#3b82f6' : '#6b7280',
-              backgroundColor: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'transactions' ? '2px solid #3b82f6' : '2px solid transparent',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            {`Transactions (${transactions.length})`}
-          </button>
-          <button
             onClick={() => setActiveTab('airport-transfers')}
             style={{
               padding: '1rem 1.5rem',
@@ -642,52 +623,6 @@ export function RouteDetails() {
             </div>
           )}
 
-          {activeTab === 'transactions' && (
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#111827', margin: '0 0 1.5rem 0' }}>Transactions</h2>
-              {transactions.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                  <p>No transactions yet.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {transactions.map((transaction) => (
-                    <div
-                      key={transaction.id}
-                      style={{
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '0.5rem',
-                        padding: '1rem'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                        <div>
-                          <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827', margin: '0 0 0.25rem 0' }}>
-                            {transaction.transactionType} - {transaction.category}
-                          </h4>
-                          <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.25rem 0' }}>
-                            {formatDate(transaction.transactionDate)} | {formatCurrency(transaction.amount)} {transaction.currency}
-                          </p>
-                          {transaction.description && (
-                            <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.25rem 0' }}>
-                              {transaction.description}
-                            </p>
-                          )}
-                          {(transaction.fromAccountName || transaction.toAccountName) && (
-                            <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.25rem 0' }}>
-                              {transaction.fromAccountName && `From: ${transaction.fromAccountName}`}
-                              {transaction.fromAccountName && transaction.toAccountName && ' | '}
-                              {transaction.toAccountName && `To: ${transaction.toAccountName}`}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {activeTab === 'airport-transfers' && (
             <div>
