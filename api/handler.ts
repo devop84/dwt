@@ -708,7 +708,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             return
           }
 
-          if (!['client', 'hotel', 'driver', 'company', 'third-party'].includes(entityType)) {
+          if (!['client', 'hotel', 'staff', 'company', 'third-party'].includes(entityType)) {
             res.status(400).json({ message: 'Invalid entity type' })
             return
           }
@@ -782,8 +782,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
               } else if (account.entityType === 'hotel') {
                 const entity = await queryOne('SELECT name FROM hotels WHERE id = $1', [account.entityId])
                 entityName = entity?.name || null
-              } else if (account.entityType === 'driver') {
-                const entity = await queryOne('SELECT name FROM drivers WHERE id = $1', [account.entityId])
+              } else if (account.entityType === 'staff') {
+                const entity = await queryOne('SELECT name FROM staff WHERE id = $1', [account.entityId])
                 entityName = entity?.name || null
               }
             } catch (err) {
