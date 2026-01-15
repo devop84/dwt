@@ -187,7 +187,7 @@ async function initDb() {
         note TEXT,
         "createdAt" TIMESTAMP DEFAULT NOW(),
         "updatedAt" TIMESTAMP DEFAULT NOW(),
-        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'staff', 'driver', 'vehicle', 'company', 'third-party')),
+        CONSTRAINT check_entity_type CHECK ("entityType" IN ('client', 'hotel', 'staff', 'vehicle', 'company', 'third-party')),
         CONSTRAINT check_account_type CHECK ("accountType" IN ('bank', 'cash', 'online', 'other'))
       )
     `)
@@ -1794,7 +1794,7 @@ app.post('/api/accounts', async (req, res) => {
       return res.status(400).json({ message: 'Entity ID is required for non-company accounts' })
     }
 
-    const validEntityTypes = ['client', 'hotel', 'guide', 'driver', 'company', 'third-party']
+    const validEntityTypes = ['client', 'hotel', 'staff', 'company', 'third-party']
     if (!validEntityTypes.includes(entityType)) {
       console.log('❌ Invalid entity type:', { entityType, validTypes: validEntityTypes, receivedType: typeof entityType })
       return res.status(400).json({ message: 'Invalid entity type', received: entityType, valid: validEntityTypes })
@@ -1812,7 +1812,7 @@ app.post('/api/accounts', async (req, res) => {
       return res.status(400).json({ message: 'Service name/tag is required for online accounts' })
     }
 
-    if (!['client', 'hotel', 'guide', 'driver', 'company', 'third-party'].includes(entityType)) {
+    if (!['client', 'hotel', 'staff', 'company', 'third-party'].includes(entityType)) {
       return res.status(400).json({ message: 'Invalid entity type' })
     }
 
@@ -1896,11 +1896,8 @@ app.get('/api/accounts/:id', async (req, res) => {
         } else if (account.entityType === 'hotel') {
           const entityResult = await pool.query('SELECT name FROM hotels WHERE id = $1', [account.entityId])
           entityName = entityResult.rows[0]?.name || null
-        } else if (account.entityType === 'guide') {
+        } else if (account.entityType === 'staff') {
           const entityResult = await pool.query('SELECT name FROM staff WHERE id = $1', [account.entityId])
-          entityName = entityResult.rows[0]?.name || null
-        } else if (account.entityType === 'driver') {
-          const entityResult = await pool.query('SELECT name FROM drivers WHERE id = $1', [account.entityId])
           entityName = entityResult.rows[0]?.name || null
         } else if (account.entityType === 'third-party') {
           const entityResult = await pool.query('SELECT name FROM third_parties WHERE id = $1', [account.entityId])
