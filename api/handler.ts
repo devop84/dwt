@@ -384,6 +384,108 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return
     }
 
+    // Staff
+    if (route === 'staff') {
+      if (!id) {
+        if (req.method === 'GET') {
+          const staff = await query(`
+            SELECT 
+              g.id,
+              g.name,
+              g."contactNumber",
+              g.email,
+              g."locationId",
+              g.languages,
+              g.note,
+              g."createdAt",
+              g."updatedAt",
+              d.name as "locationName"
+            FROM staff g
+            LEFT JOIN locations d ON g."locationId" = d.id
+            ORDER BY g.name ASC
+          `)
+          res.status(200).json(staff)
+        } else if (req.method === 'POST') {
+          const { name, contactNumber, email, locationId, languages, note } = req.body
+          if (!name) {
+            res.status(400).json({ message: 'Name is required' })
+            return
+          }
+          if (!locationId) {
+            res.status(400).json({ message: 'Destination is required' })
+            return
+          }
+          const staffId = randomUUID()
+          const result = await query(
+            `INSERT INTO staff (id, name, "contactNumber", email, "locationId", languages, note)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING id, name, "contactNumber", email, "locationId", languages, note, "createdAt", "updatedAt"`,
+            [staffId, name, contactNumber || null, email || null, locationId, languages || null, note || null]
+          )
+          res.status(201).json(result[0])
+        } else {
+          res.status(405).json({ message: 'Method not allowed' })
+        }
+      } else {
+        if (req.method === 'GET') {
+          const staffMember = await queryOne(
+            `SELECT 
+              g.id,
+              g.name,
+              g."contactNumber",
+              g.email,
+              g."locationId",
+              g.languages,
+              g.note,
+              g."createdAt",
+              g."updatedAt",
+              d.name as "locationName"
+            FROM staff g
+            LEFT JOIN locations d ON g."locationId" = d.id
+            WHERE g.id = $1`,
+            [id]
+          )
+          if (!staffMember) {
+            res.status(404).json({ message: 'Staff not found' })
+            return
+          }
+          res.status(200).json(staffMember)
+        } else if (req.method === 'PUT') {
+          const { name, contactNumber, email, locationId, languages, note } = req.body
+          if (!name) {
+            res.status(400).json({ message: 'Name is required' })
+            return
+          }
+          if (!locationId) {
+            res.status(400).json({ message: 'Destination is required' })
+            return
+          }
+          const existing = await queryOne('SELECT id FROM staff WHERE id = $1', [id])
+          if (!existing) {
+            res.status(404).json({ message: 'Staff not found' })
+            return
+          }
+          const result = await query(
+            `UPDATE staff SET name = $1, "contactNumber" = $2, email = $3, "locationId" = $4, languages = $5, note = $6, "updatedAt" = NOW()
+             WHERE id = $7 RETURNING *`,
+            [name, contactNumber || null, email || null, locationId, languages || null, note || null, id]
+          )
+          res.status(200).json(result[0])
+        } else if (req.method === 'DELETE') {
+          const existing = await queryOne('SELECT id FROM staff WHERE id = $1', [id])
+          if (!existing) {
+            res.status(404).json({ message: 'Staff not found' })
+            return
+          }
+          await query('DELETE FROM staff WHERE id = $1', [id])
+          res.status(200).json({ message: 'Staff deleted successfully' })
+        } else {
+          res.status(405).json({ message: 'Method not allowed' })
+        }
+      }
+      return
+    }
+
     // Guides
     if (route === 'guides') {
       if (!id) {
