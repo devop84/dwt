@@ -1596,7 +1596,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
                 id: acc.id,
                 segmentId: acc.segment_id,
                 hotelId: acc.hotel_id,
-                clientType: acc.client_type,
+                groupType: acc.group_type,
                 notes: acc.notes,
                 createdAt: acc.createdAt,
                 updatedAt: acc.updatedAt,
@@ -1607,22 +1607,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
                     id: room.id,
                     accommodationId: room.accommodation_id,
                     roomType: room.room_type,
-                    roomNumber: room.room_number,
-                    capacity: room.capacity,
-                    costPerNight: room.cost_per_night,
+                    roomLabel: room.room_label,
+                    isCouple: room.is_couple,
                     notes: room.notes,
                     createdAt: room.createdAt,
                     updatedAt: room.updatedAt,
                     participants: roomParticipants
                       .filter((rp: any) => rp.room_id === room.id)
                       .map((rp: any) => ({
-                        id: rp.id,
-                        roomId: rp.room_id,
-                        participantId: rp.participant_id,
-                        isCouple: rp.is_couple,
-                        createdAt: rp.createdAt,
-                        participantName: rp.participant_name,
-                        participantRole: rp.role
+                        id: rp.participant_id,
+                        role: rp.role,
+                        clientName: rp.role === 'client' ? rp.participant_name : undefined,
+                        guideName: rp.role === 'client' ? undefined : rp.participant_name
                       }))
                   }))
               }))
@@ -1630,17 +1626,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
               return
             }
             if (req.method === 'POST') {
-              const { hotelId, clientType, notes } = req.body
-              if (!hotelId || !clientType) {
-                res.status(400).json({ message: 'Hotel and client type are required' })
+              const { hotelId, groupType, clientType, notes } = req.body
+              const nextGroupType = groupType ?? clientType
+              if (!hotelId || !nextGroupType) {
+                res.status(400).json({ message: 'Hotel and group type are required' })
                 return
               }
               const accommodationId = randomUUID()
               const result = await query(
-                `INSERT INTO route_segment_accommodations (id, segment_id, hotel_id, client_type, notes)
+                `INSERT INTO route_segment_accommodations (id, segment_id, hotel_id, group_type, notes)
                  VALUES ($1, $2, $3, $4, $5)
                  RETURNING *`,
-                [accommodationId, segmentId, hotelId, clientType, notes || null]
+                [accommodationId, segmentId, hotelId, nextGroupType, notes || null]
               )
               res.status(201).json(result[0])
               return
@@ -1653,20 +1650,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             const roomId = pathArray.length > 7 ? pathArray[7] : null
             if (!roomId) {
               if (req.method === 'POST') {
-                const { roomType, roomNumber, capacity, costPerNight, notes, participants } = req.body
+                const { roomType, roomLabel, isCouple, notes, participantIds } = req.body
                 const roomId = randomUUID()
                 const result = await query(
-                  `INSERT INTO route_segment_accommodation_rooms (id, accommodation_id, room_type, room_number, capacity, cost_per_night, notes)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7)
+                  `INSERT INTO route_segment_accommodation_rooms (id, accommodation_id, room_type, room_label, is_couple, notes)
+                   VALUES ($1, $2, $3, $4, $5, $6)
                    RETURNING *`,
-                  [roomId, accommodationId, roomType, roomNumber || null, capacity || null, costPerNight || 0, notes || null]
+                  [roomId, accommodationId, roomType, roomLabel || null, isCouple || false, notes || null]
                 )
-                if (Array.isArray(participants) && participants.length > 0) {
-                  for (const p of participants) {
+                if (Array.isArray(participantIds) && participantIds.length > 0) {
+                  for (const participantId of participantIds) {
                     await query(
-                      `INSERT INTO route_segment_accommodation_room_participants (room_id, participant_id, is_couple)
-                       VALUES ($1, $2, $3)`,
-                      [roomId, p.participantId, p.isCouple || false]
+                      `INSERT INTO route_segment_accommodation_room_participants (room_id, participant_id)
+                       VALUES ($1, $2)`,
+                      [roomId, participantId]
                     )
                   }
                 }
@@ -1678,7 +1675,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             }
 
             if (req.method === 'PUT') {
-              const { roomType, roomNumber, capacity, costPerNight, notes, participants } = req.body
+              const { roomType, roomLabel, isCouple, notes, participantIds } = req.body
               const existing = await queryOne(
                 `SELECT id FROM route_segment_accommodation_rooms WHERE id = $1 AND accommodation_id = $2`,
                 [roomId, accommodationId]
@@ -1689,17 +1686,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
               }
               const result = await query(
                 `UPDATE route_segment_accommodation_rooms
-                 SET room_type = $1, room_number = $2, capacity = $3, cost_per_night = $4, notes = $5, "updatedAt" = NOW()
-                 WHERE id = $6 RETURNING *`,
-                [roomType, roomNumber || null, capacity || null, costPerNight || 0, notes || null, roomId]
+                 SET room_type = $1, room_label = $2, is_couple = $3, notes = $4, "updatedAt" = NOW()
+                 WHERE id = $5 RETURNING *`,
+                [roomType, roomLabel || null, isCouple || false, notes || null, roomId]
               )
               await query(`DELETE FROM route_segment_accommodation_room_participants WHERE room_id = $1`, [roomId])
-              if (Array.isArray(participants) && participants.length > 0) {
-                for (const p of participants) {
+              if (Array.isArray(participantIds) && participantIds.length > 0) {
+                for (const participantId of participantIds) {
                   await query(
-                    `INSERT INTO route_segment_accommodation_room_participants (room_id, participant_id, is_couple)
-                     VALUES ($1, $2, $3)`,
-                    [roomId, p.participantId, p.isCouple || false]
+                    `INSERT INTO route_segment_accommodation_room_participants (room_id, participant_id)
+                     VALUES ($1, $2)`,
+                    [roomId, participantId]
                   )
                 }
               }

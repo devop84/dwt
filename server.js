@@ -154,7 +154,7 @@ async function initDb() {
         )
       )
     `)
-
+    
     // Create third_parties table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS third_parties (

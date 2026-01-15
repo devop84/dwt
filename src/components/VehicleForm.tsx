@@ -101,7 +101,7 @@ export function VehicleForm({ vehicle, locations, thirdParties, hotels, onClose,
         } else if (value === 'third-party') {
           updated.hotelId = ''
         } else if (value === 'hotel') {
-          updated.thirdPartyId = ''
+        updated.thirdPartyId = ''
         }
       }
       return updated
