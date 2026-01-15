@@ -486,77 +486,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return
     }
 
-    // Guides
-    if (route === 'guides') {
-      if (!id) {
-        if (req.method === 'GET') {
-          const guides = await query(`
-            SELECT g.*, l.name as "locationName"
-            FROM guides g
-            LEFT JOIN locations l ON g."locationId" = l.id
-            ORDER BY g.name ASC
-          `)
-          res.status(200).json(guides)
-        } else if (req.method === 'POST') {
-          const { name, contactNumber, email, locationId, languages, note } = req.body
-          if (!name || !locationId) {
-            res.status(400).json({ message: 'Name and location are required' })
-            return
-          }
-          const guideId = randomUUID()
-          const result = await query(
-            `INSERT INTO guides (id, name, "contactNumber", email, "locationId", languages, note)
-             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-            [guideId, name, contactNumber || null, email || null, locationId, languages || null, note || null]
-          )
-          res.status(201).json(result[0])
-        } else {
-          res.status(405).json({ message: 'Method not allowed' })
-        }
-      } else {
-        if (req.method === 'GET') {
-          const guide = await queryOne(
-            `SELECT g.*, l.name as "locationName" FROM guides g
-             LEFT JOIN locations l ON g."locationId" = l.id WHERE g.id = $1`,
-            [id]
-          )
-          if (!guide) {
-            res.status(404).json({ message: 'Guide not found' })
-            return
-          }
-          res.status(200).json(guide)
-        } else if (req.method === 'PUT') {
-          const { name, contactNumber, email, locationId, languages, note } = req.body
-          if (!name || !locationId) {
-            res.status(400).json({ message: 'Name and location are required' })
-            return
-          }
-          const existing = await queryOne('SELECT id FROM guides WHERE id = $1', [id])
-          if (!existing) {
-            res.status(404).json({ message: 'Guide not found' })
-            return
-          }
-          const result = await query(
-            `UPDATE guides SET name = $1, "contactNumber" = $2, email = $3, "locationId" = $4, languages = $5, note = $6, "updatedAt" = NOW()
-             WHERE id = $7 RETURNING *`,
-            [name, contactNumber || null, email || null, locationId, languages || null, note || null, id]
-          )
-          res.status(200).json(result[0])
-        } else if (req.method === 'DELETE') {
-          const existing = await queryOne('SELECT id FROM guides WHERE id = $1', [id])
-          if (!existing) {
-            res.status(404).json({ message: 'Guide not found' })
-            return
-          }
-          await query('DELETE FROM guides WHERE id = $1', [id])
-          res.status(200).json({ message: 'Guide deleted successfully' })
-        } else {
-          res.status(405).json({ message: 'Method not allowed' })
-        }
-      }
-      return
-    }
-
     // Vehicles
     if (route === 'vehicles') {
       console.log('🚗 Vehicles route matched:', { route, id, method: req.method, pathArray })
@@ -661,84 +590,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         } else {
           res.status(405).json({ message: 'Method not allowed' })
           return
-        }
-      }
-      return
-    }
-
-    // Caterers
-    if (route === 'caterers') {
-      if (!id) {
-        if (req.method === 'GET') {
-          const result = await query(`
-            SELECT c.*, l.name as "locationName"
-            FROM caterers c
-            LEFT JOIN locations l ON c."locationId" = l.id
-            ORDER BY c.name
-          `)
-          res.json(result)
-        } else if (req.method === 'POST') {
-          const { name, contactNumber, email, type, locationId, note } = req.body
-
-          if (!name || !type) {
-            res.status(400).json({ message: 'Name and type are required' })
-            return
-          }
-
-          if (!['restaurant', 'hotel', 'particular'].includes(type)) {
-            res.status(400).json({ message: 'Type must be restaurant, hotel, or particular' })
-            return
-          }
-
-          const catererId = randomUUID()
-          const result = await query(
-            `INSERT INTO caterers (id, name, "contactNumber", email, type, "locationId", note)
-             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-            [catererId, name, contactNumber || null, email || null, type, locationId || null, note || null]
-          )
-          res.status(201).json(result[0])
-        } else {
-          res.status(405).json({ message: 'Method not allowed' })
-        }
-      } else {
-        if (req.method === 'GET') {
-          const result = await queryOne(
-            `SELECT c.*, l.name as "locationName"
-             FROM caterers c
-             LEFT JOIN locations l ON c."locationId" = l.id
-             WHERE c.id = $1`,
-            [id]
-          )
-          if (!result) {
-            res.status(404).json({ message: 'Caterer not found' })
-            return
-          }
-          res.json(result)
-        } else if (req.method === 'PUT') {
-          const { name, contactNumber, email, type, locationId, note } = req.body
-
-          if (!name || !type) {
-            res.status(400).json({ message: 'Name and type are required' })
-            return
-          }
-
-          if (!['restaurant', 'hotel', 'particular'].includes(type)) {
-            res.status(400).json({ message: 'Type must be restaurant, hotel, or particular' })
-            return
-          }
-
-          const result = await query(
-            `UPDATE caterers 
-             SET name = $1, "contactNumber" = $2, email = $3, type = $4, "locationId" = $5, note = $6, "updatedAt" = NOW()
-             WHERE id = $7 RETURNING *`,
-            [name, contactNumber || null, email || null, type, locationId || null, note || null, id]
-          )
-          res.status(200).json(result[0])
-        } else if (req.method === 'DELETE') {
-          await query('DELETE FROM caterers WHERE id = $1', [id])
-          res.status(204).end()
-        } else {
-          res.status(405).json({ message: 'Method not allowed' })
         }
       }
       return
@@ -857,7 +708,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             return
           }
 
-          if (!['client', 'hotel', 'guide', 'driver', 'caterer', 'company', 'third-party'].includes(entityType)) {
+          if (!['client', 'hotel', 'driver', 'company', 'third-party'].includes(entityType)) {
             res.status(400).json({ message: 'Invalid entity type' })
             return
           }
@@ -931,14 +782,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
               } else if (account.entityType === 'hotel') {
                 const entity = await queryOne('SELECT name FROM hotels WHERE id = $1', [account.entityId])
                 entityName = entity?.name || null
-              } else if (account.entityType === 'guide') {
-                const entity = await queryOne('SELECT name FROM guides WHERE id = $1', [account.entityId])
-                entityName = entity?.name || null
               } else if (account.entityType === 'driver') {
                 const entity = await queryOne('SELECT name FROM drivers WHERE id = $1', [account.entityId])
-                entityName = entity?.name || null
-              } else if (account.entityType === 'caterer') {
-                const entity = await queryOne('SELECT name FROM caterers WHERE id = $1', [account.entityId])
                 entityName = entity?.name || null
               }
             } catch (err) {
